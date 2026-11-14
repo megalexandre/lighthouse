@@ -1,0 +1,31 @@
+// VS Code reads this file for "Reopen in Container".
+// The containers themselves are defined in docker-compose.yml.
+{
+  "name": "jellyfin-desktop (Flutter)",
+
+  // 1. On the host: write .env with your user ids.
+  "initializeCommand": "bash .devcontainer/initialize.sh",
+
+  // 2. Start both containers; VS Code attaches to "app".
+  "dockerComposeFile": "docker-compose.yml",
+  "service": "app",
+  "runServices": ["app", "jellyfin"],
+  "workspaceFolder": "/workspace",
+  "shutdownAction": "stopCompose",
+  "remoteUser": "dev",
+
+  // 3. Once, after the container is created.
+  "postCreateCommand": "bash .devcontainer/postCreate.sh",
+
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "Dart-Code.dart-code",
+        "Dart-Code.flutter"
+      ],
+      "settings": {
+        "dart.flutterSdkPath": "/opt/flutter"
+      }
+    }
+  }
+}

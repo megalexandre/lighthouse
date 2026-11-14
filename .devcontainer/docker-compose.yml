@@ -1,0 +1,64 @@
+# Two containers: "app" (where you write and run the Flutter code)
+# and "jellyfin" (a real server for the app to talk to).
+# ${...} values come from .devcontainer/.env, written by initialize.sh.
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        USER_UID: ${USER_UID}
+        USER_GID: ${USER_GID}
+    command: sleep infinity
+    volumes:
+      # The whole workspace, read/write. Same layout as on the host:
+      #   /workspace/jellyfin-desktop   the desktop client (we work here)
+      #   /workspace/jellyfin           the server source
+      - ..:/workspace:cached
+      # Mounted again on top, read-only: the server source is a reference
+      # for the REST API, device profiles and stream decisions. Not built or run.
+      - ../jellyfin:/workspace/jellyfin:ro
+      # Dart package cache survives container rebuilds.
+      - pub-cache:/home/dev/.pub-cache
+      # Display and audio sockets from the host, so the app window opens
+      # on your screen and sound plays on your speakers.
+      #   X11:                /tmp/.X11-unix
+      #   Wayland, PipeWire:  the runtime dir (/run/user/<uid>)
+      - /tmp/.X11-unix:/tmp/.X11-unix
+      - ${XDG_RUNTIME_DIR}:/run/user/${USER_UID}
+    environment:
+      DISPLAY: ${DISPLAY:-:0}
+      WAYLAND_DISPLAY: ${WAYLAND_DISPLAY:-wayland-0}
+      XDG_RUNTIME_DIR: /run/user/${USER_UID}
+      # Where the app finds the test server (service name = hostname).
+      JELLYFIN_URL: http://jellyfin:8096
+    # GPU, for hardware video decoding (VAAPI).
+    # On a machine without /dev/dri, delete these two blocks.
+    devices:
+      - /dev/dri:/dev/dri
+    group_add:
+      - ${RENDER_GID}
+    security_opt:
+      # Lets the container use the host sockets on SELinux hosts (Fedora).
+      - label=disable
+    depends_on:
+      - jellyfin
+
+  jellyfin:
+    # Latest stable server. The source in ../jellyfin is master (13.x),
+    # so small API differences between the two are expected.
+    image: jellyfin/jellyfin:12.4
+    volumes:
+      # Server settings and users, kept between restarts.
+      - jellyfin-config:/config
+      - jellyfin-cache:/cache
+      # Small test videos from the desktop repo, used as the media library.
+      - ../jellyfin-desktop/resources/testmedia:/media:ro
+    ports:
+      # Also reachable from the host at http://localhost:8096
+      - "8096:8096"
+
+volumes:
+  pub-cache:
+  jellyfin-config:
+  jellyfin-cache:
