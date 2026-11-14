@@ -1,0 +1,6 @@
+# Tests tagged "server" talk to the test server (JELLYFIN_TEST_URL).
+#   flutter test --exclude-tags server   fast tests only, no network
+#   flutter test --tags server           only the server tests
+tags:
+  server:
+    timeout: 3x

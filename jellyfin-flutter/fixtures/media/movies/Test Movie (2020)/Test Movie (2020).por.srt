@@ -1,0 +1,7 @@
+1
+00:00:00,500 --> 00:00:04,000
+Português subtitle one
+
+2
+00:00:04,500 --> 00:00:09,000
+Português subtitle two

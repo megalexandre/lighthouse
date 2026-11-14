@@ -9,7 +9,7 @@
   // 2. Start both containers; VS Code attaches to "app".
   "dockerComposeFile": "docker-compose.yml",
   "service": "app",
-  "runServices": ["app", "jellyfin"],
+  "runServices": ["app", "jellyfin", "jellyfin-test"],
   "workspaceFolder": "/workspace",
   "shutdownAction": "stopCompose",
   "remoteUser": "dev",
@@ -21,10 +21,30 @@
     "vscode": {
       "extensions": [
         "Dart-Code.dart-code",
-        "Dart-Code.flutter"
+        "Dart-Code.flutter",
+        
+        
+        
+        // Claude Code. Its login and sessions live in the claude-config
+        // volume (see docker-compose.yml), so they survive rebuilds.
+        "anthropic.claude-code"
       ],
       "settings": {
-        "dart.flutterSdkPath": "/opt/flutter"
+        "dart.flutterSdkPath": "/opt/flutter",
+        // Same theme as the host, tinted Jellyfin purple, so you can
+        // tell at a glance that this window is inside the container.
+        "workbench.colorCustomizations": {
+          "titleBar.activeBackground": "#3b2347",
+          "titleBar.activeForeground": "#e8dcef",
+          "titleBar.inactiveBackground": "#2a1a33",
+          "titleBar.inactiveForeground": "#a898b0",
+          "activityBar.background": "#2a1a33",
+          "activityBar.activeBorder": "#aa5cc3",
+          "statusBar.background": "#5e3370",
+          "statusBar.foreground": "#ffffff",
+          "statusBarItem.remoteBackground": "#aa5cc3",
+          "statusBarItem.remoteForeground": "#ffffff"
+        }
       }
     }
   }

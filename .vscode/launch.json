@@ -1,0 +1,44 @@
+{
+  // Run and Debug (F5) for the Flutter app in jellyfin-flutter/.
+  // The window opens on the host display (see .devcontainer/README.md).
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Jellyfin Flutter (debug)",
+      "type": "dart",
+      "request": "launch",
+      "cwd": "jellyfin-flutter",
+      "program": "lib/main.dart",
+      "deviceId": "linux",
+      "flutterMode": "debug"
+    },
+    {
+      "name": "Jellyfin Flutter (profile)",
+      "type": "dart",
+      "request": "launch",
+      "cwd": "jellyfin-flutter",
+      "program": "lib/main.dart",
+      "deviceId": "linux",
+      "flutterMode": "profile"
+    },
+    {
+      "name": "Jellyfin Flutter (release)",
+      "type": "dart",
+      "request": "launch",
+      "cwd": "jellyfin-flutter",
+      "program": "lib/main.dart",
+      "deviceId": "linux",
+      "flutterMode": "release"
+    },
+    {
+      // Runs the integration tests in a visible window, so you can watch them.
+      // Needs the test server (JELLYFIN_TEST_URL) for anything beyond the smoke test.
+      "name": "Jellyfin Flutter: integration tests",
+      "type": "dart",
+      "request": "launch",
+      "cwd": "jellyfin-flutter",
+      "program": "integration_test",
+      "deviceId": "linux"
+    }
+  ]
+}

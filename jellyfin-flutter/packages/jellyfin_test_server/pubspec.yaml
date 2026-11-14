@@ -1,0 +1,13 @@
+name: jellyfin_test_server
+description: Sets up and talks to the throwaway Jellyfin server used by the tests.
+publish_to: none
+
+environment:
+  sdk: ^3.10.0
+
+dependencies:
+  dio: ^5.11.1
+
+dev_dependencies:
+  lints: ^6.0.0
+  test: ^1.26.0

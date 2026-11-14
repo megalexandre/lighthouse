@@ -1,6 +1,12 @@
 # Two containers: "app" (where you write and run the Flutter code)
 # and "jellyfin" (a real server for the app to talk to).
 # ${...} values come from .devcontainer/.env, written by initialize.sh.
+
+# Fixed project name. Without it, Compose names the project after the folder,
+# and VS Code and the terminal pick different names: you end up with two copies
+# of the containers fighting over port 8096.
+name: jellyfin-dev
+
 services:
   app:
     build:
@@ -20,6 +26,8 @@ services:
       - ../jellyfin:/workspace/jellyfin:ro
       # Dart package cache survives container rebuilds.
       - pub-cache:/home/dev/.pub-cache
+      # Claude Code: login, settings and session history survive rebuilds.
+      - claude-config:/home/dev/.claude
       # Display and audio sockets from the host, so the app window opens
       # on your screen and sound plays on your speakers.
       #   X11:                /tmp/.X11-unix
@@ -32,6 +40,11 @@ services:
       XDG_RUNTIME_DIR: /run/user/${USER_UID}
       # Where the app finds the test server (service name = hostname).
       JELLYFIN_URL: http://jellyfin:8096
+      # Throwaway server used by the automated tests (see "jellyfin-test").
+      JELLYFIN_TEST_URL: http://jellyfin-test:8096
+      # Claude Code keeps everything here, including .claude.json, which by
+      # default sits loose in $HOME and would be lost on rebuild.
+      CLAUDE_CONFIG_DIR: /home/dev/.claude
     # GPU, for hardware video decoding (VAAPI).
     # On a machine without /dev/dri, delete these two blocks.
     devices:
@@ -43,6 +56,7 @@ services:
       - label=disable
     depends_on:
       - jellyfin
+      - jellyfin-test
 
   jellyfin:
     # Latest stable server. The source in ../jellyfin is master (13.x),
@@ -58,7 +72,21 @@ services:
       # Also reachable from the host at http://localhost:8096
       - "8096:8096"
 
+  jellyfin-test:
+    # Same server, only for the automated tests. Its settings live in memory
+    # (tmpfs), so every restart starts from an empty, unconfigured server;
+    # the tests run the setup wizard and create the libraries themselves.
+    # No published port: only the app container talks to it.
+    image: jellyfin/jellyfin:12.4
+    tmpfs:
+      - /config
+      - /cache
+    volumes:
+      # Generated test media (tool/gen_fixtures.sh), committed in the repo.
+      - ../jellyfin-flutter/fixtures/media:/media:ro
+
 volumes:
   pub-cache:
+  claude-config:
   jellyfin-config:
   jellyfin-cache:

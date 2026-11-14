@@ -1,0 +1,51 @@
+# Same checks as jellyfin-flutter/tool/check.sh, on a clean Ubuntu runner.
+name: jellyfin-flutter
+
+on:
+  push:
+    paths: ["jellyfin-flutter/**", ".github/workflows/flutter.yml"]
+  pull_request:
+    paths: ["jellyfin-flutter/**", ".github/workflows/flutter.yml"]
+
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: jellyfin-flutter
+    env:
+      JELLYFIN_TEST_URL: http://localhost:8096
+    steps:
+      - uses: actions/checkout@v4
+
+      # Started after checkout so it can mount the fixtures; same image and
+      # in-memory config as the "jellyfin-test" service in the dev container.
+      - name: Start test server
+        run: >
+          docker run -d --name jellyfin-test -p 8096:8096
+          --tmpfs /config --tmpfs /cache
+          -v "$PWD/fixtures/media:/media:ro"
+          jellyfin/jellyfin:12.4
+
+      - name: System packages
+        working-directory: .
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            clang cmake ninja-build make pkg-config libgtk-3-dev liblzma-dev \
+            libmpv-dev libsecret-1-dev xvfb xauth
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 3.50.0   # keep in sync with .devcontainer/Dockerfile
+          channel: stable
+          cache: true
+
+      - run: flutter pub get
+      - run: (cd packages/jellyfin_test_server && dart pub get)
+      - run: tool/check.sh
+
+      - name: Server log on failure
+        if: failure()
+        run: docker logs jellyfin-test | tail -200
