@@ -78,6 +78,7 @@ class AuthController extends AsyncNotifier<AuthState> {
   /// The server rejected the token while the app was open (revoked, or
   /// signed out from another client): back to the login screen.
   Future<void> sessionExpired() async {
+    if (!ref.mounted) return;
     final current = state.value;
     if (current == null || current.session == null) return;
     state = AsyncData(AuthState(server: current.server));

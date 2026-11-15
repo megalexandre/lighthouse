@@ -40,14 +40,8 @@ void main() {
     user = await server.createUser(password: 'pw-123');
   });
 
-  /// Clicks into the field, then types, as a user would. enterText alone
-  /// writes to whatever input connection is open, which is none once
-  /// focus has moved to a button.
-  Future<void> type(WidgetTester tester, Key field, String text) async {
-    await tester.tap(find.byKey(field));
-    await tester.pump();
-    await tester.enterText(find.byKey(field), text);
-  }
+  Future<void> type(WidgetTester tester, Key field, String text) =>
+      typeInto(tester, find.byKey(field), text);
 
   Future<void> signIn(WidgetTester tester, String password) async {
     await type(tester, LoginScreen.usernameField, user.name);

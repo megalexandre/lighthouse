@@ -51,7 +51,7 @@ void main() {
     await waitFor(tester, find.byKey(HomeScreen.searchButton));
     await tapOn(tester, find.byKey(HomeScreen.searchButton));
     await waitFor(tester, find.byKey(SearchScreen.field));
-    await tester.enterText(find.byKey(SearchScreen.field), 'test mov');
+    await typeInto(tester, find.byKey(SearchScreen.field), 'test mov');
     final result = onScreen(SearchScreen, find.text(Fixtures.testMovie));
     await waitFor(tester, result);
     await tapOn(tester, result);
@@ -82,14 +82,8 @@ void main() {
       matching: find.byType(TextField),
     );
     await waitFor(tester, audio);
-    await tapOn(tester, audio);
-    // Typed through the (simulated) text input, as keystrokes are: the
-    // menu filters on that, not on a text set directly.
-    tester.testTextInput.register();
-    addTearDown(tester.testTextInput.unregister);
-    await tester.showKeyboard(audio);
-    tester.testTextInput.enterText('portug');
-    await tester.pump();
+    // Typed as keystrokes are: the menu filters on that.
+    await typeInto(tester, audio, 'portug');
     // The language list comes from the server.
     // The open menu's entry (the menu also keeps hidden copies of every
     // entry, to measure its width).

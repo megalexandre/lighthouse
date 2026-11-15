@@ -10,7 +10,7 @@ on:
 jobs:
   check:
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    timeout-minutes: 60
     defaults:
       run:
         working-directory: jellyfin-flutter
@@ -45,6 +45,16 @@ jobs:
       - run: flutter pub get
       - run: (cd packages/jellyfin_test_server && dart pub get)
       - run: tool/check.sh
+
+      # The release checks: integration tests on an AOT build, then the
+      # AppImage (release build, packed, smoke-tested).
+      - run: tool/profile_test.sh
+      - run: tool/build_appimage.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: appimage
+          path: jellyfin-flutter/build/JellyfinFlutter-*-x86_64.AppImage
+          if-no-files-found: error
 
       - name: Server log on failure
         if: failure()

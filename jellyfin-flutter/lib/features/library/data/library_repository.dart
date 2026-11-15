@@ -88,13 +88,16 @@ final libraryRepositoryProvider = Provider<LibraryRepository>((ref) {
   // to login; they get Unauthorized (shown as an error for that moment)
   // instead of an exception escaping the provider.
   if (session == null) return const SignedOutLibraryRepository();
+  // Read now, not when a call finishes: by then this provider may be gone
+  // (signed out mid-playback), and its ref with it.
+  final client = ref.read(clientInfoProvider.future);
+  final auth = ref.read(authControllerProvider.notifier);
+  final connection = ref.read(connectionProvider.notifier);
   return JellyfinLibraryRepository(
     session,
-    () => ref.read(clientInfoProvider.future),
-    onUnauthorized: () =>
-        ref.read(authControllerProvider.notifier).sessionExpired(),
-    onReachability: ({required reachable}) =>
-        ref.read(connectionProvider.notifier).report(reachable: reachable),
+    () => client,
+    onUnauthorized: auth.sessionExpired,
+    onReachability: connection.report,
   );
 });
 

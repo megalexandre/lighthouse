@@ -1,0 +1,10 @@
+[Desktop Entry]
+Version=1.0
+Name=Jellyfin Flutter
+Comment=Jellyfin client (Flutter rewrite of Jellyfin Desktop)
+Exec=jellyfin_flutter
+Icon=org.jellyfin.jellyfin_flutter
+Terminal=false
+Type=Application
+StartupWMClass=org.jellyfin.jellyfin_flutter
+Categories=AudioVideo;Video;Player;TV;

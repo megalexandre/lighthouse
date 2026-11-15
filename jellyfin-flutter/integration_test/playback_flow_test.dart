@@ -128,7 +128,7 @@ void main() {
 
     // 10 s movie: seek near the end and let it finish.
     for (var i = 0; i < 9; i++) {
-      await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+      await pressKey(tester, LogicalKeyboardKey.arrowRight);
     }
     await waitUntil(
       tester,

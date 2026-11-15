@@ -47,7 +47,10 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
         # Headless testing: run integration tests without a real screen
         xvfb xauth x11-utils \
         # Generates the test media in jellyfin-flutter/fixtures (tool/gen_fixtures.sh)
-        ffmpeg
+        ffmpeg \
+        # AppImage packing (jellyfin-flutter/tool/build_appimage.sh):
+        # appimagetool calls `file`
+        file
 
 # --- Non-root user "dev" ----------------------------------------------------
 # ubuntu:24.04 ships a user "ubuntu" with uid/gid 1000. Remove it first so

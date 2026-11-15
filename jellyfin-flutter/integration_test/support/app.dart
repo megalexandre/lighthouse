@@ -1,3 +1,4 @@
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:jellyfin_flutter/app.dart';
@@ -19,21 +20,33 @@ final window = TestWindow();
 /// keyring is swapped for [store], so tests never touch the desktop's
 /// keyring (and CI has none), and mpv runs without sound or hardware
 /// decoding (CI has neither).
-Future<void> launch(WidgetTester tester, MemoryKeyValueStore store) =>
-    tester.pumpWidget(
-      ProviderScope(
-        key: UniqueKey(),
-        retry: noAutomaticRetry,
-        overrides: [
-          keyValueStoreProvider.overrideWithValue(store),
-          playerOptionsProvider.overrideWithValue(
-            const PlayerOptions(hardwareDecoding: false, audio: false),
-          ),
-          appWindowProvider.overrideWithValue(window),
-        ],
-        child: const JellyfinApp(),
-      ),
-    );
+Future<void> launch(WidgetTester tester, MemoryKeyValueStore store) {
+  _simulateTextInput(tester);
+  return tester.pumpWidget(
+    ProviderScope(
+      key: UniqueKey(),
+      retry: noAutomaticRetry,
+      overrides: [
+        keyValueStoreProvider.overrideWithValue(store),
+        playerOptionsProvider.overrideWithValue(
+          const PlayerOptions(hardwareDecoding: false, audio: false),
+        ),
+        appWindowProvider.overrideWithValue(window),
+      ],
+      child: const JellyfinApp(),
+    ),
+  );
+}
+
+/// Text input goes through the test's simulated platform input, set up
+/// before any screen exists: a field that takes focus by itself (the
+/// server address, the search box) opens its input connection at once,
+/// and one opened on the real platform input never sees typed text.
+void _simulateTextInput(WidgetTester tester) {
+  if (tester.testTextInput.isRegistered) return;
+  tester.testTextInput.register();
+  addTearDown(tester.testTextInput.unregister);
+}
 
 /// Pumps until [finder] shows up. Requests here are real HTTP, so there
 /// is no "settled" moment to wait for.
@@ -92,4 +105,35 @@ Future<void> waitUntil(
     if (DateTime.now().isAfter(deadline)) fail('timed out: $reason');
     await tester.pump(const Duration(milliseconds: 100));
   }
+}
+
+/// Types [text] into [field] as a user would: focus it, then send the
+/// text through the (simulated) platform text input, so onChanged fires
+/// and filters react. Works under `flutter test` and `flutter drive`
+/// (profile), where enterText alone does not reach the field.
+Future<void> typeInto(WidgetTester tester, Finder field, String text) async {
+  _simulateTextInput(tester);
+  await tester.tap(field);
+  await tester.pump();
+  await tester.showKeyboard(field);
+  tester.testTextInput.enterText(text);
+  await tester.pump();
+}
+
+/// The physical keys of the logical keys tests press. Under `flutter
+/// drive` (profile) the key simulator cannot look them up itself.
+final _physical = {
+  LogicalKeyboardKey.pageDown: PhysicalKeyboardKey.pageDown,
+  LogicalKeyboardKey.pageUp: PhysicalKeyboardKey.pageUp,
+  LogicalKeyboardKey.arrowLeft: PhysicalKeyboardKey.arrowLeft,
+  LogicalKeyboardKey.arrowRight: PhysicalKeyboardKey.arrowRight,
+  LogicalKeyboardKey.space: PhysicalKeyboardKey.space,
+  LogicalKeyboardKey.escape: PhysicalKeyboardKey.escape,
+};
+
+/// Presses and releases [key], as a keyboard would.
+Future<void> pressKey(WidgetTester tester, LogicalKeyboardKey key) async {
+  final physical = _physical[key];
+  if (physical == null) throw ArgumentError('add $key to _physical');
+  await tester.sendKeyEvent(key, physicalKey: physical);
 }

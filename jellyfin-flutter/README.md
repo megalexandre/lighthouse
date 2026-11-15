@@ -29,6 +29,39 @@ tool/dev_server.sh
 flutter run -d linux --dart-define=JELLYFIN_SERVER=$JELLYFIN_URL
 ```
 
+## Logs
+
+The app logs to `~/.local/share/jellyfin-flutter/logs/app.log` (under
+`$XDG_DATA_HOME` when set); the last three runs are kept as `app.1.log`...
+Every request (status, time), playback decisions, mpv warnings, lost and
+regained connections and uncaught errors. Tokens, `ApiKey` values in URLs
+and passwords are replaced by `***` before anything is written, so a log
+can be shared.
+
+## Release
+
+```sh
+tool/profile_test.sh     # integration tests on an AOT build
+tool/build_appimage.sh   # release build → build/JellyfinFlutter-<version>-x86_64.AppImage
+```
+
+- **AppImage**: one file that runs on most x86_64 Linux desktops. It
+  carries the release bundle and the libraries a desktop may lack (libmpv
+  and its ffmpeg...); glibc and the GPU drivers come from the host.
+  [linuxdeploy](https://github.com/linuxdeploy/linuxdeploy) does the
+  packing; the script downloads a pinned version once, checks its SHA-256
+  and caches it in `~/.cache/jellyfin-flutter/tools`. It ends with a smoke
+  test: the AppImage must start (under Xvfb) far enough to write its log.
+- **Why profile for the integration tests**: a release build cannot be
+  driven by a test (it has no VM service). Profile is compiled the same
+  way (AOT, no asserts, tree-shaken) and still can, so it catches what only
+  breaks in a compiled build. `tool/profile_test.sh` runs each
+  `integration_test/` file with `flutter drive --profile`.
+- Run an AppImage without FUSE (containers): `APPIMAGE_EXTRACT_AND_RUN=1`.
+
+After the integration tests, `build/linux/x64/debug/bundle` holds the
+*test* app; `flutter build linux` before running the bundle by hand.
+
 ## Code generation
 
 Models (`lib/api/models`, sessions) use freezed + json_serializable. After

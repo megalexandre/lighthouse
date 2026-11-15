@@ -64,6 +64,7 @@ class ConnectionController extends Notifier<ConnectionStatus> {
   /// Every API call says how it went: [reachable] false only when nothing
   /// answered at all.
   void report({required bool reachable}) {
+    if (!ref.mounted) return; // a call that ended after the app scope
     if (reachable) {
       if (!state.reachable) _recovered();
     } else if (state.reachable) {

@@ -144,6 +144,9 @@ Pronto: todos os fluxos de playback da camada 4 acima.
 Busca (`/Items?searchTerm=`), configurações (qualidade máxima/bitrate, idioma preferido de áudio/legenda),
 tratamento de erros e reconexão, logs em arquivo, build release `flutter build linux` + empacotamento (AppImage).
 Pronto: integração de busca e preferência de idioma aplicada no playback; build release roda os testes de integração.
+Ajuste feito no F4c: um build release não pode ser conduzido por teste (não tem VM service), então os testes de
+integração rodam em **profile** (`tool/profile_test.sh`: AOT, compilado como o release), e o AppImage release
+(`tool/build_appimage.sh`) passa por um teste de fumaça (abre sob Xvfb e grava o log).
 
 **F5+ — Pós-MVP (planejar em detalhe ao chegar)**
 MPRIS (D-Bus), gamepads/remotes (demais inputmaps), WebSocket de sessão (controle remoto a partir de outro cliente),

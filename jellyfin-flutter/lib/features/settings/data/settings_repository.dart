@@ -45,14 +45,17 @@ final settingsRepositoryProvider = Provider<SettingsRepository>((ref) {
   );
   final store = ref.watch(keyValueStoreProvider);
   if (session == null) return SignedOutSettingsRepository(store);
+  // Read now, not when a call finishes: by then this provider may be gone
+  // (signed out mid-playback), and its ref with it.
+  final client = ref.read(clientInfoProvider.future);
+  final auth = ref.read(authControllerProvider.notifier);
+  final connection = ref.read(connectionProvider.notifier);
   return JellyfinSettingsRepository(
     session,
-    () => ref.read(clientInfoProvider.future),
+    () => client,
     store,
-    onUnauthorized: () =>
-        ref.read(authControllerProvider.notifier).sessionExpired(),
-    onReachability: ({required reachable}) =>
-        ref.read(connectionProvider.notifier).report(reachable: reachable),
+    onUnauthorized: auth.sessionExpired,
+    onReachability: connection.report,
   );
 });
 

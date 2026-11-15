@@ -83,7 +83,7 @@ void main() {
     await waitFor(tester, playing('Test Show S01E01'));
     await waitFor(tester, find.byKey(PlayerScreen.nextButton));
     // 6 s episode: jump to the end.
-    await tester.sendKeyEvent(LogicalKeyboardKey.pageDown);
+    await pressKey(tester, LogicalKeyboardKey.pageDown);
 
     await waitFor(tester, playing('Test Show S01E02'));
     await settleRoute(tester); // the E01 player leaving
