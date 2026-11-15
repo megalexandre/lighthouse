@@ -5,6 +5,8 @@ analyzer:
     - build/**
     - linux/**
     - packages/**
+    # Vendored upstream code, kept as upstream wrote it (third_party/README.md).
+    - third_party/**
     - "**/*.g.dart"
     - "**/*.freezed.dart"
   language:

@@ -43,3 +43,8 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+
+# media_kit_video with a patch for video on Wayland: see third_party/README.md.
+dependency_overrides:
+  media_kit_video:
+    path: third_party/media_kit_video

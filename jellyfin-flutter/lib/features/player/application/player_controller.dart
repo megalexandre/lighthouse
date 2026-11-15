@@ -126,6 +126,7 @@ class PlayerController extends AsyncNotifier<PlayerSession> {
     var session = PlayerSession(item: item, plan: plan, engine: engine);
     session = _session = await _applyInitialTracks(session);
     _startReporting(session);
+    _logDiagnostics(engine, item);
     return session;
   }
 
@@ -162,6 +163,31 @@ class PlayerController extends AsyncNotifier<PlayerSession> {
       audioStreamIndex: () => audio,
       subtitleStreamIndex: () => subtitle,
     );
+  }
+
+  Timer? _diagnostics;
+
+  /// mpv's playback figures into the log: once it has settled (5 s), then
+  /// every 30 s. What to look at when video is not smooth.
+  void _logDiagnostics(PlayerEngine engine, BaseItemDto item) {
+    _diagnostics?.cancel();
+    if (item.type == BaseItemKind.audio) return;
+    Future<void> write() async {
+      final figures = await engine.diagnostics();
+      if (figures.isEmpty) return;
+      log.info(
+        'player',
+        'mpv: ${[for (final e in figures.entries) '${e.key}=${e.value}'].join(' ')}',
+      );
+    }
+
+    _diagnostics = Timer(const Duration(seconds: 5), () {
+      unawaited(write());
+      _diagnostics = Timer.periodic(
+        const Duration(seconds: 30),
+        (_) => unawaited(write()),
+      );
+    });
   }
 
   void _startReporting(PlayerSession session) {
@@ -373,6 +399,7 @@ class PlayerController extends AsyncNotifier<PlayerSession> {
   }
 
   void _release() {
+    _diagnostics?.cancel();
     for (final s in _subscriptions) {
       unawaited(s.cancel());
     }

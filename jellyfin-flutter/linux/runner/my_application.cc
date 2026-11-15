@@ -38,6 +38,12 @@ static void my_application_activate(GApplication* application) {
   g_autoptr(FlDartProject) project = fl_dart_project_new();
   fl_dart_project_set_dart_entrypoint_arguments(
       project, self->dart_entrypoint_arguments);
+  // Skia, not Impeller: media_kit draws video with the GPU through the EGL
+  // context the renderer leaves current, and with Impeller (the default
+  // since Flutter 3.50 on Linux) it found none: "VideoOutput: EGL display
+  // or context is invalid", then software rendering, every 1080p frame
+  // through the CPU, visibly choppy.
+  fl_dart_project_set_enable_impeller(project, FALSE);
 
   FlView* view = fl_view_new(project);
   GdkRGBA background_color;

@@ -62,6 +62,10 @@ abstract interface class PlayerEngine {
   /// The picture. Empty for audio.
   Widget buildVideo();
 
+  /// How playback is really going (decoder, frame rates, dropped frames),
+  /// for the log. Empty when the engine cannot tell.
+  Future<Map<String, String>> diagnostics();
+
   Future<void> dispose();
 }
 
@@ -214,6 +218,32 @@ class MediaKitEngine implements PlayerEngine {
   /// An mpv property as text, e.g. `current-tracks/audio/lang` or
   /// `sub-text`. For tests that check what mpv really does.
   Future<String> mpvProperty(String name) => _mpv.getProperty(name);
+
+  /// mpv's view of smoothness: is decoding on the GPU, at which rates,
+  /// and how many frames were dropped or shown late.
+  static const diagnosticProperties = [
+    'hwdec-current',
+    'hwdec-interop',
+    'video-codec',
+    'video-params/pixelformat',
+    'video-params/w',
+    'video-params/h',
+    'container-fps',
+    'estimated-vf-fps',
+    'display-fps',
+    'video-sync',
+    'frame-drop-count',
+    'decoder-frame-drop-count',
+    'mistimed-frame-count',
+    'vo-delayed-frame-count',
+    'current-vo',
+  ];
+
+  @override
+  Future<Map<String, String>> diagnostics() async => {
+    for (final name in diagnosticProperties)
+      name: await _mpv.getProperty(name).catchError((_) => '?'),
+  };
 
   @override
   Future<void> play() => _player.play();

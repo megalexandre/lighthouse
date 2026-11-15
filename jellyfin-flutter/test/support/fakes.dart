@@ -561,6 +561,9 @@ class FakePlayerEngine implements PlayerEngine {
   Widget buildVideo() => const ColoredBox(color: Color(0xFF000000));
 
   @override
+  Future<Map<String, String>> diagnostics() async => {};
+
+  @override
   Future<void> dispose() async {
     disposed = true;
     await _position.close();

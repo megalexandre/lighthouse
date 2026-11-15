@@ -58,12 +58,22 @@ cp -a "$bundle/." "$appdir/usr/bin/"
 libraries=()
 for lib in "$appdir"/usr/bin/lib/*.so; do libraries+=(--library "$lib"); done
 
+# The GPU video stack must be the host's, like its OpenGL: a bundled libva
+# looks for its drivers where the build machine (Ubuntu) keeps them, finds
+# none on other distributions, and hardware decoding silently falls back
+# to the CPU. libvdpau and libdrm go with it.
+excluded=()
+for pattern in 'libva.so*' 'libva-*.so*' 'libvdpau.so*' 'libdrm.so*' 'libdrm_*.so*'; do
+  excluded+=(--exclude-library "$pattern")
+done
+
 step "AppImage"
 rm -f "$output"
 LDAI_OUTPUT="$output" "$linuxdeploy" \
   --appdir "$appdir" \
   --executable "$appdir/usr/bin/$binary" \
   "${libraries[@]}" \
+  "${excluded[@]}" \
   --desktop-file "linux/packaging/$app_id.desktop" \
   --icon-file "linux/packaging/$app_id.png" \
   --output appimage
