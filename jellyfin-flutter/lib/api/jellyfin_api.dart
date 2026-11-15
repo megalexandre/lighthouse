@@ -7,7 +7,7 @@ import 'auth_interceptor.dart';
 import 'client_info.dart';
 
 /// HTTP client for one server, optionally signed in ([token]). Endpoints
-/// live in extensions by area (system.dart, users.dart, sessions.dart);
+/// live in extensions by area (system.dart, users.dart, items.dart...);
 /// every call goes through [guard], so callers only ever see a [Failure].
 class JellyfinApi {
   JellyfinApi({
@@ -56,6 +56,20 @@ class JellyfinApi {
   }) => guard((dio) async {
     final res = await dio.get<Object>(path, queryParameters: query);
     return parse(_object(res));
+  });
+
+  /// GET of a JSON array of objects, each parsed by [parse].
+  Future<List<T>> getJsonList<T>(
+    String path,
+    T Function(Map<String, dynamic> json) parse, {
+    Map<String, dynamic>? query,
+  }) => guard((dio) async {
+    final res = await dio.get<Object>(path, queryParameters: query);
+    final data = res.data;
+    if (data is! List) {
+      throw ServerError('expected a JSON array, got ${data.runtimeType}');
+    }
+    return [for (final e in data) parse(e as Map<String, dynamic>)];
   });
 
   /// POST of [body], returning a JSON object parsed by [parse].

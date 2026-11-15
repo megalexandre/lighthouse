@@ -27,6 +27,11 @@ abstract final class Fixtures {
   static const hevcMovie = 'HEVC Movie (2021)';
   static const testShow = 'Test Show';
   static const testAlbum = 'Test Album';
+  static const testArtist = 'Test Artist';
+
+  /// Items with a local poster (fixtures/media/**/poster.jpg, folder.jpg).
+  /// HEVC Movie has none.
+  static const withPoster = [testMovie, testShow, testAlbum];
 }
 
 /// Credentials of a user created for one test.
@@ -304,30 +309,84 @@ class TestServer {
 
   var _userCounter = 0;
 
-  /// Creates a user with access to every library. Delete it with
-  /// [deleteUser] (usually in `tearDown`).
+  /// Creates a user with access to every library, with no watch state.
+  ///
+  /// Test users are never deleted. Jellyfin 12.4 gives a new user the
+  /// internal id of the last deleted one, and that user's watch state
+  /// (positions, played) comes with it: deleting in tearDown made the next
+  /// test's "fresh" user start half way through a movie. The server keeps
+  /// its data in memory, so the users go away when its container restarts.
+  ///
+  /// A server that already went through deletions (older test runs) still
+  /// hands out such ids: a user that comes with watch state is left aside
+  /// and another one created.
   Future<TestUser> createUser({String password = 'test-password'}) async {
-    final name =
-        'user-${DateTime.now().microsecondsSinceEpoch}-'
-        '${_userCounter++}';
-    final res = await _dio.post<Map<String, dynamic>>(
-      '/Users/New',
-      data: {'Name': name, 'Password': password},
-      options: _asAdmin,
-    );
-    return TestUser(
-      id: res.data!['Id'] as String,
-      name: name,
-      password: password,
-    );
+    for (var attempt = 0; attempt < 1000; attempt++) {
+      final name =
+          'user-${DateTime.now().microsecondsSinceEpoch}-'
+          '${_userCounter++}';
+      final res = await _dio.post<Map<String, dynamic>>(
+        '/Users/New',
+        data: {'Name': name, 'Password': password},
+        options: _asAdmin,
+      );
+      final id = res.data!['Id'] as String;
+      if (await _hasNoWatchState(id)) {
+        return TestUser(id: id, name: name, password: password);
+      }
+    }
+    throw TestServerException('every new user came with watch state');
   }
 
-  Future<void> deleteUser(TestUser user) =>
-      _dio.delete<void>('/Users/${user.id}', options: _asAdmin);
+  Future<bool> _hasNoWatchState(String userId) async {
+    for (final filter in ['IsPlayed', 'IsResumable']) {
+      final res = await _dio.get<Map<String, dynamic>>(
+        '/Items',
+        queryParameters: {
+          'userId': userId,
+          'Recursive': true,
+          'Filters': filter,
+          'Limit': 0,
+        },
+        options: _asAdmin,
+      );
+      if (res.data!['TotalRecordCount'] != 0) return false;
+    }
+    return true;
+  }
 
   /// Logs [user] in, returning the access token.
   Future<String> login(TestUser user) async =>
       (await _login(_dio, user.name, user.password)).token;
+
+  Options _as(String token) =>
+      Options(headers: {'Authorization': authHeader(token: token)});
+
+  /// Marks [itemId] watched for [user] (e.g. to get Next Up going).
+  Future<void> markPlayed(TestUser user, String itemId) async {
+    final token = await login(user);
+    await _dio.post<void>(
+      '/UserPlayedItems/$itemId',
+      queryParameters: {'userId': user.id},
+      options: _as(token),
+    );
+  }
+
+  /// Leaves [itemId] partly watched at [position] for [user], as if
+  /// playback had stopped there (e.g. to fill Continue Watching).
+  Future<void> setPlaybackPosition(
+    TestUser user,
+    String itemId,
+    Duration position,
+  ) async {
+    final token = await login(user);
+    await _dio.post<void>(
+      '/UserItems/$itemId/UserData',
+      queryParameters: {'userId': user.id},
+      data: {'PlaybackPositionTicks': position.inMicroseconds * 10},
+      options: _as(token),
+    );
+  }
 
   /// Raw admin GET, for tests that check server state directly.
   Future<T> adminGet<T>(String path, {Map<String, dynamic>? query}) async {
@@ -355,7 +414,7 @@ class TestServer {
         'IncludeItemTypes': type,
         'SearchTerm': name,
       },
-      options: Options(headers: {'Authorization': authHeader(token: token)}),
+      options: _as(token),
     );
     final items = (res.data!['Items'] as List).cast<Map<String, dynamic>>();
     return items.firstWhere(

@@ -27,7 +27,6 @@ void main() {
 
   test('each test user has its own empty watch state', () async {
     final user = await server.createUser();
-    addTearDown(() => server.deleteUser(user));
 
     final movie = await server.findItem(
       user,

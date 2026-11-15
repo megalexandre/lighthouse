@@ -1,0 +1,31 @@
+{
+    "Items": [
+        {
+            "Name": "HEVC Movie (2021)",
+            "ServerId": "6759366f241a49e18e876d50ed8fd101",
+            "Id": "cb31053f738d67863f041c4c77e7c9fd",
+            "Container": "mkv",
+            "ChannelId": null,
+            "RunTimeTicks": 50230000,
+            "ProductionYear": 2021,
+            "IsFolder": false,
+            "Type": "Movie",
+            "UserData": {
+                "PlaybackPositionTicks": 0,
+                "PlayCount": 0,
+                "IsFavorite": false,
+                "Played": false,
+                "Key": "cb31053f-738d-6786-3f04-1c4c77e7c9fd",
+                "ItemId": "cb31053f738d67863f041c4c77e7c9fd"
+            },
+            "VideoType": "VideoFile",
+            "ImageTags": {},
+            "BackdropImageTags": [],
+            "ImageBlurHashes": {},
+            "LocationType": "FileSystem",
+            "MediaType": "Video"
+        }
+    ],
+    "TotalRecordCount": 2,
+    "StartIndex": 0
+}

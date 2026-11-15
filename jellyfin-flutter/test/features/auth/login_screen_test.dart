@@ -59,7 +59,7 @@ void main() {
     await signIn(tester, ' alice ', 'secret');
 
     expect(find.byType(HomeScreen), findsOneWidget);
-    expect(find.text('Signed in as alice'), findsOneWidget);
+    expect(find.text('alice'), findsOneWidget); // in the app bar
   });
 
   testWidgets('restart after login opens home directly', (tester) async {

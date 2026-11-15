@@ -74,6 +74,15 @@ class AuthController extends AsyncNotifier<AuthState> {
     state = AsyncData(AuthState(server: server, session: session));
   }
 
+  /// The server rejected the token while the app was open (revoked, or
+  /// signed out from another client): back to the login screen.
+  Future<void> sessionExpired() async {
+    final current = state.value;
+    if (current == null || current.session == null) return;
+    state = AsyncData(AuthState(server: current.server));
+    await _store.clearSession();
+  }
+
   /// Signs out locally even when the server cannot be told.
   Future<void> logout() async {
     final current = state.requireValue;

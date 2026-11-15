@@ -28,6 +28,10 @@ void main() {
     (signedIn, Routes.connect, Routes.home),
     (signedIn, Routes.login, Routes.home),
     (signedIn, Routes.home, null),
+    (signedIn, '/library/abc', null),
+    (signedIn, '/item/abc', null),
+    (signedOut, '/item/abc', Routes.login),
+    (noServer, '/library/abc', Routes.connect),
   ];
 
   for (final (state, location, expected) in cases) {

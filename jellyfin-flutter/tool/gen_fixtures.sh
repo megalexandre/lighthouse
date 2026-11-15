@@ -8,18 +8,30 @@
 #   movies/HEVC Movie (2021)/   HEVC 10-bit, for the transcode path
 #   shows/Test Show/Season 01/  3 episodes (next episode, Next Up)
 #   music/Test Artist/Test Album/  2 tagged tracks
+#
+# Test Movie, Test Show and Test Album have a local poster (poster.jpg,
+# folder.jpg), read by the server without internet metadata; HEVC Movie has
+# none, so the "no image" placeholder is covered too.
 set -euo pipefail
 
 root="$(cd "$(dirname "$0")/.." && pwd)/fixtures/media"
 tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT
-rm -rf "$root"
+# Empty the folder but keep it: the dev container's servers bind-mount it,
+# and a mount keeps pointing at a deleted folder (they would see /media
+# empty until restarted).
 mkdir -p "$root"
+find "$root" -mindepth 1 -delete
 
 ff() { ffmpeg -hide_banner -loglevel error -y "$@"; }
 # Flags that keep the files byte-for-byte reproducible.
 exact=(-fflags +bitexact -flags:v +bitexact -flags:a +bitexact -map_metadata -1)
 x264=(-c:v libx264 -preset veryfast -crf 35 -pix_fmt yuv420p -threads 1 -x264-params "keyint=25")
+
+poster() { # poster <file> <lavfi source> <WxH>: one still frame, as JPEG
+  ff -f lavfi -i "$2=size=$3:rate=1" -frames:v 1 -q:v 4 \
+     -flags +bitexact -fflags +bitexact -map_metadata -1 "$1"
+}
 
 srt() { # srt <file> <text prefix>
   cat > "$1" <<SRT
@@ -48,6 +60,7 @@ ff -f lavfi -i "testsrc2=size=320x180:rate=25:duration=10" \
    -metadata:s:s:0 language=eng \
    "${exact[@]}" "$d/Test Movie (2020).mkv"
 srt "$d/Test Movie (2020).por.srt" "Português"
+poster "$d/poster.jpg" testsrc 200x300
 
 # --- HEVC 10-bit movie --------------------------------------------------------
 d="$root/movies/HEVC Movie (2021)"
@@ -62,6 +75,7 @@ ff -f lavfi -i "testsrc2=size=320x180:rate=25:duration=5" \
 # --- Show: 3 episodes ---------------------------------------------------------
 d="$root/shows/Test Show/Season 01"
 mkdir -p "$d"
+poster "$root/shows/Test Show/poster.jpg" smptebars 200x300
 for n in 1 2 3; do
   ff -f lavfi -i "testsrc2=size=320x180:rate=25:duration=6" \
      -f lavfi -i "sine=frequency=$((200 + n * 100)):duration=6" \
@@ -81,5 +95,6 @@ for n in 1 2; do
      -id3v2_version 3 -write_xing 0 \
      "$d/0$n - Track $n.mp3"
 done
+poster "$d/folder.jpg" rgbtestsrc 300x300
 
 du -sh "$root"

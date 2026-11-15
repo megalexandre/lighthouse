@@ -26,9 +26,14 @@ void main() {
     return schema;
   }
 
-  /// Every key of [shape] missing from [schema], as dotted paths.
+  /// Every key of [shape] missing from [schema], as dotted paths. An
+  /// array schema is checked through its items.
   List<String> missing(JsonShape shape, Map<String, dynamic> schema) {
-    final props = (resolve(schema)['properties'] as Map?) ?? const {};
+    var resolved = resolve(schema);
+    if (resolved['type'] == 'array') {
+      resolved = resolve(resolved['items'] as Map<String, dynamic>);
+    }
+    final props = (resolved['properties'] as Map?) ?? const {};
     return [
       for (final key in shape.keys)
         if (!props.containsKey(key))
@@ -57,12 +62,35 @@ void main() {
         expect(missing(request, schema!), isEmpty, reason: 'request body');
       }
 
-      if (endpoint.response case final JsonShape response) {
-        final schema = jsonSchema(responses['200'] as Map<String, dynamic>?);
-        expect(schema, isNotNull, reason: 'no JSON 200 response');
-        expect(missing(response, schema!), isEmpty, reason: 'response');
-      } else {
-        expect(responses.keys, contains('204'));
+      final params = {
+        for (final p in (op['parameters'] as List?) ?? const [])
+          if ((p as Map)['in'] == 'query') p['name'] as String,
+      };
+      expect(
+        endpoint.query.where((q) => !params.contains(q)),
+        isEmpty,
+        reason: 'query parameters',
+      );
+
+      switch (endpoint.kind) {
+        case ResponseKind.none:
+          expect(responses.keys, contains('204'));
+        case ResponseKind.file:
+          expect(responses.keys, contains('200'));
+        case ResponseKind.object || ResponseKind.list:
+          final schema = jsonSchema(responses['200'] as Map<String, dynamic>?);
+          expect(schema, isNotNull, reason: 'no JSON 200 response');
+          final isArray = resolve(schema!)['type'] == 'array';
+          expect(
+            isArray,
+            endpoint.kind == ResponseKind.list,
+            reason: 'array or object',
+          );
+          expect(
+            missing(endpoint.response!, schema),
+            isEmpty,
+            reason: 'response',
+          );
       }
     });
   }

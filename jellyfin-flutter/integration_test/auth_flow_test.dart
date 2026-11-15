@@ -2,17 +2,14 @@
 // connect, sign in, restart signed in, sign out.
 // Run: xvfb-run -a flutter test integration_test -d linux
 //
-// Only the keyring is swapped for an in-memory store, so the tests never
-// touch your desktop's keyring (and CI has none). A "restart" is a fresh
-// ProviderScope over the same store: all in-memory state is gone, only what
-// was persisted survives, as after a real restart.
+// Only the keyring is swapped for an in-memory store (support/app.dart).
+// A "restart" is a fresh ProviderScope over the same store: all in-memory
+// state is gone, only what was persisted survives, as after a real restart.
 import 'dart:convert';
 
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:jellyfin_flutter/api/client_info.dart';
-import 'package:jellyfin_flutter/app.dart';
 import 'package:jellyfin_flutter/core/failure.dart';
 import 'package:jellyfin_flutter/core/storage.dart';
 import 'package:jellyfin_flutter/features/auth/data/auth_repository.dart';
@@ -24,6 +21,8 @@ import 'package:jellyfin_flutter/features/server/presentation/connect_screen.dar
 import 'package:jellyfin_test_server/jellyfin_test_server.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:media_kit/media_kit.dart';
+
+import 'support/app.dart';
 
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
@@ -40,35 +39,6 @@ void main() {
     store = MemoryKeyValueStore();
     user = await server.createUser(password: 'pw-123');
   });
-  tearDown(() => server.deleteUser(user));
-
-  /// Starts the app (or restarts it: new providers, same store).
-  Future<void> launch(WidgetTester tester) async {
-    await tester.pumpWidget(
-      ProviderScope(
-        key: UniqueKey(),
-        overrides: [keyValueStoreProvider.overrideWithValue(store)],
-        child: const JellyfinApp(),
-      ),
-    );
-  }
-
-  /// Pumps until [finder] shows up. Requests here are real HTTP, so there
-  /// is no "settled" moment to wait for.
-  Future<void> waitFor(WidgetTester tester, Finder finder) async {
-    final deadline = DateTime.now().add(const Duration(seconds: 20));
-    while (finder.evaluate().isEmpty) {
-      if (DateTime.now().isAfter(deadline)) {
-        final texts = tester
-            .widgetList<Text>(find.byType(Text))
-            .map((t) => t.data)
-            .whereType<String>()
-            .join(' | ');
-        fail('timed out waiting for $finder. On screen: $texts');
-      }
-      await tester.pump(const Duration(milliseconds: 100));
-    }
-  }
 
   /// Clicks into the field, then types, as a user would. enterText alone
   /// writes to whatever input connection is open, which is none once
@@ -97,7 +67,7 @@ void main() {
   );
 
   testWidgets('connect, sign in, restart signed in, sign out', (tester) async {
-    await launch(tester);
+    await launch(tester, store);
     await connect(tester);
 
     // Wrong password first: stays, explains.
@@ -106,17 +76,18 @@ void main() {
 
     // Right password.
     await signIn(tester, 'pw-123');
-    await waitFor(tester, find.text('Signed in as ${user.name}'));
+    await waitFor(tester, find.byType(HomeScreen));
+    expect(onScreen(HomeScreen, find.text(user.name)), findsOneWidget);
 
     final session = storedSession();
     expect(session.userId, user.id);
     expect(session.server.url, server.url);
 
     // Restart: straight to home, no login screen.
-    await launch(tester);
+    await launch(tester, store);
     await waitFor(tester, find.byType(HomeScreen));
     expect(find.byType(LoginScreen), findsNothing);
-    expect(find.text('Signed in as ${user.name}'), findsOneWidget);
+    expect(onScreen(HomeScreen, find.text(user.name)), findsOneWidget);
 
     // Sign out: back to login, token revoked on the server.
     await tester.tap(find.byKey(HomeScreen.signOutButton));
@@ -132,7 +103,7 @@ void main() {
 
   testWidgets('a session revoked while the app was closed asks to sign in '
       'again', (tester) async {
-    await launch(tester);
+    await launch(tester, store);
     await connect(tester);
     await signIn(tester, 'pw-123');
     await waitFor(tester, find.byType(HomeScreen));
@@ -141,7 +112,7 @@ void main() {
     const probe = ClientInfo(deviceId: 'integration-probe', device: 'tests');
     await JellyfinAuthRepository(() async => probe).logout(storedSession());
 
-    await launch(tester);
+    await launch(tester, store);
     await waitFor(tester, find.byType(LoginScreen));
     expect(find.byType(HomeScreen), findsNothing);
   });

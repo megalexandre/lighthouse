@@ -22,7 +22,6 @@ void main() {
 
   setUpAll(() async => server = await TestServer.start());
   setUp(() async => user = await server.createUser(password: 'pw-123'));
-  tearDown(() => server.deleteUser(user));
 
   group('probe', () {
     test('finds the test server', () async {

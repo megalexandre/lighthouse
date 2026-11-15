@@ -90,8 +90,10 @@ Quatro camadas; toda fase só termina com as quatro verdes no `tool/check.sh`.
   espera `/System/Info/Public`; se `StartupWizardCompleted=false` → `POST /Startup/Configuration`, `POST /Startup/User`,
   `POST /Startup/Complete`; cria bibliotecas (`POST /Library/VirtualFolders` para Filmes, Séries, Música); espera o scan
   terminar (polling de `/Items` até a contagem esperada).
-- **Isolamento entre testes**: cada teste que altera estado cria um usuário novo (`POST /Users/New`) e o apaga no
-  `tearDown`; assim progresso/assistido nunca vaza entre testes, sem precisar reiniciar o container.
+- **Isolamento entre testes**: cada teste que altera estado cria um usuário novo (`POST /Users/New`); assim
+  progresso/assistido nunca vaza entre testes, sem precisar reiniciar o container. Os usuários **não são apagados**:
+  o 12.4 reaproveita o id interno do último usuário apagado, e o estado de assistido dele vai junto para o próximo
+  (visto no F2). Como o servidor de teste é tmpfs, eles somem no restart.
 
 ### Fixtures de mídia
 

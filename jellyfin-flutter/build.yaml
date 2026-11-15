@@ -10,3 +10,10 @@ targets:
           create_field_map: true
           explicit_to_json: true
           include_if_null: false
+      # freezed 3.2 wraps a collection field with a default in an
+      # unmodifiable view, through a `final` constructor parameter that the
+      # Dart 3.14 compiler rejects ("Can't have modifier 'final' here").
+      # Plain collections avoid it; the models are only ever read.
+      freezed:
+        options:
+          make_collections_unmodifiable: false

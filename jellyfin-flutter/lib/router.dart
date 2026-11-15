@@ -5,6 +5,8 @@ import 'package:material_ui/material_ui.dart';
 import 'features/auth/application/auth_controller.dart';
 import 'features/auth/presentation/login_screen.dart';
 import 'features/home/presentation/home_screen.dart';
+import 'features/item/presentation/item_screen.dart';
+import 'features/library/presentation/library_screen.dart';
 import 'features/server/presentation/connect_screen.dart';
 
 abstract final class Routes {
@@ -12,6 +14,12 @@ abstract final class Routes {
   static const connect = '/connect';
   static const login = '/login';
   static const home = '/';
+
+  /// A library or folder as a grid.
+  static String library(String id) => '/library/$id';
+
+  /// The detail page of an item.
+  static String item(String id) => '/item/$id';
 }
 
 /// Where [auth] lets the user be, given they asked for [location].
@@ -45,7 +53,23 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: Routes.splash, builder: (_, _) => const _Splash()),
       GoRoute(path: Routes.connect, builder: (_, _) => const ConnectScreen()),
       GoRoute(path: Routes.login, builder: (_, _) => const LoginScreen()),
-      GoRoute(path: Routes.home, builder: (_, _) => const HomeScreen()),
+      GoRoute(
+        path: Routes.home,
+        builder: (_, _) => const HomeScreen(),
+        // Under home, so the back button always leads back there.
+        routes: [
+          GoRoute(
+            path: 'library/:id',
+            builder: (_, state) =>
+                LibraryScreen(parentId: state.pathParameters['id']!),
+          ),
+          GoRoute(
+            path: 'item/:id',
+            builder: (_, state) =>
+                ItemScreen(itemId: state.pathParameters['id']!),
+          ),
+        ],
+      ),
     ],
   );
   ref.onDispose(() {

@@ -98,4 +98,17 @@ void main() {
     expect(container.read(authControllerProvider).value!.signedIn, isFalse);
     expect(app.store.values, isNot(contains(SessionStore.sessionKey)));
   });
+
+  test('an expired session signs out locally and keeps the server', () async {
+    storeSession();
+    final container = app.container();
+    await container.read(authControllerProvider.future);
+
+    await container.read(authControllerProvider.notifier).sessionExpired();
+    final state = container.read(authControllerProvider).value!;
+    expect(state.signedIn, isFalse);
+    expect(state.server, testServer);
+    expect(app.store.values, isNot(contains(SessionStore.sessionKey)));
+    expect(app.auth.loggedOut, isEmpty); // the token is already dead
+  });
 }

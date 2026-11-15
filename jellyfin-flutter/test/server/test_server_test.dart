@@ -9,7 +9,6 @@ void main() {
   test('test server has the fixture library', () async {
     final server = await TestServer.start();
     final user = await server.createUser();
-    addTearDown(() => server.deleteUser(user));
 
     final movie = await server.findItem(
       user,
