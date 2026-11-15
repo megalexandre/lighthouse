@@ -170,6 +170,9 @@ abstract final class TestItems {
         name: 'Track $n',
         type: BaseItemKind.audio,
         indexNumber: n,
+        albumId: 'album-1',
+        album: 'Test Album',
+        albumArtist: 'Test Artist',
         runTimeTicks: 3 * 60 * 10000000,
       ),
   ];
@@ -255,6 +258,10 @@ class FakeLibraryRepository implements LibraryRepository {
   @override
   Future<List<BaseItemDto>> episodes(String seriesId, String seasonId) =>
       _answer('episodes', () => TestItems.episodes);
+
+  @override
+  Future<List<BaseItemDto>> seriesEpisodes(String seriesId) =>
+      _answer('seriesEpisodes', () => TestItems.episodes);
 
   @override
   Future<List<BaseItemDto>> tracks(String albumId) =>

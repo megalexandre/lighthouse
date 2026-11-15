@@ -8,8 +8,10 @@ import 'package:material_ui/material_ui.dart';
 import '../../../api/models/base_item_dto.dart';
 import '../../../core/ticks.dart';
 import '../../../core/window.dart';
+import '../../../router.dart';
 import '../../../widgets/error_retry.dart';
 import '../../library/presentation/item_card.dart';
+import '../application/play_queue.dart';
 import '../application/player_controller.dart';
 import '../data/player_engine.dart';
 import '../data/tracks.dart';
@@ -17,6 +19,10 @@ import 'player_keys.dart';
 
 /// Full-window playback of one item, with an on-screen display (OSD) that
 /// shows on mouse movement and hides after a few seconds of playing.
+///
+/// Episodes and tracks play on: at the end the next one starts, and
+/// Next / Previous step through the series or album. Music shows the
+/// album cover, with the OSD always up.
 ///
 /// Keys: see player_keys.dart (Space play/pause, arrows seek and volume,
 /// A / L / S audio and subtitles, F11 full screen, Esc back...).
@@ -33,6 +39,9 @@ class PlayerScreen extends ConsumerWidget {
   static const subtitleMenu = Key('player.subtitles');
   static const subtitleOff = Key('player.subtitle.off');
   static const fullscreenButton = Key('player.fullscreen');
+  static const nextButton = Key('player.next');
+  static const previousButton = Key('player.previous');
+  static const cover = Key('player.cover');
   static Key audioItem(int index) => Key('player.audio.$index');
   static Key subtitleItem(int index) => Key('player.subtitle.$index');
 
@@ -42,10 +51,16 @@ class PlayerScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final provider = playerControllerProvider(request);
     final session = ref.watch(provider);
+    final neighbors =
+        ref.watch(playNeighborsProvider(request.itemId)).value ?? noNeighbors;
 
-    // Played to the end: close (F3c plays the next episode instead).
-    ref.listen(provider, (_, next) {
-      if (next.value?.ended ?? false) _close(context, ref);
+    // Played to the end: on to the next episode / track, or close.
+    ref.listen(provider, (_, now) {
+      if (!(now.value?.ended ?? false)) return;
+      final next = ref.read(playNeighborsProvider(request.itemId)).value?.next;
+      unawaited(
+        next == null ? _close(context, ref) : _goTo(context, ref, next),
+      );
     });
 
     return PopScope(
@@ -60,6 +75,12 @@ class PlayerScreen extends ConsumerWidget {
             session: session,
             controller: ref.read(provider.notifier),
             onBack: () => _close(context, ref),
+            onNext: neighbors.next == null
+                ? null
+                : () => _goTo(context, ref, neighbors.next!),
+            onPrevious: neighbors.previous == null
+                ? null
+                : () => _goTo(context, ref, neighbors.previous!),
           ),
           AsyncError(:final error) => _Message(
             onBack: () => context.pop(),
@@ -81,6 +102,19 @@ class PlayerScreen extends ConsumerWidget {
   Future<void> _close(BuildContext context, WidgetRef ref) async {
     await ref.read(playerControllerProvider(request).notifier).stop();
     if (context.mounted && context.canPop()) context.pop();
+  }
+
+  /// Saves this one's position, then plays [item] in its place (Back still
+  /// returns to the page playback started from).
+  Future<void> _goTo(
+    BuildContext context,
+    WidgetRef ref,
+    BaseItemDto item,
+  ) async {
+    await ref.read(playerControllerProvider(request).notifier).stop();
+    if (context.mounted) {
+      context.pushReplacement(Routes.play(item.id));
+    }
   }
 }
 
@@ -111,11 +145,17 @@ class _Playing extends ConsumerStatefulWidget {
     required this.session,
     required this.controller,
     required this.onBack,
+    this.onNext,
+    this.onPrevious,
   });
 
   final PlayerSession session;
   final PlayerController controller;
   final VoidCallback onBack;
+
+  /// Null when there is nothing after / before.
+  final VoidCallback? onNext;
+  final VoidCallback? onPrevious;
 
   @override
   ConsumerState<_Playing> createState() => _PlayingState();
@@ -133,6 +173,13 @@ class _PlayingState extends ConsumerState<_Playing> {
   bool _fullscreen = false;
 
   PlayerEngine get engine => widget.session.engine;
+
+  /// Music: a cover instead of a picture, and the OSD stays up.
+  bool get _isAudio => widget.session.item.type == BaseItemKind.audio;
+
+  /// Previous restarts the current item when past this point, as music
+  /// players do; before it, it goes to the previous item.
+  static const restartThreshold = Duration(seconds: 3);
 
   bool _osdVisible = true;
   Timer? _hideTimer;
@@ -168,6 +215,7 @@ class _PlayingState extends ConsumerState<_Playing> {
 
   void _scheduleHide() {
     _hideTimer?.cancel();
+    if (_isAudio) return;
     _hideTimer = Timer(hideAfter, () {
       if (mounted && engine.playing) setState(() => _osdVisible = false);
     });
@@ -183,6 +231,17 @@ class _PlayingState extends ConsumerState<_Playing> {
     );
     _show();
   }
+
+  Future<void> _previous() async {
+    final previous = widget.onPrevious;
+    if (previous == null || engine.position > restartThreshold) {
+      await engine.seek(Duration.zero);
+    } else {
+      previous();
+    }
+  }
+
+  Future<void> _next() async => widget.onNext?.call();
 
   KeyEventResult _onKey(FocusNode _, KeyEvent event) {
     final action = playerActionFor(event, HardwareKeyboard.instance);
@@ -205,6 +264,8 @@ class _PlayingState extends ConsumerState<_Playing> {
       PlayerAction.previousSubtitle => c.cycleSubtitles(back: true),
       PlayerAction.toggleSubtitles => c.toggleSubtitles(),
       PlayerAction.fullscreen => Future.sync(_toggleFullscreen),
+      PlayerAction.next => _next(),
+      PlayerAction.previous => _previous(),
     });
     _show();
     return KeyEventResult.handled;
@@ -227,7 +288,9 @@ class _PlayingState extends ConsumerState<_Playing> {
                 unawaited(engine.playOrPause());
                 _show();
               },
-              child: Center(child: engine.buildVideo()),
+              child: _isAudio
+                  ? _Cover(item: widget.session.item)
+                  : Center(child: engine.buildVideo()),
             ),
             StreamBuilder<bool>(
               stream: engine.bufferingStream,
@@ -245,6 +308,8 @@ class _PlayingState extends ConsumerState<_Playing> {
                   controller: widget.controller,
                   fullscreen: _fullscreen,
                   onFullscreen: _toggleFullscreen,
+                  onNext: widget.onNext == null ? null : _next,
+                  onPrevious: _previous,
                   onBack: widget.onBack,
                   onInteract: _show,
                 ),
@@ -263,6 +328,8 @@ class _Osd extends StatelessWidget {
     required this.controller,
     required this.fullscreen,
     required this.onFullscreen,
+    required this.onNext,
+    required this.onPrevious,
     required this.onBack,
     required this.onInteract,
   });
@@ -271,6 +338,8 @@ class _Osd extends StatelessWidget {
   final PlayerController controller;
   final bool fullscreen;
   final VoidCallback onFullscreen;
+  final Future<void> Function()? onNext;
+  final Future<void> Function() onPrevious;
   final VoidCallback onBack;
   final VoidCallback onInteract;
 
@@ -344,6 +413,16 @@ class _Osd extends StatelessWidget {
               padding: const EdgeInsets.fromLTRB(16, 32, 24, 16),
               child: Row(
                 children: [
+                  IconButton(
+                    key: PlayerScreen.previousButton,
+                    color: Colors.white,
+                    tooltip: 'Previous',
+                    icon: const Icon(Icons.skip_previous),
+                    onPressed: () {
+                      unawaited(onPrevious());
+                      onInteract();
+                    },
+                  ),
                   StreamBuilder<bool>(
                     stream: engine.playingStream,
                     initialData: engine.playing,
@@ -362,6 +441,17 @@ class _Osd extends StatelessWidget {
                       );
                     },
                   ),
+                  if (onNext != null)
+                    IconButton(
+                      key: PlayerScreen.nextButton,
+                      color: Colors.white,
+                      tooltip: 'Next',
+                      icon: const Icon(Icons.skip_next),
+                      onPressed: () {
+                        unawaited(onNext!());
+                        onInteract();
+                      },
+                    ),
                   Expanded(
                     child: _SeekBar(engine: engine, onSeek: onInteract),
                   ),
@@ -593,4 +683,48 @@ class _TrackMenu extends StatelessWidget {
         ),
     ],
   );
+}
+
+/// Music: the album cover, with the track, artist and album under it.
+class _Cover extends StatelessWidget {
+  const _Cover({required this.item});
+
+  final BaseItemDto item;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final size = (MediaQuery.sizeOf(context).shortestSide * 0.5).clamp(
+      160.0,
+      480.0,
+    );
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          SizedBox.square(
+            key: PlayerScreen.cover,
+            dimension: size,
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: ItemImage(item: item, width: size),
+            ),
+          ),
+          const SizedBox(height: 24),
+          Text(
+            item.name,
+            style: theme.textTheme.headlineSmall?.copyWith(color: Colors.white),
+          ),
+          if ([?item.albumArtist, ?item.album] case final parts
+              when parts.isNotEmpty)
+            Text(
+              parts.join(' · '),
+              style: theme.textTheme.titleMedium?.copyWith(
+                color: Colors.white70,
+              ),
+            ),
+        ],
+      ),
+    );
+  }
 }

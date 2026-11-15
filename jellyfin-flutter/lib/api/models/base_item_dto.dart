@@ -63,6 +63,11 @@ abstract class BaseItemDto with _$BaseItemDto {
     String? seriesPrimaryImageTag,
     String? albumArtist,
 
+    /// For a track: its album, and the album's cover.
+    String? albumId,
+    String? album,
+    String? albumPrimaryImageTag,
+
     /// Image type (Primary, Thumb, Logo...) → tag, which changes when the
     /// image does; it goes in the image URL so caches stay right.
     @Default({}) Map<String, String> imageTags,

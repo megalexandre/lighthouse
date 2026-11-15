@@ -39,6 +39,9 @@ abstract interface class LibraryRepository {
   Future<List<BaseItemDto>> seasons(String seriesId);
   Future<List<BaseItemDto>> episodes(String seriesId, String seasonId);
 
+  /// Every episode of the series, all seasons, in broadcast order.
+  Future<List<BaseItemDto>> seriesEpisodes(String seriesId);
+
   /// Tracks of an album, in disc and track order.
   Future<List<BaseItemDto>> tracks(String albumId);
 
@@ -151,6 +154,10 @@ class JellyfinLibraryRepository implements LibraryRepository {
   );
 
   @override
+  Future<List<BaseItemDto>> seriesEpisodes(String seriesId) =>
+      _call((api) async => (await api.episodes(_user, seriesId)).items);
+
+  @override
   Future<List<BaseItemDto>> tracks(String albumId) => _call(
     (api) async => (await api.items(
       userId: _user,
@@ -161,7 +168,8 @@ class JellyfinLibraryRepository implements LibraryRepository {
 
   @override
   Uri? imageUrl(BaseItemDto item, {required int maxWidth}) {
-    // An episode without its own image borrows the series poster.
+    // An episode without its own image borrows the series poster; a
+    // track, its album's cover.
     final (String, String)? source = switch (item) {
       BaseItemDto(primaryImageTag: final String tag) => (item.id, tag),
       BaseItemDto(
@@ -169,6 +177,11 @@ class JellyfinLibraryRepository implements LibraryRepository {
         seriesPrimaryImageTag: final String tag,
       ) =>
         (series, tag),
+      BaseItemDto(
+        albumId: final String album,
+        albumPrimaryImageTag: final String tag,
+      ) =>
+        (album, tag),
       _ => null,
     };
     if (source == null) return null;
@@ -218,6 +231,9 @@ class SignedOutLibraryRepository implements LibraryRepository {
   @override
   Future<List<BaseItemDto>> episodes(String seriesId, String seasonId) =>
       _fail();
+
+  @override
+  Future<List<BaseItemDto>> seriesEpisodes(String seriesId) => _fail();
 
   @override
   Future<List<BaseItemDto>> tracks(String albumId) => _fail();

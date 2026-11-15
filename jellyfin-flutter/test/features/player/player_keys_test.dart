@@ -57,6 +57,12 @@ void main() {
     (LogicalKeyboardKey.keyS, [ctrl, shift], PlayerAction.stop),
     (LogicalKeyboardKey.f11, [], PlayerAction.fullscreen),
     (LogicalKeyboardKey.enter, [alt], PlayerAction.fullscreen),
+    (LogicalKeyboardKey.mediaTrackNext, [], PlayerAction.next),
+    (LogicalKeyboardKey.end, [], PlayerAction.next),
+    (LogicalKeyboardKey.keyN, [shift], PlayerAction.next),
+    (LogicalKeyboardKey.mediaTrackPrevious, [], PlayerAction.previous),
+    (LogicalKeyboardKey.home, [], PlayerAction.previous),
+    (LogicalKeyboardKey.keyP, [shift], PlayerAction.previous),
     // Modifiers must match: Alt+A is audio delay on the desktop, not here.
     (LogicalKeyboardKey.keyA, [alt], null),
     (LogicalKeyboardKey.keyQ, [], null),

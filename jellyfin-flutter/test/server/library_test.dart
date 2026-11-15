@@ -116,6 +116,30 @@ void main() {
     );
   });
 
+  test('every episode of a series, in order', () async {
+    final show = await named('tvshows', Fixtures.testShow);
+    final episodes = await library.seriesEpisodes(show.id);
+    expect(episodes.map((e) => (e.parentIndexNumber, e.indexNumber)), [
+      (1, 1),
+      (1, 2),
+      (1, 3),
+    ]);
+  });
+
+  test("tracks know their album, and show the album's cover", () async {
+    final album = await named('music', Fixtures.testAlbum);
+    final track = (await library.tracks(album.id)).first;
+    expect(track.albumId, album.id);
+    expect(track.album, Fixtures.testAlbum);
+    final cover = library.imageUrl(track, maxWidth: 100);
+    expect(cover?.path, '/Items/${album.id}/Images/Primary');
+    final res = await Dio().getUri<List<int>>(
+      cover!,
+      options: Options(responseType: ResponseType.bytes),
+    );
+    expect(res.headers.value('content-type'), startsWith('image/'));
+  });
+
   test('an album and its tracks', () async {
     final album = await named('music', Fixtures.testAlbum);
     expect(album.type, BaseItemKind.musicAlbum);

@@ -20,6 +20,10 @@ enum PlayerAction {
   previousSubtitle,
   toggleSubtitles,
   fullscreen,
+
+  /// Next / previous episode or track ("step" in keyboard.json).
+  next,
+  previous,
 }
 
 /// The player's keys, ported from jellyfin-desktop's
@@ -104,6 +108,22 @@ const playerKeyBindings = <(SingleActivator, PlayerAction)>[
   (
     SingleActivator(LogicalKeyboardKey.keyF, control: true, meta: true),
     PlayerAction.fullscreen,
+  ),
+  (SingleActivator(LogicalKeyboardKey.mediaTrackNext), PlayerAction.next),
+  (SingleActivator(LogicalKeyboardKey.end), PlayerAction.next),
+  (SingleActivator(LogicalKeyboardKey.keyN, shift: true), PlayerAction.next),
+  (
+    SingleActivator(LogicalKeyboardKey.mediaTrackPrevious),
+    PlayerAction.previous,
+  ),
+  (SingleActivator(LogicalKeyboardKey.home), PlayerAction.previous),
+  (
+    SingleActivator(LogicalKeyboardKey.keyB, control: true),
+    PlayerAction.previous,
+  ),
+  (
+    SingleActivator(LogicalKeyboardKey.keyP, shift: true),
+    PlayerAction.previous,
   ),
 ];
 

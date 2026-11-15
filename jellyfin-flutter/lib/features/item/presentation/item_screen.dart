@@ -422,11 +422,23 @@ class _Tracks extends ConsumerWidget {
     items: ref.watch(tracksProvider(albumId)),
     onRetry: () => ref.invalidate(tracksProvider(albumId)),
     builder: (tracks) => Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        // The album plays on from the chosen track (see PlayerScreen).
+        Padding(
+          padding: const EdgeInsets.only(bottom: 8),
+          child: FilledButton.icon(
+            key: ItemScreen.playButton,
+            icon: const Icon(Icons.play_arrow),
+            label: const Text('Play'),
+            onPressed: () => context.push(Routes.play(tracks.first.id)),
+          ),
+        ),
         for (final track in tracks)
           ListTile(
             key: ItemScreen.trackKey(track.id),
             contentPadding: EdgeInsets.zero,
+            onTap: () => context.push(Routes.play(track.id)),
             leading: SizedBox(
               width: 32,
               child: Text(

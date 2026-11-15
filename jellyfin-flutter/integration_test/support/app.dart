@@ -59,6 +59,12 @@ Future<void> tapOn(WidgetTester tester, Finder finder) async {
   await tester.ensureVisible(finder);
   await tester.pump();
   await tester.tap(finder);
+  await settleRoute(tester);
+}
+
+/// Gives a route transition time to finish (a tap's, or one the app
+/// starts by itself, like playing the next episode).
+Future<void> settleRoute(WidgetTester tester) async {
   for (var i = 0; i < 10; i++) {
     await tester.pump(const Duration(milliseconds: 50));
   }
