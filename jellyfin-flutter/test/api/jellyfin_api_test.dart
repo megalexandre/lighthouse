@@ -1,0 +1,134 @@
+import 'dart:convert';
+import 'dart:io';
+import 'dart:typed_data';
+
+import 'package:dio/dio.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:jellyfin_flutter/api/client_info.dart';
+import 'package:jellyfin_flutter/api/jellyfin_api.dart';
+import 'package:jellyfin_flutter/api/sessions.dart';
+import 'package:jellyfin_flutter/api/system.dart';
+import 'package:jellyfin_flutter/api/users.dart';
+import 'package:jellyfin_flutter/core/failure.dart';
+
+/// Answers every request with [respond] and remembers the requests.
+class FakeAdapter implements HttpClientAdapter {
+  FakeAdapter(this.respond);
+
+  final Future<ResponseBody> Function(RequestOptions options) respond;
+  final requests = <RequestOptions>[];
+
+  @override
+  Future<ResponseBody> fetch(
+    RequestOptions options,
+    Stream<Uint8List>? requestStream,
+    Future<void>? cancelFuture,
+  ) {
+    requests.add(options);
+    return respond(options);
+  }
+
+  @override
+  void close({bool force = false}) {}
+}
+
+ResponseBody json(Object body, {int status = 200}) => ResponseBody.fromString(
+  jsonEncode(body),
+  status,
+  headers: {
+    Headers.contentTypeHeader: [Headers.jsonContentType],
+  },
+);
+
+const client = ClientInfo(deviceId: 'dev-1', device: 'pc');
+const url = 'http://jellyfin.test:8096';
+
+JellyfinApi api(FakeAdapter adapter, {String? token}) =>
+    JellyfinApi(baseUrl: url, client: client, token: token, adapter: adapter);
+
+void main() {
+  test('every request carries the auth header, with the token', () async {
+    final adapter = FakeAdapter(
+      (_) async => json({'Id': 'u', 'Name': 'alice'}),
+    );
+    await api(adapter, token: 'tok').me();
+
+    final sent = adapter.requests.single;
+    expect(sent.uri.toString(), '$url/Users/Me');
+    expect(
+      sent.headers['Authorization'],
+      client.authorizationHeader(token: 'tok'),
+    );
+  });
+
+  test('login posts the credentials', () async {
+    final adapter = FakeAdapter(
+      (_) async => json({
+        'User': {'Id': 'u', 'Name': 'alice'},
+        'AccessToken': 'tok',
+        'ServerId': 's',
+      }),
+    );
+    final result = await api(adapter).authenticateByName('alice', 'secret');
+
+    final sent = adapter.requests.single;
+    expect(sent.method, 'POST');
+    expect(sent.path, '/Users/AuthenticateByName');
+    expect(sent.data, {'Username': 'alice', 'Pw': 'secret'});
+    expect(result.accessToken, 'tok');
+  });
+
+  test('401 is Unauthorized', () async {
+    final adapter = FakeAdapter((_) async => json({}, status: 401));
+    await expectLater(
+      api(adapter).authenticateByName('alice', 'wrong'),
+      throwsA(isA<Unauthorized>()),
+    );
+  });
+
+  test('500 is ServerError with the status', () async {
+    final adapter = FakeAdapter((_) async => json({}, status: 500));
+    await expectLater(
+      api(adapter).logout(),
+      throwsA(isA<ServerError>().having((e) => e.statusCode, 'status', 500)),
+    );
+  });
+
+  test('connection refused is ServerUnreachable', () async {
+    final adapter = FakeAdapter(
+      (options) async => throw DioException.connectionError(
+        requestOptions: options,
+        reason: 'refused',
+        error: const SocketException('Connection refused'),
+      ),
+    );
+    await expectLater(
+      api(adapter).publicSystemInfo(),
+      throwsA(isA<ServerUnreachable>().having((e) => e.url, 'url', url)),
+    );
+  });
+
+  test('an HTML page instead of JSON is ServerError', () async {
+    final adapter = FakeAdapter(
+      (_) async => ResponseBody.fromString(
+        '<html>router login</html>',
+        200,
+        headers: {
+          Headers.contentTypeHeader: ['text/html'],
+        },
+      ),
+    );
+    await expectLater(
+      api(adapter).publicSystemInfo(),
+      throwsA(isA<ServerError>()),
+    );
+  });
+
+  test('JSON without a required field is ServerError', () async {
+    final adapter = FakeAdapter((_) async => json({'ServerName': 'x'}));
+    await expectLater(
+      api(adapter).publicSystemInfo(),
+      throwsA(isA<ServerError>()),
+    );
+  });
+}

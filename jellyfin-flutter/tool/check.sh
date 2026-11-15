@@ -11,8 +11,14 @@ fast=false
 
 step() { printf '\n\033[1;35m== %s\033[0m\n' "$*"; }
 
+step "Code generation (freezed, json_serializable)"
+dart run build_runner build
+
 step "Format"
-dart format --output=none --set-exit-if-changed lib test integration_test packages
+# Generated files are left as the generators write them.
+find lib test integration_test packages -name '*.dart' \
+  ! -name '*.g.dart' ! -name '*.freezed.dart' -print0 \
+  | xargs -0 dart format --output=none --set-exit-if-changed
 
 step "Analyze"
 flutter analyze

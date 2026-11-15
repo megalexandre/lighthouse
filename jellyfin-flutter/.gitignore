@@ -46,3 +46,8 @@ app.*.map.json
 
 # Widget Preview related
 .widget_preview/
+
+# Core dumps of the app (an integration test killed mid-run). Root only:
+# lib/core/ is source code.
+/core
+/core.*

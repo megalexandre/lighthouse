@@ -53,7 +53,12 @@ class TestServer {
   static const adminPassword = 'admin-password';
 
   static const _client = 'jellyfin-flutter-tests';
-  static const _deviceId = 'jellyfin-flutter-tests';
+
+  /// One device per test process. Jellyfin revokes a user's token when the
+  /// same user signs in again from the same device, and `flutter test` runs
+  /// test files in parallel processes that all sign in as admin: with a
+  /// shared id they would keep logging each other out (401s).
+  static final _deviceId = 'jellyfin-flutter-tests-$pid';
 
   /// Base URL, e.g. http://jellyfin-test:8096
   final String url;
@@ -91,7 +96,15 @@ class TestServer {
 
     final info = await _waitUntilUp(dio);
     if (info['StartupWizardCompleted'] != true) {
-      await _runWizard(dio);
+      try {
+        await _runWizard(dio);
+      } on DioException {
+        // Another test process (files run in parallel) may have finished
+        // the wizard first; then the /Startup endpoints refuse. Fine as
+        // long as the wizard ended up completed.
+        final now = await _waitUntilUp(dio);
+        if (now['StartupWizardCompleted'] != true) rethrow;
+      }
     }
     final token = (await _login(dio, adminName, adminPassword)).token;
     final server = TestServer._(url, dio, token);
@@ -178,31 +191,40 @@ class TestServer {
   };
 
   Future<void> _ensureLibraries() async {
-    final res = await _dio.get<List<dynamic>>(
-      '/Library/VirtualFolders',
-      options: _asAdmin,
-    );
-    final existing = {
-      for (final f in res.data!) (f as Map<String, dynamic>)['Name'] as String,
-    };
+    final existing = await _libraryNames();
     for (final MapEntry(key: name, value: (type, path)) in libraries.entries) {
       if (existing.contains(name)) continue;
-      await _dio.post<void>(
-        '/Library/VirtualFolders',
-        queryParameters: {
-          'name': name,
-          'collectionType': type,
-          'paths': path,
-          'refreshLibrary': false,
-        },
-        data: {'LibraryOptions': _offlineLibraryOptions},
-        options: _asAdmin,
-      );
+      try {
+        await _dio.post<void>(
+          '/Library/VirtualFolders',
+          queryParameters: {
+            'name': name,
+            'collectionType': type,
+            'paths': path,
+            'refreshLibrary': false,
+          },
+          data: {'LibraryOptions': _offlineLibraryOptions},
+          options: _asAdmin,
+        );
+      } on DioException {
+        // Created meanwhile by another test process?
+        if (!(await _libraryNames()).contains(name)) rethrow;
+      }
     }
     if (existing.length < libraries.length) {
       await _dio.post<void>('/Library/Refresh', options: _asAdmin);
     }
     await _waitForScan();
+  }
+
+  Future<Set<String>> _libraryNames() async {
+    final res = await _dio.get<List<dynamic>>(
+      '/Library/VirtualFolders',
+      options: _asAdmin,
+    );
+    return {
+      for (final f in res.data!) (f as Map<String, dynamic>)['Name'] as String,
+    };
   }
 
   /// No internet metadata or image extraction: scans stay fast and give the

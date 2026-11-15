@@ -1,0 +1,12 @@
+# Code generation (dart run build_runner build). Jellyfin's JSON uses
+# PascalCase keys; create_field_map exposes each model's JSON keys so the
+# contract test can check them against the server's OpenAPI document.
+targets:
+  $default:
+    builders:
+      json_serializable:
+        options:
+          field_rename: pascal
+          create_field_map: true
+          explicit_to_json: true
+          include_if_null: false

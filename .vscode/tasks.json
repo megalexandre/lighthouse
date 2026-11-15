@@ -1,0 +1,17 @@
+{
+  // Tasks for jellyfin-flutter/. Run with "Tasks: Run Task", or as a
+  // preLaunchTask from launch.json.
+  "version": "2.0.0",
+  "tasks": [
+    {
+      // Waits for the dev server and finishes its setup if it was never
+      // done (user dev / dev, libraries over /media). Changes nothing on an
+      // already set-up server. See jellyfin-flutter/tool/dev_server.sh.
+      "label": "jellyfin-flutter: prepare dev server",
+      "type": "shell",
+      "command": "${workspaceFolder}/jellyfin-flutter/tool/dev_server.sh",
+      "problemMatcher": [],
+      "presentation": { "reveal": "silent", "panel": "dedicated", "clear": true }
+    }
+  ]
+}

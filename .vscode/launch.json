@@ -13,6 +13,20 @@
       "flutterMode": "debug"
     },
     {
+      // Prepares the dev server ($JELLYFIN_URL) first, then opens the app
+      // with its address filled in on the connect screen.
+      // First run of a fresh server: sign in as dev / dev.
+      "name": "Jellyfin Flutter (dev server)",
+      "type": "dart",
+      "request": "launch",
+      "cwd": "jellyfin-flutter",
+      "program": "lib/main.dart",
+      "deviceId": "linux",
+      "flutterMode": "debug",
+      "preLaunchTask": "jellyfin-flutter: prepare dev server",
+      "toolArgs": ["--dart-define=JELLYFIN_SERVER=${env:JELLYFIN_URL}"]
+    },
+    {
       "name": "Jellyfin Flutter (profile)",
       "type": "dart",
       "request": "launch",

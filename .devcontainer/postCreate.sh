@@ -17,8 +17,9 @@ fi
 cat <<EOF
 
 Test server: ${JELLYFIN_URL} (from the host: http://localhost:8096)
-First run: open it in a browser, finish the setup wizard,
-and add a library pointing to /media.
+First run: jellyfin-flutter/tool/dev_server.sh finishes its setup
+(user dev / dev); the "Jellyfin Flutter (dev server)" launch config runs it
+for you. Or do the setup wizard yourself in a browser.
 
 Test server (wiped on every restart, set up by the tests themselves):
 ${JELLYFIN_TEST_URL}

@@ -14,7 +14,32 @@ Inside the dev container (see [../.devcontainer/README.md](../.devcontainer/READ
 flutter run -d linux
 ```
 
-The development server is `$JELLYFIN_URL` (http://jellyfin:8096).
+The development server is `$JELLYFIN_URL` (http://jellyfin:8096). In VS Code,
+**Run and Debug → "Jellyfin Flutter (dev server)"** gets it ready and opens
+the app with its address already on the connect screen. It runs
+`tool/dev_server.sh` first, which waits for the server and, if its setup was
+never finished, finishes it (user `dev` / `dev`, change with
+`JELLYFIN_DEV_USER` / `JELLYFIN_DEV_PASSWORD`) and creates libraries over
+`/media`. A server that is already set up is left alone.
+
+Outside VS Code:
+
+```sh
+tool/dev_server.sh
+flutter run -d linux --dart-define=JELLYFIN_SERVER=$JELLYFIN_URL
+```
+
+## Code generation
+
+Models (`lib/api/models`, sessions) use freezed + json_serializable. After
+changing one:
+
+```sh
+dart run build_runner build
+```
+
+The generated `*.freezed.dart` / `*.g.dart` files are committed;
+`tool/check.sh` regenerates them first, so a stale one cannot slip through.
 
 ## Tests
 
@@ -41,6 +66,15 @@ themselves through `packages/jellyfin_test_server`:
   (no internet metadata), and waits for the scan. It is idempotent.
 - `server.createUser()` gives a test its own user, so watch progress and
   played state never leak between tests. Delete it in `addTearDown`.
+
+### API contract
+
+The API client is hand-written (only the endpoints the app uses). Every
+endpoint and the JSON fields it sends and reads are listed in
+`lib/api/contract.dart`; the field lists come from the models themselves
+(json_serializable's field maps). `test/server/contract_test.dart` checks
+the list against the test server's `/api-docs/openapi.json`. **When you add
+an API call, add it to `apiContract`.**
 
 ### Test media
 
