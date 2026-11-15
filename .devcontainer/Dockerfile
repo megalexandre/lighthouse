@@ -40,6 +40,10 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
         libmpv-dev mpv libva-drm2 libva-x11-2 vainfo \
         # Desktop integration: secure token storage, D-Bus, MPRIS checks
         libsecret-1-dev libdbus-1-dev dbus-x11 playerctl pulseaudio-utils \
+        # A keyring inside the container (keyring.sh); secret-tool to inspect it
+        gnome-keyring libsecret-tools \
+        # Backtraces of native crashes (core dumps)
+        gdb \
         # Headless testing: run integration tests without a real screen
         xvfb xauth x11-utils \
         # Generates the test media in jellyfin-flutter/fixtures (tool/gen_fixtures.sh)

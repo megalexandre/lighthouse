@@ -17,6 +17,10 @@
   // 3. Once, after the container is created.
   "postCreateCommand": "bash .devcontainer/postCreate.sh",
 
+  // 4. On every start: a D-Bus session and keyring inside the container,
+  //    for the app's secure storage (the host's bus is off limits).
+  "postStartCommand": "bash .devcontainer/keyring.sh",
+
   "customizations": {
     "vscode": {
       "extensions": [

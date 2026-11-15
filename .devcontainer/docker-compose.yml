@@ -45,6 +45,9 @@ services:
       # Claude Code keeps everything here, including .claude.json, which by
       # default sits loose in $HOME and would be lost on rebuild.
       CLAUDE_CONFIG_DIR: /home/dev/.claude
+      # The container's own session bus, started by keyring.sh. The host's
+      # bus (in XDG_RUNTIME_DIR) is denied to containers by AppArmor.
+      DBUS_SESSION_BUS_ADDRESS: unix:path=/tmp/jellyfin-dev-dbus/bus
     # GPU, for hardware video decoding (VAAPI).
     # On a machine without /dev/dri, delete these two blocks.
     devices:

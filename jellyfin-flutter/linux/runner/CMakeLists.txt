@@ -24,3 +24,14 @@ target_link_libraries(${BINARY_NAME} PRIVATE flutter)
 target_link_libraries(${BINARY_NAME} PRIVATE PkgConfig::GTK)
 
 target_include_directories(${BINARY_NAME} PRIVATE "${CMAKE_SOURCE_DIR}")
+
+# libgcc_s must be the first library the process loads. The Flutter engine
+# (libflutter_linux_gtk.so) exports its own _Unwind_RaiseException, and the
+# dynamic loader binds the first definition it finds. When the engine is
+# loaded first, a C++ exception thrown by a plugin built against libstdc++
+# (flutter_secure_storage_linux throws on every libsecret error) is unwound by
+# the engine's incompatible unwinder: no catch block is found and the process
+# aborts. Listing libgcc_s first makes libstdc++ use the system unwinder.
+# Checked by integration_test/keyring_test.dart.
+target_link_options(${BINARY_NAME} PRIVATE
+  "LINKER:--push-state,--no-as-needed,-lgcc_s,--pop-state")

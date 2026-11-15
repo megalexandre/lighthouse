@@ -110,3 +110,18 @@ start fresh: `docker volume rm jellyfin-dev_claude-config`.
   it, or change the left side of `"8096:8096"` (e.g. `"8097:8096"`).
 - **Files owned by the wrong user**: delete `.env`, then
   **Rebuild Container** so `initialize.sh` writes your ids again.
+
+## Keyring (app login storage)
+
+The app keeps its login in the system keyring (libsecret). The host's
+session bus is mounted in, but Docker's AppArmor profile blocks containers
+from using it, so the container runs its own: `keyring.sh` starts a D-Bus
+session bus and an unlocked gnome-keyring on every container start
+(`postStartCommand`), and `DBUS_SESSION_BUS_ADDRESS` in docker-compose.yml
+points everything in the container at it.
+
+- The keyring lives in the container, so a rebuild empties it: sign in to
+  the app again. Its password is `dev`.
+- `secret-tool` is installed to inspect it; `gdb` too, for backtraces of
+  native crashes (a `core` file in jellyfin-flutter/).
+- If the app says it could not save the login, run `bash .devcontainer/keyring.sh`.
