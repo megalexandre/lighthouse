@@ -15,3 +15,11 @@ String formatRuntime(Duration d) {
   if (m > 0) return '${m}m';
   return '${d.inSeconds}s';
 }
+
+/// A position as shown by a player: "0:04", "12:30", "1:02:03".
+String formatPosition(Duration d) {
+  final h = d.inHours;
+  final m = d.inMinutes % 60;
+  final s = (d.inSeconds % 60).toString().padLeft(2, '0');
+  return h > 0 ? '$h:${m.toString().padLeft(2, '0')}:$s' : '$m:$s';
+}

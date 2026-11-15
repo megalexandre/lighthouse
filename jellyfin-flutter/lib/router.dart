@@ -7,6 +7,7 @@ import 'features/auth/presentation/login_screen.dart';
 import 'features/home/presentation/home_screen.dart';
 import 'features/item/presentation/item_screen.dart';
 import 'features/library/presentation/library_screen.dart';
+import 'features/player/presentation/player_screen.dart';
 import 'features/server/presentation/connect_screen.dart';
 
 abstract final class Routes {
@@ -20,6 +21,12 @@ abstract final class Routes {
 
   /// The detail page of an item.
   static String item(String id) => '/item/$id';
+
+  /// Plays an item, from [start] (default: the beginning).
+  static String play(String id, {Duration start = Duration.zero}) =>
+      start == Duration.zero
+      ? '/play/$id'
+      : '/play/$id?start=${start.inMilliseconds}';
 }
 
 /// Where [auth] lets the user be, given they asked for [location].
@@ -67,6 +74,19 @@ final routerProvider = Provider<GoRouter>((ref) {
             path: 'item/:id',
             builder: (_, state) =>
                 ItemScreen(itemId: state.pathParameters['id']!),
+          ),
+          GoRoute(
+            path: 'play/:id',
+            builder: (_, state) => PlayerScreen(
+              request: (
+                itemId: state.pathParameters['id']!,
+                start: Duration(
+                  milliseconds:
+                      int.tryParse(state.uri.queryParameters['start'] ?? '') ??
+                      0,
+                ),
+              ),
+            ),
           ),
         ],
       ),

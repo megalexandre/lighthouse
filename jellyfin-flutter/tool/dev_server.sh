@@ -5,7 +5,8 @@
 #
 #   - waits until the server answers;
 #   - if its setup wizard was never finished, finishes it with the user
-#     below and creates the libraries over /media;
+#     below, creates the libraries over /media, and lets short items keep
+#     a resume point (the fixtures last seconds);
 #   - if it is already set up, changes nothing.
 #
 # User and password (only used when it runs the wizard):
@@ -28,6 +29,8 @@ api() {
 json() { python3 -c "import json,sys; d=json.load(sys.stdin); print($1)"; }
 
 token=
+tmp_config=$(mktemp)
+trap 'rm -f "$tmp_config"' EXIT
 echo "Dev server: $url"
 
 deadline=$((SECONDS + 90))
@@ -78,5 +81,12 @@ for spec in "movies Movies movies" "shows Shows tvshows" "music Music music"; do
   fi
 done
 ((found)) || add_library Media homevideos /media
+
+# The fixture videos last seconds; by default the server keeps no resume
+# point under 5 minutes, so "Resume" could never be tried.
+api GET /System/Configuration |
+  python3 -c 'import json,sys; c=json.load(sys.stdin); c["MinResumeDurationSeconds"]=0; print(json.dumps(c))' >"$tmp_config"
+api POST /System/Configuration "$(cat "$tmp_config")" >/dev/null
+echo "  resume points kept for short items too"
 
 echo "Done. Sign in to the app as \"$user\"."

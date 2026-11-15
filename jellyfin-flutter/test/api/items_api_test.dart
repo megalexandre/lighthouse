@@ -7,11 +7,15 @@ import 'package:jellyfin_flutter/api/images.dart';
 import 'package:jellyfin_flutter/api/items.dart';
 import 'package:jellyfin_flutter/api/jellyfin_api.dart';
 import 'package:jellyfin_flutter/api/models/base_item_dto.dart';
+import 'package:jellyfin_flutter/api/models/playback_info_dto.dart';
+import 'package:jellyfin_flutter/api/models/playback_report.dart';
+import 'package:jellyfin_flutter/api/playback.dart';
 import 'package:jellyfin_flutter/api/sessions.dart';
 import 'package:jellyfin_flutter/api/shows.dart';
 import 'package:jellyfin_flutter/api/system.dart';
 import 'package:jellyfin_flutter/api/users.dart';
 import 'package:jellyfin_flutter/core/failure.dart';
+import 'package:jellyfin_flutter/features/player/data/device_profile.dart';
 
 import '../support/fake_http.dart';
 
@@ -42,7 +46,13 @@ void main() {
           'ServerId': 's',
         });
       }
-      if (path == '/Sessions/Logout') return json('', status: 204);
+      if (path == '/Sessions/Logout' || path.startsWith('/Sessions/Playing')) {
+        return json('', status: 204);
+      }
+      if (path.startsWith('/UserPlayedItems/')) return json({'Played': true});
+      if (path.endsWith('/PlaybackInfo')) {
+        return json({'MediaSources': <Object>[]});
+      }
       return json(page);
     });
     api = JellyfinApi(baseUrl: url, client: client, adapter: adapter);
@@ -70,6 +80,23 @@ void main() {
     await api.seasons('u', 's');
     await api.episodes('u', 's', seasonId: 'x');
     await api.nextUp('u', limit: 5);
+    await api.playbackInfo(
+      'i',
+      PlaybackInfoDto(userId: 'u', deviceProfile: appDeviceProfile()),
+    );
+    const progress = PlaybackProgressInfo(
+      itemId: 'i',
+      mediaSourceId: 'm',
+      positionTicks: 0,
+      playMethod: PlayMethod.directPlay,
+    );
+    await api.reportPlaybackStart(progress);
+    await api.reportPlaybackProgress(progress);
+    await api.reportPlaybackStopped(
+      const PlaybackStopInfo(itemId: 'i', mediaSourceId: 'm', positionTicks: 0),
+    );
+    await api.markPlayed('u', 'i');
+    await api.markUnplayed('u', 'i');
   }
 
   test('every request goes to a contract endpoint, with listed parameters '
@@ -85,6 +112,20 @@ void main() {
     final sent = [
       for (final r in adapter.requests) (r.method, r.uri),
       ('GET', image),
+      (
+        'GET',
+        staticStreamUrl(url, 'i', mediaSourceId: 'm', playSessionId: 's'),
+      ),
+      (
+        'GET',
+        staticStreamUrl(
+          url,
+          'i',
+          mediaSourceId: 'm',
+          playSessionId: 's',
+          audio: true,
+        ),
+      ),
     ];
     for (final (method, uri) in sent) {
       final endpoint = endpointFor(method, uri.path);

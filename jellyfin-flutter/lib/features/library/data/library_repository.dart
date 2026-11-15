@@ -11,6 +11,7 @@ import '../../../api/shows.dart';
 import '../../../core/failure.dart';
 import '../../auth/application/auth_controller.dart';
 import '../../auth/data/session.dart';
+import '../../auth/data/session_client.dart';
 
 /// Browsing the signed-in user's media. Every method throws a [Failure].
 abstract interface class LibraryRepository {
@@ -80,35 +81,24 @@ final libraryRepositoryProvider = Provider<LibraryRepository>((ref) {
 
 class JellyfinLibraryRepository implements LibraryRepository {
   JellyfinLibraryRepository(
-    this.session,
+    Session session,
     Future<ClientInfo> Function() client, {
-    required this.onUnauthorized,
+    required void Function() onUnauthorized,
     HttpClientAdapter? adapter,
-  }) : _api = client().then(
-         (c) => JellyfinApi(
-           baseUrl: session.server.url,
-           client: c,
-           token: session.token,
-           adapter: adapter,
-         ),
+  }) : _client = SessionClient(
+         session,
+         client,
+         onUnauthorized: onUnauthorized,
+         adapter: adapter,
        );
 
-  final Session session;
+  final SessionClient _client;
 
-  /// Called on a 401: the token was revoked while the app was open.
-  final void Function() onUnauthorized;
-  final Future<JellyfinApi> _api;
+  Session get session => _client.session;
+  String get _user => _client.userId;
 
-  String get _user => session.userId;
-
-  Future<T> _call<T>(Future<T> Function(JellyfinApi api) request) async {
-    try {
-      return await request(await _api);
-    } on Unauthorized {
-      onUnauthorized();
-      rethrow;
-    }
-  }
+  Future<T> _call<T>(Future<T> Function(JellyfinApi api) request) =>
+      _client.call(request);
 
   @override
   Future<List<BaseItemDto>> views() =>

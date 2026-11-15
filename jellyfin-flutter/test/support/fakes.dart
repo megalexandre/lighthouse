@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -5,6 +6,9 @@ import 'package:flutter_riverpod/misc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:jellyfin_flutter/api/models/base_item_dto.dart';
 import 'package:jellyfin_flutter/api/models/base_item_dto_query_result.dart';
+import 'package:jellyfin_flutter/api/models/media_source_info.dart';
+import 'package:jellyfin_flutter/api/models/playback_report.dart';
+import 'package:jellyfin_flutter/api/models/user_item_data_dto.dart';
 import 'package:jellyfin_flutter/app.dart';
 import 'package:jellyfin_flutter/core/failure.dart';
 import 'package:jellyfin_flutter/core/storage.dart';
@@ -12,6 +16,9 @@ import 'package:jellyfin_flutter/features/auth/data/auth_repository.dart';
 import 'package:jellyfin_flutter/features/auth/data/session.dart';
 import 'package:jellyfin_flutter/features/auth/data/session_store.dart';
 import 'package:jellyfin_flutter/features/library/data/library_repository.dart';
+import 'package:jellyfin_flutter/features/player/data/playback_plan.dart';
+import 'package:jellyfin_flutter/features/player/data/playback_repository.dart';
+import 'package:jellyfin_flutter/features/player/data/player_engine.dart';
 import 'package:jellyfin_flutter/features/server/data/server_info.dart';
 import 'package:jellyfin_flutter/features/server/data/server_repository.dart';
 import 'package:jellyfin_flutter/features/server/presentation/connect_screen.dart';
@@ -256,6 +263,162 @@ class FakeLibraryRepository implements LibraryRepository {
   Uri? imageUrl(BaseItemDto item, {required int maxWidth}) => null;
 }
 
+/// Plans every item for direct play from a fake URL, and records the
+/// reports. A method listed in [failures] throws that failure instead.
+class FakePlaybackRepository implements PlaybackRepository {
+  final failures = <String, Failure>{};
+  final started = <PlaybackProgressInfo>[];
+  final progress = <PlaybackProgressInfo>[];
+  final stopped = <PlaybackStopInfo>[];
+
+  /// itemId → played, from [setPlayed].
+  final played = <String, bool>{};
+
+  static Uri urlFor(String itemId) =>
+      Uri.parse('$testUrl/Videos/$itemId/stream?static=true');
+
+  @override
+  Future<PlaybackPlan> prepare(
+    BaseItemDto item, {
+    Duration start = Duration.zero,
+  }) async {
+    if (failures['prepare'] case final Failure f) throw f;
+    return PlaybackPlan(
+      item: item,
+      source: MediaSourceInfo(id: item.id, supportsDirectPlay: true),
+      playSessionId: 'play-session',
+      method: PlayMethod.directPlay,
+      url: urlFor(item.id),
+      headers: const {'Authorization': 'MediaBrowser Token="token-1"'},
+      start: start,
+    );
+  }
+
+  @override
+  Future<void> reportStart(PlaybackProgressInfo info) async =>
+      started.add(info);
+
+  @override
+  Future<void> reportProgress(PlaybackProgressInfo info) async =>
+      progress.add(info);
+
+  @override
+  Future<void> reportStopped(PlaybackStopInfo info) async => stopped.add(info);
+
+  @override
+  Future<UserItemDataDto> setPlayed(
+    String itemId, {
+    required bool played,
+  }) async {
+    if (failures['setPlayed'] case final Failure f) throw f;
+    this.played[itemId] = played;
+    return UserItemDataDto(played: played);
+  }
+}
+
+/// A player that plays nothing: tests move it with [advance], [finish]...
+class FakePlayerEngine implements PlayerEngine {
+  Uri? openedUrl;
+  Map<String, String>? openedHeaders;
+  Duration? openedStart;
+  bool disposed = false;
+
+  /// Thrown by [open], when set.
+  Object? openError;
+
+  @override
+  Duration position = Duration.zero;
+  @override
+  Duration duration = Duration.zero;
+  @override
+  bool playing = false;
+
+  final _position = StreamController<Duration>.broadcast();
+  final _duration = StreamController<Duration>.broadcast();
+  final _playing = StreamController<bool>.broadcast();
+  final _buffering = StreamController<bool>.broadcast();
+  final _completed = StreamController<void>.broadcast();
+  final _error = StreamController<String>.broadcast();
+
+  @override
+  Future<void> open(
+    Uri url, {
+    Map<String, String> headers = const {},
+    Duration start = Duration.zero,
+  }) async {
+    if (openError case final Object e) throw e;
+    openedUrl = url;
+    openedHeaders = headers;
+    openedStart = start;
+    position = start;
+    duration = const Duration(minutes: 10);
+    _duration.add(duration);
+    _position.add(position);
+    _setPlaying(true);
+  }
+
+  void _setPlaying(bool value) {
+    playing = value;
+    _playing.add(value);
+  }
+
+  /// Moves the position forward, as playing does.
+  void advance(Duration by) {
+    position += by;
+    _position.add(position);
+  }
+
+  /// Plays to the end.
+  void finish() {
+    position = duration;
+    _position.add(position);
+    _setPlaying(false);
+    _completed.add(null);
+  }
+
+  @override
+  Future<void> play() async => _setPlaying(true);
+
+  @override
+  Future<void> pause() async => _setPlaying(false);
+
+  @override
+  Future<void> playOrPause() async => _setPlaying(!playing);
+
+  @override
+  Future<void> seek(Duration to) async {
+    position = to;
+    _position.add(to);
+  }
+
+  @override
+  Stream<Duration> get positionStream => _position.stream;
+  @override
+  Stream<Duration> get durationStream => _duration.stream;
+  @override
+  Stream<bool> get playingStream => _playing.stream;
+  @override
+  Stream<bool> get bufferingStream => _buffering.stream;
+  @override
+  Stream<void> get completedStream => _completed.stream;
+  @override
+  Stream<String> get errorStream => _error.stream;
+
+  @override
+  Widget buildVideo() => const ColoredBox(color: Color(0xFF000000));
+
+  @override
+  Future<void> dispose() async {
+    disposed = true;
+    await _position.close();
+    await _duration.close();
+    await _playing.close();
+    await _buffering.close();
+    await _completed.close();
+    await _error.close();
+  }
+}
+
 /// The app with fake server/auth repositories and an in-memory keyring.
 class TestApp {
   TestApp({MemoryKeyValueStore? store})
@@ -265,6 +428,11 @@ class TestApp {
   final servers = FakeServerRepository();
   final auth = FakeAuthRepository();
   final library = FakeLibraryRepository();
+  final playback = FakePlaybackRepository();
+
+  /// Every engine the app made, last one = current playback.
+  final engines = <FakePlayerEngine>[];
+  FakePlayerEngine get engine => engines.last;
 
   /// Starts as if [testSession] was stored by an earlier run.
   void signIn() =>
@@ -278,6 +446,12 @@ class TestApp {
     serverRepositoryProvider.overrideWithValue(servers),
     authRepositoryProvider.overrideWithValue(auth),
     libraryRepositoryProvider.overrideWithValue(library),
+    playbackRepositoryProvider.overrideWithValue(playback),
+    playerEngineFactoryProvider.overrideWithValue(() {
+      final engine = FakePlayerEngine();
+      engines.add(engine);
+      return engine;
+    }),
     defaultServerAddressProvider.overrideWithValue(defaultServerAddress),
   ];
 

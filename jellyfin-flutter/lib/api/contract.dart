@@ -3,8 +3,12 @@ import 'models/authenticate_user_by_name.dart';
 import 'models/authentication_result.dart';
 import 'models/base_item_dto.dart';
 import 'models/base_item_dto_query_result.dart';
+import 'models/playback_info_dto.dart';
+import 'models/playback_info_response.dart';
+import 'models/playback_report.dart';
 import 'models/public_system_info.dart';
 import 'models/user_dto.dart';
+import 'models/user_item_data_dto.dart';
 
 /// What an endpoint answers with.
 enum ResponseKind {
@@ -129,6 +133,52 @@ const apiContract = [
     'GET',
     '/Items/{itemId}/Images/{imageType}',
     query: ['tag', 'maxWidth', 'quality'],
+    kind: ResponseKind.file,
+  ),
+  ApiEndpoint(
+    'POST',
+    '/Items/{itemId}/PlaybackInfo',
+    query: ['userId'],
+    request: PlaybackInfoDto.jsonShape,
+    response: PlaybackInfoResponse.jsonShape,
+  ),
+  ApiEndpoint(
+    'POST',
+    '/Sessions/Playing',
+    request: PlaybackProgressInfo.jsonShape,
+  ),
+  ApiEndpoint(
+    'POST',
+    '/Sessions/Playing/Progress',
+    request: PlaybackProgressInfo.jsonShape,
+  ),
+  ApiEndpoint(
+    'POST',
+    '/Sessions/Playing/Stopped',
+    request: PlaybackStopInfo.jsonShape,
+  ),
+  ApiEndpoint(
+    'POST',
+    '/UserPlayedItems/{itemId}',
+    query: ['userId'],
+    response: UserItemDataDto.jsonShape,
+  ),
+  ApiEndpoint(
+    'DELETE',
+    '/UserPlayedItems/{itemId}',
+    query: ['userId'],
+    response: UserItemDataDto.jsonShape,
+  ),
+  ApiEndpoint(
+    'GET',
+    '/Videos/{itemId}/stream',
+    query: ['static', 'mediaSourceId', 'playSessionId'],
+    kind: ResponseKind.file,
+  ),
+  ApiEndpoint(
+    'GET',
+    '/Audio/{itemId}/stream',
+    query: ['static', 'mediaSourceId', 'playSessionId'],
     kind: ResponseKind.file,
   ),
 ];

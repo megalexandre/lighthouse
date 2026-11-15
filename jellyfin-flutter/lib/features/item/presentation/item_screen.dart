@@ -3,11 +3,13 @@ import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../../../api/models/base_item_dto.dart';
+import '../../../core/failure.dart';
 import '../../../core/ticks.dart';
 import '../../../router.dart';
 import '../../../widgets/error_retry.dart';
 import '../../library/application/library_providers.dart';
 import '../../library/presentation/item_card.dart';
+import '../../player/data/playback_repository.dart';
 
 /// Detail page of one item: picture, facts and overview, then what is
 /// inside it (seasons of a series, episodes of a season, tracks of an
@@ -17,6 +19,9 @@ class ItemScreen extends ConsumerWidget {
 
   static const title = Key('item.title');
   static const seriesLink = Key('item.series');
+  static const playButton = Key('item.play');
+  static const resumeButton = Key('item.resume');
+  static const watchedButton = Key('item.watched');
   static Key episodeKey(String id) => Key('episode.$id');
   static Key trackKey(String id) => Key('track.$id');
 
@@ -32,6 +37,10 @@ class ItemScreen extends ConsumerWidget {
           padding: const EdgeInsets.all(24),
           children: [
             _Header(item: item),
+            if (isPlayable(item)) ...[
+              const SizedBox(height: 24),
+              _PlayButtons(item: item),
+            ],
             const SizedBox(height: 32),
             ...switch (item.type) {
               BaseItemKind.series => [_Seasons(seriesId: item.id)],
@@ -51,6 +60,100 @@ class ItemScreen extends ConsumerWidget {
         ),
         _ => const Center(child: CircularProgressIndicator()),
       },
+    );
+  }
+}
+
+/// Whether [item] opens in the player (series, seasons and albums list
+/// what to play instead).
+bool isPlayable(BaseItemDto item) => switch (item.type) {
+  BaseItemKind.movie ||
+  BaseItemKind.episode ||
+  BaseItemKind.video ||
+  BaseItemKind.audio => true,
+  _ => false,
+};
+
+/// Play (or Resume + Start over when partly watched), and watched / not.
+class _PlayButtons extends ConsumerStatefulWidget {
+  const _PlayButtons({required this.item});
+
+  final BaseItemDto item;
+
+  @override
+  ConsumerState<_PlayButtons> createState() => _PlayButtonsState();
+}
+
+class _PlayButtonsState extends ConsumerState<_PlayButtons> {
+  bool _saving = false;
+
+  BaseItemDto get item => widget.item;
+
+  Future<void> _play(Duration start) async {
+    await context.push(Routes.play(item.id, start: start));
+  }
+
+  Future<void> _toggleWatched(bool played) async {
+    setState(() => _saving = true);
+    try {
+      await ref
+          .read(playbackRepositoryProvider)
+          .setPlayed(item.id, played: !played);
+      ref
+        ..invalidate(itemProvider(item.id))
+        ..invalidate(resumeProvider)
+        ..invalidate(nextUpProvider);
+    } on Failure catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(e.message)));
+      }
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final data = item.userData;
+    final played = data?.played ?? false;
+    final position = ticksToDuration(data?.playbackPositionTicks ?? 0);
+    final resumable = !played && position > Duration.zero;
+
+    return Wrap(
+      spacing: 12,
+      runSpacing: 12,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      children: [
+        if (resumable) ...[
+          FilledButton.icon(
+            key: ItemScreen.resumeButton,
+            icon: const Icon(Icons.play_arrow),
+            label: Text('Resume from ${formatPosition(position)}'),
+            onPressed: () => _play(position),
+          ),
+          OutlinedButton.icon(
+            key: ItemScreen.playButton,
+            icon: const Icon(Icons.replay),
+            label: const Text('Start over'),
+            onPressed: () => _play(Duration.zero),
+          ),
+        ] else
+          FilledButton.icon(
+            key: ItemScreen.playButton,
+            icon: const Icon(Icons.play_arrow),
+            label: const Text('Play'),
+            onPressed: () => _play(Duration.zero),
+          ),
+        IconButton(
+          key: ItemScreen.watchedButton,
+          tooltip: played ? 'Mark as unwatched' : 'Mark as watched',
+          isSelected: played,
+          icon: const Icon(Icons.check_circle_outline),
+          selectedIcon: const Icon(Icons.check_circle),
+          onPressed: _saving ? null : () => _toggleWatched(played),
+        ),
+      ],
     );
   }
 }

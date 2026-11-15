@@ -2,17 +2,24 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:jellyfin_flutter/app.dart';
 import 'package:jellyfin_flutter/core/storage.dart';
+import 'package:jellyfin_flutter/features/player/data/player_engine.dart';
 import 'package:material_ui/material_ui.dart';
 
 /// Starts the app (or restarts it: new providers, same [store]). Only the
 /// keyring is swapped for [store], so tests never touch the desktop's
-/// keyring (and CI has none).
+/// keyring (and CI has none), and mpv runs without sound or hardware
+/// decoding (CI has neither).
 Future<void> launch(WidgetTester tester, MemoryKeyValueStore store) =>
     tester.pumpWidget(
       ProviderScope(
         key: UniqueKey(),
         retry: noAutomaticRetry,
-        overrides: [keyValueStoreProvider.overrideWithValue(store)],
+        overrides: [
+          keyValueStoreProvider.overrideWithValue(store),
+          playerOptionsProvider.overrideWithValue(
+            const PlayerOptions(hardwareDecoding: false, audio: false),
+          ),
+        ],
         child: const JellyfinApp(),
       ),
     );
@@ -51,3 +58,17 @@ Future<void> tapOn(WidgetTester tester, Finder finder) async {
 /// finder can match it too.
 Finder onScreen(Type screen, Finder finder) =>
     find.descendant(of: find.byType(screen), matching: finder);
+
+/// Pumps until [condition] holds (real time: playback, HTTP).
+Future<void> waitUntil(
+  WidgetTester tester,
+  bool Function() condition, {
+  required String reason,
+  Duration timeout = const Duration(seconds: 20),
+}) async {
+  final deadline = DateTime.now().add(timeout);
+  while (!condition()) {
+    if (DateTime.now().isAfter(deadline)) fail('timed out: $reason');
+    await tester.pump(const Duration(milliseconds: 100));
+  }
+}

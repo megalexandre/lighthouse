@@ -67,3 +67,19 @@ final class StorageFailure extends Failure {
       'Could not save the login in the system keyring '
       '($detail).';
 }
+
+/// The server offers no way for this client to play the item.
+final class NotPlayable extends Failure {
+  const NotPlayable(this.reason);
+  final String reason;
+  @override
+  String get message => 'This item cannot be played ($reason).';
+}
+
+/// The player could not open or decode the stream.
+final class PlayerError extends Failure {
+  const PlayerError(this.detail);
+  final String detail;
+  @override
+  String get message => 'Playback failed: $detail';
+}

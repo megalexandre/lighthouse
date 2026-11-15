@@ -113,6 +113,7 @@ class TestServer {
     }
     final token = (await _login(dio, adminName, adminPassword)).token;
     final server = TestServer._(url, dio, token);
+    await server._allowResumeOfShortItems();
     await server._ensureLibraries();
     return server;
   }
@@ -185,6 +186,20 @@ class TestServer {
     return (
       token: data['AccessToken'] as String,
       userId: (data['User'] as Map<String, dynamic>)['Id'] as String,
+    );
+  }
+
+  /// By default the server keeps no resume point for items shorter than 5
+  /// minutes; the fixtures last seconds.
+  Future<void> _allowResumeOfShortItems() async {
+    final config = await adminGet<Map<String, dynamic>>(
+      '/System/Configuration',
+    );
+    if (config['MinResumeDurationSeconds'] == 0) return;
+    await _dio.post<void>(
+      '/System/Configuration',
+      data: {...config, 'MinResumeDurationSeconds': 0},
+      options: _asAdmin,
     );
   }
 

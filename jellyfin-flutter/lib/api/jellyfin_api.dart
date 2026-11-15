@@ -77,8 +77,23 @@ class JellyfinApi {
     String path,
     T Function(Map<String, dynamic> json) parse, {
     Object? body,
+    Map<String, dynamic>? query,
   }) => guard((dio) async {
-    final res = await dio.post<Object>(path, data: body);
+    final res = await dio.post<Object>(
+      path,
+      data: body,
+      queryParameters: query,
+    );
+    return parse(_object(res));
+  });
+
+  /// DELETE, returning a JSON object parsed by [parse].
+  Future<T> deleteJson<T>(
+    String path,
+    T Function(Map<String, dynamic> json) parse, {
+    Map<String, dynamic>? query,
+  }) => guard((dio) async {
+    final res = await dio.delete<Object>(path, queryParameters: query);
     return parse(_object(res));
   });
 

@@ -59,7 +59,10 @@ ff -f lavfi -i "testsrc2=size=320x180:rate=25:duration=10" \
    -metadata:s:a:1 language=por -metadata:s:a:1 title="Português" \
    -metadata:s:s:0 language=eng \
    "${exact[@]}" "$d/Test Movie (2020).mkv"
-srt "$d/Test Movie (2020).por.srt" "Português"
+# With a UTF-8 BOM: on a file this small the server's charset detection
+# guesses wrong ("Portugu√™s") without one.
+srt "$tmp/por.srt" "Português"
+{ printf '\xEF\xBB\xBF'; cat "$tmp/por.srt"; } > "$d/Test Movie (2020).por.srt"
 poster "$d/poster.jpg" testsrc 200x300
 
 # --- HEVC 10-bit movie --------------------------------------------------------
