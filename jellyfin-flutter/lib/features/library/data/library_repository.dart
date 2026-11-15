@@ -42,6 +42,10 @@ abstract interface class LibraryRepository {
   /// Every episode of the series, all seasons, in broadcast order.
   Future<List<BaseItemDto>> seriesEpisodes(String seriesId);
 
+  /// Movies, shows, episodes, albums and songs whose name matches
+  /// [term].
+  Future<List<BaseItemDto>> search(String term);
+
   /// Tracks of an album, in disc and track order.
   Future<List<BaseItemDto>> tracks(String albumId);
 
@@ -49,6 +53,15 @@ abstract interface class LibraryRepository {
   /// it has none.
   Uri? imageUrl(BaseItemDto item, {required int maxWidth});
 }
+
+/// What search looks for, in the order results are shown.
+const searchKinds = [
+  BaseItemKind.movie,
+  BaseItemKind.series,
+  BaseItemKind.episode,
+  BaseItemKind.musicAlbum,
+  BaseItemKind.audio,
+];
 
 /// How many items the home rows ask for.
 const homeRowLimit = 16;
@@ -158,6 +171,17 @@ class JellyfinLibraryRepository implements LibraryRepository {
       _call((api) async => (await api.episodes(_user, seriesId)).items);
 
   @override
+  Future<List<BaseItemDto>> search(String term) => _call(
+    (api) async => (await api.items(
+      userId: _user,
+      recursive: true,
+      searchTerm: term,
+      includeItemTypes: searchKinds,
+      limit: 100,
+    )).items,
+  );
+
+  @override
   Future<List<BaseItemDto>> tracks(String albumId) => _call(
     (api) async => (await api.items(
       userId: _user,
@@ -234,6 +258,9 @@ class SignedOutLibraryRepository implements LibraryRepository {
 
   @override
   Future<List<BaseItemDto>> seriesEpisodes(String seriesId) => _fail();
+
+  @override
+  Future<List<BaseItemDto>> search(String term) => _fail();
 
   @override
   Future<List<BaseItemDto>> tracks(String albumId) => _fail();

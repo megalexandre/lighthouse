@@ -1,9 +1,13 @@
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../../../api/models/base_item_dto.dart';
+import '../../../router.dart';
 import '../../../widgets/error_retry.dart';
 import '../../auth/application/auth_controller.dart';
+import '../../auth/data/session.dart';
 import '../../library/application/library_providers.dart';
 import '../../library/presentation/item_card.dart';
 
@@ -14,6 +18,8 @@ class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
 
   static const signOutButton = Key('home.signOut');
+  static const searchButton = Key('home.search');
+  static const settingsButton = Key('home.settings');
   static const viewsRow = Key('home.views');
   static const resumeRow = Key('home.resume');
   static const nextUpRow = Key('home.nextUp');
@@ -24,15 +30,49 @@ class HomeScreen extends ConsumerWidget {
     final session = ref.watch(authControllerProvider).value?.session;
     final views = ref.watch(userViewsProvider);
 
+    void openSearch() => context.push(Routes.search);
+
+    // Ctrl+F searches, as in jellyfin-desktop's keyboard.json.
+    return CallbackShortcuts(
+      bindings: {
+        const SingleActivator(LogicalKeyboardKey.keyF, control: true):
+            openSearch,
+      },
+      child: Focus(
+        autofocus: true,
+        child: _scaffold(context, ref, session, views, openSearch),
+      ),
+    );
+  }
+
+  Widget _scaffold(
+    BuildContext context,
+    WidgetRef ref,
+    Session? session,
+    AsyncValue<List<BaseItemDto>> views,
+    VoidCallback openSearch,
+  ) {
     return Scaffold(
       appBar: AppBar(
         title: Text(session?.server.name ?? 'Jellyfin'),
         actions: [
+          IconButton(
+            key: searchButton,
+            tooltip: 'Search (Ctrl+F)',
+            icon: const Icon(Icons.search),
+            onPressed: openSearch,
+          ),
           if (session != null)
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 8),
               child: Center(child: Text(session.userName)),
             ),
+          IconButton(
+            key: settingsButton,
+            tooltip: 'Settings',
+            icon: const Icon(Icons.settings_outlined),
+            onPressed: () => context.push(Routes.settings),
+          ),
           IconButton(
             key: signOutButton,
             tooltip: 'Sign out',

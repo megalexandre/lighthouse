@@ -5,10 +5,12 @@ import '../../../api/models/device_profile.dart';
 /// transcodes when it has to (e.g. a bitrate limit), to HLS. Ported from
 /// getDeviceProfile() in jellyfin-desktop/native/nativeshell.js, without
 /// its optional "force transcode" settings (they come with F4 settings).
-DeviceProfile appDeviceProfile() => DeviceProfile(
+/// [maxStreamingBitrate] (bits/s) is the quality setting; above it the
+/// server transcodes down.
+DeviceProfile appDeviceProfile({int? maxStreamingBitrate}) => DeviceProfile(
   name: 'Jellyfin Flutter',
   maxStaticBitrate: 1000000000,
-  maxStreamingBitrate: 1000000000,
+  maxStreamingBitrate: maxStreamingBitrate ?? 1000000000,
   musicStreamingTranscodingBitrate: 1280000,
   directPlayProfiles: const [
     DirectPlayProfile(type: 'Video'),

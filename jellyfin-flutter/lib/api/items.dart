@@ -30,6 +30,7 @@ extension ItemsApi on JellyfinApi {
     int? startIndex,
     int? limit,
     List<String> fields = const [],
+    String? searchTerm,
   }) => getJson(
     '/Items',
     BaseItemDtoQueryResult.fromJson,
@@ -44,6 +45,7 @@ extension ItemsApi on JellyfinApi {
       'startIndex': ?startIndex,
       'limit': ?limit,
       if (fields.isNotEmpty) 'fields': fields,
+      'searchTerm': ?searchTerm,
     },
   );
 

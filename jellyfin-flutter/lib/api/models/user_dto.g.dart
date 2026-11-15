@@ -11,6 +11,11 @@ _UserDto _$UserDtoFromJson(Map<String, dynamic> json) => _UserDto(
   name: json['Name'] as String,
   serverId: json['ServerId'] as String?,
   hasPassword: json['HasPassword'] as bool?,
+  configuration: json['Configuration'] == null
+      ? null
+      : UserConfiguration.fromJson(
+          json['Configuration'] as Map<String, dynamic>,
+        ),
 );
 
 const _$UserDtoFieldMap = <String, String>{
@@ -18,6 +23,7 @@ const _$UserDtoFieldMap = <String, String>{
   'name': 'Name',
   'serverId': 'ServerId',
   'hasPassword': 'HasPassword',
+  'configuration': 'Configuration',
 };
 
 Map<String, dynamic> _$UserDtoToJson(_UserDto instance) => <String, dynamic>{
@@ -25,4 +31,5 @@ Map<String, dynamic> _$UserDtoToJson(_UserDto instance) => <String, dynamic>{
   'Name': instance.name,
   'ServerId': ?instance.serverId,
   'HasPassword': ?instance.hasPassword,
+  'Configuration': ?instance.configuration?.toJson(),
 };

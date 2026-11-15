@@ -11,6 +11,7 @@ import '../../../core/window.dart';
 import '../../../router.dart';
 import '../../../widgets/error_retry.dart';
 import '../../library/presentation/item_card.dart';
+import '../../settings/application/settings_providers.dart';
 import '../application/play_queue.dart';
 import '../application/player_controller.dart';
 import '../data/player_engine.dart';
@@ -53,11 +54,25 @@ class PlayerScreen extends ConsumerWidget {
     final session = ref.watch(provider);
     final neighbors =
         ref.watch(playNeighborsProvider(request.itemId)).value ?? noNeighbors;
+    // Loaded now, so the autoplay preference is known when the item ends.
+    ref.watch(userConfigurationProvider);
 
     // Played to the end: on to the next episode / track, or close.
     ref.listen(provider, (_, now) {
-      if (!(now.value?.ended ?? false)) return;
-      final next = ref.read(playNeighborsProvider(request.itemId)).value?.next;
+      final session = now.value;
+      if (session == null || !session.ended) return;
+      // Episodes play on only if the user wants it (a server setting);
+      // an album always does.
+      final autoplay =
+          session.item.type != BaseItemKind.episode ||
+          (ref
+                  .read(userConfigurationProvider)
+                  .value
+                  ?.enableNextEpisodeAutoPlay ??
+              true);
+      final next = autoplay
+          ? ref.read(playNeighborsProvider(request.itemId)).value?.next
+          : null;
       unawaited(
         next == null ? _close(context, ref) : _goTo(context, ref, next),
       );

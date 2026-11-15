@@ -17,4 +17,22 @@ extension UsersApi on JellyfinApi {
   /// The signed-in user. Throws Unauthorized when the token is no longer
   /// valid.
   Future<UserDto> me() => getJson('/Users/Me', UserDto.fromJson);
+
+  /// The user's settings as the server sends them, every field included,
+  /// so an update can send them all back (the server replaces the lot).
+  Future<Map<String, dynamic>> myConfigurationJson() => getJson(
+    '/Users/Me',
+    (json) => (json['Configuration'] as Map<String, dynamic>?) ?? {},
+  );
+
+  Future<void> updateConfiguration(
+    String userId,
+    Map<String, dynamic> configuration,
+  ) => guard(
+    (dio) => dio.post<void>(
+      '/Users/Configuration',
+      queryParameters: {'userId': userId},
+      data: configuration,
+    ),
+  );
 }

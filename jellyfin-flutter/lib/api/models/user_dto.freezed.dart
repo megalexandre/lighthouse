@@ -15,7 +15,8 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$UserDto {
 
- String get id; String get name; String? get serverId; bool? get hasPassword;
+ String get id; String get name; String? get serverId; bool? get hasPassword;/// Only in `GET /Users/Me`.
+ UserConfiguration? get configuration;
 /// Create a copy of UserDto
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -28,16 +29,16 @@ $UserDtoCopyWith<UserDto> get copyWith => _$UserDtoCopyWithImpl<UserDto>(this as
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is UserDto&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.serverId, serverId) || other.serverId == serverId)&&(identical(other.hasPassword, hasPassword) || other.hasPassword == hasPassword));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is UserDto&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.serverId, serverId) || other.serverId == serverId)&&(identical(other.hasPassword, hasPassword) || other.hasPassword == hasPassword)&&(identical(other.configuration, configuration) || other.configuration == configuration));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,name,serverId,hasPassword);
+int get hashCode => Object.hash(runtimeType,id,name,serverId,hasPassword,configuration);
 
 @override
 String toString() {
-  return 'UserDto(id: $id, name: $name, serverId: $serverId, hasPassword: $hasPassword)';
+  return 'UserDto(id: $id, name: $name, serverId: $serverId, hasPassword: $hasPassword, configuration: $configuration)';
 }
 
 
@@ -48,11 +49,11 @@ abstract mixin class $UserDtoCopyWith<$Res>  {
   factory $UserDtoCopyWith(UserDto value, $Res Function(UserDto) _then) = _$UserDtoCopyWithImpl;
 @useResult
 $Res call({
- String id, String name, String? serverId, bool? hasPassword
+ String id, String name, String? serverId, bool? hasPassword, UserConfiguration? configuration
 });
 
 
-
+$UserConfigurationCopyWith<$Res>? get configuration;
 
 }
 /// @nodoc
@@ -65,16 +66,29 @@ class _$UserDtoCopyWithImpl<$Res>
 
 /// Create a copy of UserDto
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? name = null,Object? serverId = freezed,Object? hasPassword = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? name = null,Object? serverId = freezed,Object? hasPassword = freezed,Object? configuration = freezed,}) {
   return _then(_self.copyWith(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
 as String,serverId: freezed == serverId ? _self.serverId : serverId // ignore: cast_nullable_to_non_nullable
 as String?,hasPassword: freezed == hasPassword ? _self.hasPassword : hasPassword // ignore: cast_nullable_to_non_nullable
-as bool?,
+as bool?,configuration: freezed == configuration ? _self.configuration : configuration // ignore: cast_nullable_to_non_nullable
+as UserConfiguration?,
   ));
 }
+/// Create a copy of UserDto
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$UserConfigurationCopyWith<$Res>? get configuration {
+    if (_self.configuration == null) {
+    return null;
+  }
 
+  return $UserConfigurationCopyWith<$Res>(_self.configuration!, (value) {
+    return _then(_self.copyWith(configuration: value));
+  });
+}
 }
 
 
@@ -156,10 +170,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  String name,  String? serverId,  bool? hasPassword)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  String name,  String? serverId,  bool? hasPassword,  UserConfiguration? configuration)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _UserDto() when $default != null:
-return $default(_that.id,_that.name,_that.serverId,_that.hasPassword);case _:
+return $default(_that.id,_that.name,_that.serverId,_that.hasPassword,_that.configuration);case _:
   return orElse();
 
 }
@@ -177,10 +191,10 @@ return $default(_that.id,_that.name,_that.serverId,_that.hasPassword);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  String name,  String? serverId,  bool? hasPassword)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  String name,  String? serverId,  bool? hasPassword,  UserConfiguration? configuration)  $default,) {final _that = this;
 switch (_that) {
 case _UserDto():
-return $default(_that.id,_that.name,_that.serverId,_that.hasPassword);case _:
+return $default(_that.id,_that.name,_that.serverId,_that.hasPassword,_that.configuration);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -197,10 +211,10 @@ return $default(_that.id,_that.name,_that.serverId,_that.hasPassword);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  String name,  String? serverId,  bool? hasPassword)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  String name,  String? serverId,  bool? hasPassword,  UserConfiguration? configuration)?  $default,) {final _that = this;
 switch (_that) {
 case _UserDto() when $default != null:
-return $default(_that.id,_that.name,_that.serverId,_that.hasPassword);case _:
+return $default(_that.id,_that.name,_that.serverId,_that.hasPassword,_that.configuration);case _:
   return null;
 
 }
@@ -212,13 +226,15 @@ return $default(_that.id,_that.name,_that.serverId,_that.hasPassword);case _:
 @JsonSerializable()
 
 class _UserDto implements UserDto {
-  const _UserDto({required this.id, required this.name, this.serverId, this.hasPassword});
+  const _UserDto({required this.id, required this.name, this.serverId, this.hasPassword, this.configuration});
   factory _UserDto.fromJson(Map<String, dynamic> json) => _$UserDtoFromJson(json);
 
 @override final  String id;
 @override final  String name;
 @override final  String? serverId;
 @override final  bool? hasPassword;
+/// Only in `GET /Users/Me`.
+@override final  UserConfiguration? configuration;
 
 /// Create a copy of UserDto
 /// with the given fields replaced by the non-null parameter values.
@@ -233,16 +249,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _UserDto&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.serverId, serverId) || other.serverId == serverId)&&(identical(other.hasPassword, hasPassword) || other.hasPassword == hasPassword));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _UserDto&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.serverId, serverId) || other.serverId == serverId)&&(identical(other.hasPassword, hasPassword) || other.hasPassword == hasPassword)&&(identical(other.configuration, configuration) || other.configuration == configuration));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,name,serverId,hasPassword);
+int get hashCode => Object.hash(runtimeType,id,name,serverId,hasPassword,configuration);
 
 @override
 String toString() {
-  return 'UserDto(id: $id, name: $name, serverId: $serverId, hasPassword: $hasPassword)';
+  return 'UserDto(id: $id, name: $name, serverId: $serverId, hasPassword: $hasPassword, configuration: $configuration)';
 }
 
 
@@ -253,11 +269,11 @@ abstract mixin class _$UserDtoCopyWith<$Res> implements $UserDtoCopyWith<$Res> {
   factory _$UserDtoCopyWith(_UserDto value, $Res Function(_UserDto) _then) = __$UserDtoCopyWithImpl;
 @override @useResult
 $Res call({
- String id, String name, String? serverId, bool? hasPassword
+ String id, String name, String? serverId, bool? hasPassword, UserConfiguration? configuration
 });
 
 
-
+@override $UserConfigurationCopyWith<$Res>? get configuration;
 
 }
 /// @nodoc
@@ -270,17 +286,30 @@ class __$UserDtoCopyWithImpl<$Res>
 
 /// Create a copy of UserDto
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? name = null,Object? serverId = freezed,Object? hasPassword = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? name = null,Object? serverId = freezed,Object? hasPassword = freezed,Object? configuration = freezed,}) {
   return _then(_UserDto(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
 as String,serverId: freezed == serverId ? _self.serverId : serverId // ignore: cast_nullable_to_non_nullable
 as String?,hasPassword: freezed == hasPassword ? _self.hasPassword : hasPassword // ignore: cast_nullable_to_non_nullable
-as bool?,
+as bool?,configuration: freezed == configuration ? _self.configuration : configuration // ignore: cast_nullable_to_non_nullable
+as UserConfiguration?,
   ));
 }
 
+/// Create a copy of UserDto
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$UserConfigurationCopyWith<$Res>? get configuration {
+    if (_self.configuration == null) {
+    return null;
+  }
 
+  return $UserConfigurationCopyWith<$Res>(_self.configuration!, (value) {
+    return _then(_self.copyWith(configuration: value));
+  });
+}
 }
 
 // dart format on

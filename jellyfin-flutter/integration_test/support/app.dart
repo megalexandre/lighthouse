@@ -76,15 +76,19 @@ Future<void> settleRoute(WidgetTester tester) async {
 Finder onScreen(Type screen, Finder finder) =>
     find.descendant(of: find.byType(screen), matching: finder);
 
-/// Pumps until [condition] holds (real time: playback, HTTP).
+/// Pumps until [condition] holds (real time: playback, HTTP). [poll], if
+/// given, runs before each check (e.g. to read an mpv property).
 Future<void> waitUntil(
   WidgetTester tester,
   bool Function() condition, {
   required String reason,
   Duration timeout = const Duration(seconds: 20),
+  Future<void> Function()? poll,
 }) async {
   final deadline = DateTime.now().add(timeout);
-  while (!condition()) {
+  while (true) {
+    await poll?.call();
+    if (condition()) return;
     if (DateTime.now().isAfter(deadline)) fail('timed out: $reason');
     await tester.pump(const Duration(milliseconds: 100));
   }

@@ -3,10 +3,12 @@ import 'models/authenticate_user_by_name.dart';
 import 'models/authentication_result.dart';
 import 'models/base_item_dto.dart';
 import 'models/base_item_dto_query_result.dart';
+import 'models/culture_dto.dart';
 import 'models/playback_info_dto.dart';
 import 'models/playback_info_response.dart';
 import 'models/playback_report.dart';
 import 'models/public_system_info.dart';
+import 'models/user_configuration.dart';
 import 'models/user_dto.dart';
 import 'models/user_item_data_dto.dart';
 
@@ -89,6 +91,7 @@ const apiContract = [
       'startIndex',
       'limit',
       'fields',
+      'searchTerm',
     ],
     response: BaseItemDtoQueryResult.jsonShape,
   ),
@@ -180,6 +183,18 @@ const apiContract = [
     '/Audio/{itemId}/stream',
     query: ['static', 'mediaSourceId', 'playSessionId'],
     kind: ResponseKind.file,
+  ),
+  ApiEndpoint(
+    'POST',
+    '/Users/Configuration',
+    query: ['userId'],
+    request: UserConfiguration.jsonShape,
+  ),
+  ApiEndpoint(
+    'GET',
+    '/Localization/Cultures',
+    response: CultureDto.jsonShape,
+    kind: ResponseKind.list,
   ),
 ];
 

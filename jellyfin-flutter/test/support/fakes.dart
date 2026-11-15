@@ -6,9 +6,11 @@ import 'package:flutter_riverpod/misc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:jellyfin_flutter/api/models/base_item_dto.dart';
 import 'package:jellyfin_flutter/api/models/base_item_dto_query_result.dart';
+import 'package:jellyfin_flutter/api/models/culture_dto.dart';
 import 'package:jellyfin_flutter/api/models/media_source_info.dart';
 import 'package:jellyfin_flutter/api/models/media_stream.dart';
 import 'package:jellyfin_flutter/api/models/playback_report.dart';
+import 'package:jellyfin_flutter/api/models/user_configuration.dart';
 import 'package:jellyfin_flutter/api/models/user_item_data_dto.dart';
 import 'package:jellyfin_flutter/app.dart';
 import 'package:jellyfin_flutter/core/failure.dart';
@@ -24,6 +26,7 @@ import 'package:jellyfin_flutter/features/player/data/player_engine.dart';
 import 'package:jellyfin_flutter/features/server/data/server_info.dart';
 import 'package:jellyfin_flutter/features/server/data/server_repository.dart';
 import 'package:jellyfin_flutter/features/server/presentation/connect_screen.dart';
+import 'package:jellyfin_flutter/features/settings/data/settings_repository.dart';
 import 'package:jellyfin_flutter/router.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -258,6 +261,22 @@ class FakeLibraryRepository implements LibraryRepository {
   @override
   Future<List<BaseItemDto>> episodes(String seriesId, String seasonId) =>
       _answer('episodes', () => TestItems.episodes);
+
+  @override
+  Future<List<BaseItemDto>> search(String term) => _answer('search', () {
+    searches.add(term);
+    final t = term.toLowerCase();
+    return [
+      for (final i in _all)
+        if (!i.type.isFolder &&
+            i.type != BaseItemKind.season &&
+            i.name.toLowerCase().contains(t))
+          i,
+    ];
+  });
+
+  /// Every term search() was called with.
+  final searches = <String>[];
 
   @override
   Future<List<BaseItemDto>> seriesEpisodes(String seriesId) =>
@@ -541,6 +560,59 @@ class FakePlayerEngine implements PlayerEngine {
   }
 }
 
+/// Settings kept in memory; [failures] as in the other fakes.
+class FakeSettingsRepository implements SettingsRepository {
+  UserConfiguration config = const UserConfiguration();
+  int? bitrate;
+  final failures = <String, Failure>{};
+
+  @override
+  Future<UserConfiguration> userConfiguration() async {
+    if (failures['userConfiguration'] case final Failure f) throw f;
+    return config;
+  }
+
+  @override
+  Future<UserConfiguration> updateUserConfiguration({
+    String? audioLanguage,
+    String? subtitleLanguage,
+    SubtitlePlaybackMode? subtitleMode,
+    bool? nextEpisodeAutoPlay,
+  }) async {
+    if (failures['update'] case final Failure f) throw f;
+    return config = config.copyWith(
+      audioLanguagePreference: audioLanguage ?? config.audioLanguagePreference,
+      subtitleLanguagePreference:
+          subtitleLanguage ?? config.subtitleLanguagePreference,
+      subtitleMode: subtitleMode ?? config.subtitleMode,
+      enableNextEpisodeAutoPlay:
+          nextEpisodeAutoPlay ?? config.enableNextEpisodeAutoPlay,
+    );
+  }
+
+  /// As long as the server's (hundreds), so pickers must filter.
+  @override
+  Future<List<CultureDto>> languages() async => [
+    const CultureDto(displayName: 'English', threeLetterIsoLanguageName: 'eng'),
+    const CultureDto(
+      displayName: 'Portuguese',
+      threeLetterIsoLanguageName: 'por',
+    ),
+    for (var i = 0; i < 300; i++)
+      CultureDto(
+        displayName: 'Language $i',
+        threeLetterIsoLanguageName: 'x${i.toString().padLeft(2, '0')}',
+      ),
+  ];
+
+  @override
+  Future<int?> maxStreamingBitrate() async => bitrate;
+
+  @override
+  Future<void> setMaxStreamingBitrate(int? bitsPerSecond) async =>
+      bitrate = bitsPerSecond;
+}
+
 /// A window that only remembers whether it is full screen.
 class FakeAppWindow implements AppWindow {
   @override
@@ -558,6 +630,7 @@ class TestApp {
   final library = FakeLibraryRepository();
   final playback = FakePlaybackRepository();
   final window = FakeAppWindow();
+  final settings = FakeSettingsRepository();
 
   /// Every engine the app made, last one = current playback.
   final engines = <FakePlayerEngine>[];
@@ -577,6 +650,7 @@ class TestApp {
     libraryRepositoryProvider.overrideWithValue(library),
     playbackRepositoryProvider.overrideWithValue(playback),
     appWindowProvider.overrideWithValue(window),
+    settingsRepositoryProvider.overrideWithValue(settings),
     playerEngineFactoryProvider.overrideWithValue(() {
       final engine = FakePlayerEngine();
       engines.add(engine);

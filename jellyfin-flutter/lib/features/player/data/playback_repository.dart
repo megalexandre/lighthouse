@@ -11,6 +11,7 @@ import '../../../core/failure.dart';
 import '../../auth/application/auth_controller.dart';
 import '../../auth/data/session.dart';
 import '../../auth/data/session_client.dart';
+import '../../settings/data/settings_repository.dart';
 import 'device_profile.dart';
 import 'playback_plan.dart';
 
@@ -46,6 +47,8 @@ final playbackRepositoryProvider = Provider<PlaybackRepository>((ref) {
     () => ref.read(clientInfoProvider.future),
     onUnauthorized: () =>
         ref.read(authControllerProvider.notifier).sessionExpired(),
+    maxStreamingBitrate: () =>
+        ref.read(settingsRepositoryProvider).maxStreamingBitrate(),
   );
 });
 
@@ -55,6 +58,7 @@ class JellyfinPlaybackRepository implements PlaybackRepository {
     Future<ClientInfo> Function() client, {
     required void Function() onUnauthorized,
     HttpClientAdapter? adapter,
+    this.maxStreamingBitrate,
   }) : _client = SessionClient(
          session,
          client,
@@ -64,6 +68,9 @@ class JellyfinPlaybackRepository implements PlaybackRepository {
 
   final SessionClient _client;
 
+  /// The quality setting (bits/s, null = none), read at each playback.
+  final Future<int?> Function()? maxStreamingBitrate;
+
   @override
   Future<PlaybackPlan> prepare(
     BaseItemDto item, {
@@ -71,11 +78,13 @@ class JellyfinPlaybackRepository implements PlaybackRepository {
     int? audioStreamIndex,
     int? subtitleStreamIndex,
   }) => _client.call((api) async {
+    final maxBitrate = await maxStreamingBitrate?.call();
     final response = await api.playbackInfo(
       item.id,
       PlaybackInfoDto(
         userId: _client.userId,
-        deviceProfile: appDeviceProfile(),
+        deviceProfile: appDeviceProfile(maxStreamingBitrate: maxBitrate),
+        maxStreamingBitrate: maxBitrate,
         startTimeTicks: start.inMicroseconds * 10,
         audioStreamIndex: audioStreamIndex,
         subtitleStreamIndex: subtitleStreamIndex,
