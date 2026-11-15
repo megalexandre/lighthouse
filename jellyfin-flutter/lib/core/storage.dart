@@ -1,9 +1,9 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import 'failure.dart';
+import 'log.dart';
 
 /// Small string store for what must survive a restart (session, device id).
 /// Production uses the system keyring; tests swap in [MemoryKeyValueStore]
@@ -35,7 +35,7 @@ class SecureKeyValueStore implements KeyValueStore {
     try {
       return await _storage.read(key: key);
     } on PlatformException catch (e) {
-      debugPrint('keyring read of "$key" failed: ${e.message}');
+      log.warning('keyring', 'read of "$key" failed', e.message);
       return null;
     }
   }
@@ -54,7 +54,7 @@ class SecureKeyValueStore implements KeyValueStore {
     try {
       await _storage.delete(key: key);
     } on PlatformException catch (e) {
-      debugPrint('keyring delete of "$key" failed: ${e.message}');
+      log.warning('keyring', 'delete of "$key" failed', e.message);
     }
   }
 }

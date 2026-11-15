@@ -5,6 +5,8 @@ import 'package:material_ui/material_ui.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
 
+import '../../../core/log.dart';
+
 /// The video player itself, behind an interface so screens and the
 /// player controller can be tested with a fake. The real one is
 /// [MediaKitEngine] (libmpv).
@@ -97,7 +99,16 @@ class MediaKitEngine implements PlayerEngine {
       ),
     );
     _completed = _player.stream.completed.where((done) => done);
+    // mpv's own warnings and errors, for the log (hardware decoders it
+    // probes and drops are expected noise at "error" level too).
+    _mpvLog = _player.stream.log.listen((line) {
+      if (line.level == 'error' || line.level == 'warn') {
+        log.debug('mpv', '${line.prefix}: ${line.text.trim()}');
+      }
+    });
   }
+
+  late final StreamSubscription<PlayerLog> _mpvLog;
 
   final PlayerOptions options;
   final Player _player;
@@ -121,6 +132,12 @@ class MediaKitEngine implements PlayerEngine {
     if (!options.audio) await _mpv.setProperty('ao', 'null');
     await _mpv.setProperty('audio-fallback-to-null', 'yes');
     await _mpv.setProperty('demuxer-max-bytes', '${150 * 1024 * 1024}');
+    // A short network drop: reconnect instead of ending the stream.
+    await _mpv.setProperty('network-timeout', '20');
+    await _mpv.setProperty(
+      'stream-lavf-o',
+      'reconnect=1,reconnect_streamed=1,reconnect_delay_max=5',
+    );
     await _player.open(
       Media(url.toString(), httpHeaders: headers, start: start),
     );
@@ -243,6 +260,7 @@ class MediaKitEngine implements PlayerEngine {
 
   @override
   Future<void> dispose() async {
+    await _mpvLog.cancel();
     await _mutedController.close();
     await _player.dispose();
   }

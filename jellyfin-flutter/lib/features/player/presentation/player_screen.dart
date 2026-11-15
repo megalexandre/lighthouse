@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../../../api/models/base_item_dto.dart';
+import '../../../core/failure.dart';
 import '../../../core/ticks.dart';
 import '../../../core/window.dart';
 import '../../../router.dart';
@@ -43,6 +44,7 @@ class PlayerScreen extends ConsumerWidget {
   static const nextButton = Key('player.next');
   static const previousButton = Key('player.previous');
   static const cover = Key('player.cover');
+  static const resumeAfterBreak = Key('player.resumeAfterBreak');
   static Key audioItem(int index) => Key('player.audio.$index');
   static Key subtitleItem(int index) => Key('player.subtitle.$index');
 
@@ -307,6 +309,12 @@ class _PlayingState extends ConsumerState<_Playing> {
                   ? _Cover(item: widget.session.item)
                   : Center(child: engine.buildVideo()),
             ),
+            if (widget.session.interruptedAt case final Duration at)
+              _Interrupted(
+                at: at,
+                onResume: () => widget.controller.resumeAfterInterruption(),
+                onBack: widget.onBack,
+              ),
             StreamBuilder<bool>(
               stream: engine.bufferingStream,
               builder: (_, snap) => (snap.data ?? false)
@@ -742,4 +750,87 @@ class _Cover extends StatelessWidget {
       ),
     );
   }
+}
+
+/// The stream broke off before the end (connection lost): where it was,
+/// and Resume from there once the server is reachable again.
+class _Interrupted extends StatefulWidget {
+  const _Interrupted({
+    required this.at,
+    required this.onResume,
+    required this.onBack,
+  });
+
+  final Duration at;
+  final Future<void> Function() onResume;
+  final VoidCallback onBack;
+
+  @override
+  State<_Interrupted> createState() => _InterruptedState();
+}
+
+class _InterruptedState extends State<_Interrupted> {
+  bool _resuming = false;
+  String? _error;
+
+  Future<void> _resume() async {
+    setState(() {
+      _resuming = true;
+      _error = null;
+    });
+    try {
+      await widget.onResume();
+    } on Failure catch (e) {
+      if (mounted) setState(() => _error = e.message);
+    } finally {
+      if (mounted) setState(() => _resuming = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => ColoredBox(
+    color: Colors.black54,
+    child: Center(
+      child: Card(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.wifi_off, size: 40),
+              const SizedBox(height: 12),
+              Text(
+                'Playback stopped at ${formatPosition(widget.at)}: the '
+                'connection to the server was lost.',
+              ),
+              if (_error != null) ...[
+                const SizedBox(height: 8),
+                Text(
+                  _error!,
+                  style: TextStyle(color: Theme.of(context).colorScheme.error),
+                ),
+              ],
+              const SizedBox(height: 16),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextButton(
+                    onPressed: widget.onBack,
+                    child: const Text('Back'),
+                  ),
+                  const SizedBox(width: 8),
+                  FilledButton.icon(
+                    key: PlayerScreen.resumeAfterBreak,
+                    onPressed: _resuming ? null : _resume,
+                    icon: const Icon(Icons.play_arrow),
+                    label: Text('Resume from ${formatPosition(widget.at)}'),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    ),
+  );
 }

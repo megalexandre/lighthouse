@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
+import 'features/server/presentation/connection_banner.dart';
 import 'router.dart';
 
 /// Retry policy of the app's ProviderScope: none. Riverpod would otherwise
@@ -28,6 +29,8 @@ class JellyfinApp extends ConsumerWidget {
         ),
       ),
       routerConfig: ref.watch(routerProvider),
+      builder: (_, child) =>
+          ConnectionBanner(child: child ?? const SizedBox.shrink()),
     );
   }
 }

@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/failure.dart';
+import '../../../core/log.dart';
 import '../../server/data/server_info.dart';
 import '../../server/data/server_repository.dart';
 import '../data/auth_repository.dart';
@@ -46,7 +47,7 @@ class AuthController extends AsyncNotifier<AuthState> {
     } on Failure catch (e) {
       // Server unreachable or failing: stay signed in, the screens show
       // the error and retry.
-      debugPrint('could not check the stored session: $e');
+      log.warning('auth', 'could not check the stored session', e);
     }
     return AuthState(server: server, session: session);
   }
@@ -91,7 +92,7 @@ class AuthController extends AsyncNotifier<AuthState> {
     try {
       await ref.read(authRepositoryProvider).logout(session);
     } on Failure catch (e) {
-      debugPrint('server logout failed, signing out locally: $e');
+      log.warning('auth', 'server logout failed, signing out locally', e);
     }
     await _store.clearSession();
     state = AsyncData(AuthState(server: current.server));

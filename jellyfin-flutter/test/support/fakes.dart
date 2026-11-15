@@ -23,6 +23,7 @@ import 'package:jellyfin_flutter/features/library/data/library_repository.dart';
 import 'package:jellyfin_flutter/features/player/data/playback_plan.dart';
 import 'package:jellyfin_flutter/features/player/data/playback_repository.dart';
 import 'package:jellyfin_flutter/features/player/data/player_engine.dart';
+import 'package:jellyfin_flutter/features/server/application/connection_controller.dart';
 import 'package:jellyfin_flutter/features/server/data/server_info.dart';
 import 'package:jellyfin_flutter/features/server/data/server_repository.dart';
 import 'package:jellyfin_flutter/features/server/presentation/connect_screen.dart';
@@ -387,8 +388,14 @@ class FakePlaybackRepository implements PlaybackRepository {
   Future<void> reportProgress(PlaybackProgressInfo info) async =>
       progress.add(info);
 
+  /// Thrown by reportStopped, when set (the server gone).
+  Failure? stopFailure;
+
   @override
-  Future<void> reportStopped(PlaybackStopInfo info) async => stopped.add(info);
+  Future<void> reportStopped(PlaybackStopInfo info) async {
+    if (stopFailure case final Failure f) throw f;
+    stopped.add(info);
+  }
 
   @override
   Future<UserItemDataDto> setPlayed(
@@ -452,6 +459,13 @@ class FakePlayerEngine implements PlayerEngine {
   void advance(Duration by) {
     position += by;
     _position.add(position);
+  }
+
+  /// The stream breaks off where it is (connection lost): it ends, the
+  /// position stays.
+  void breakOff() {
+    _setPlaying(false);
+    _completed.add(null);
   }
 
   /// Plays to the end.
@@ -632,6 +646,17 @@ class TestApp {
   final window = FakeAppWindow();
   final settings = FakeSettingsRepository();
 
+  /// What the connection check answers while the app thinks the server
+  /// is down.
+  bool serverUp = true;
+
+  /// Every connection check, by server URL.
+  final pings = <String>[];
+
+  /// The app's provider container, once pumped.
+  ProviderContainer containerOf(WidgetTester tester) =>
+      ProviderScope.containerOf(tester.element(find.byType(JellyfinApp)));
+
   /// Every engine the app made, last one = current playback.
   final engines = <FakePlayerEngine>[];
   FakePlayerEngine get engine => engines.last;
@@ -651,6 +676,10 @@ class TestApp {
     playbackRepositoryProvider.overrideWithValue(playback),
     appWindowProvider.overrideWithValue(window),
     settingsRepositoryProvider.overrideWithValue(settings),
+    serverPingProvider.overrideWithValue((url) async {
+      pings.add(url);
+      return serverUp;
+    }),
     playerEngineFactoryProvider.overrideWithValue(() {
       final engine = FakePlayerEngine();
       engines.add(engine);

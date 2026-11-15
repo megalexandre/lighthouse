@@ -1,8 +1,8 @@
 import 'dart:convert';
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/log.dart';
 import '../../../core/storage.dart';
 import '../../server/data/server_info.dart';
 import 'session.dart';
@@ -39,7 +39,7 @@ class SessionStore {
     try {
       return fromJson(jsonDecode(text) as Map<String, dynamic>);
     } on Object catch (e) {
-      debugPrint('ignoring stored value that cannot be read: $e');
+      log.warning('session', 'ignoring a stored value that cannot be read', e);
       return null;
     }
   }

@@ -1,9 +1,8 @@
 import 'dart:async';
 
-import 'package:flutter/foundation.dart';
-
 import '../../../api/models/playback_report.dart';
 import '../../../core/failure.dart';
+import '../../../core/log.dart';
 import '../../../core/ticks.dart';
 import '../data/playback_plan.dart';
 import '../data/playback_repository.dart';
@@ -28,7 +27,12 @@ class PlaybackReporter {
     this._plan, {
     required this.status,
     this.interval = const Duration(seconds: 10),
+    this.onStopUnsent,
   });
+
+  /// Gets a stop report that could not reach the server (it holds the
+  /// resume point, so it is kept and sent later).
+  final void Function(PlaybackStopInfo report)? onStopUnsent;
 
   final PlaybackRepository _repository;
   final PlaybackPlan _plan;
@@ -61,17 +65,21 @@ class PlaybackReporter {
       _stopped ??= () async {
         _timer?.cancel();
         if (!_started) return;
-        await _send(
-          _repository.reportStopped(
-            PlaybackStopInfo(
-              itemId: _plan.item.id,
-              mediaSourceId: _plan.source.id,
-              playSessionId: _plan.playSessionId,
-              positionTicks: durationToTicks(at ?? status().position),
-              failed: failed,
-            ),
-          ),
+        final report = PlaybackStopInfo(
+          itemId: _plan.item.id,
+          mediaSourceId: _plan.source.id,
+          playSessionId: _plan.playSessionId,
+          positionTicks: durationToTicks(at ?? status().position),
+          failed: failed,
         );
+        try {
+          await _repository.reportStopped(report);
+        } on ServerUnreachable catch (e) {
+          log.warning('player', 'stop report kept until the server is back', e);
+          onStopUnsent?.call(report);
+        } on Failure catch (e) {
+          log.warning('player', 'stop report failed', e);
+        }
       }();
 
   PlaybackProgressInfo _progress() {
@@ -95,7 +103,7 @@ class PlaybackReporter {
     try {
       await report;
     } on Failure catch (e) {
-      debugPrint('playback report failed: $e');
+      log.warning('player', 'playback report failed', e);
     }
   }
 }

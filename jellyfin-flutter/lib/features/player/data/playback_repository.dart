@@ -11,6 +11,7 @@ import '../../../core/failure.dart';
 import '../../auth/application/auth_controller.dart';
 import '../../auth/data/session.dart';
 import '../../auth/data/session_client.dart';
+import '../../server/application/connection_controller.dart';
 import '../../settings/data/settings_repository.dart';
 import 'device_profile.dart';
 import 'playback_plan.dart';
@@ -47,6 +48,8 @@ final playbackRepositoryProvider = Provider<PlaybackRepository>((ref) {
     () => ref.read(clientInfoProvider.future),
     onUnauthorized: () =>
         ref.read(authControllerProvider.notifier).sessionExpired(),
+    onReachability: ({required reachable}) =>
+        ref.read(connectionProvider.notifier).report(reachable: reachable),
     maxStreamingBitrate: () =>
         ref.read(settingsRepositoryProvider).maxStreamingBitrate(),
   );
@@ -57,12 +60,14 @@ class JellyfinPlaybackRepository implements PlaybackRepository {
     Session session,
     Future<ClientInfo> Function() client, {
     required void Function() onUnauthorized,
+    void Function({required bool reachable})? onReachability,
     HttpClientAdapter? adapter,
     this.maxStreamingBitrate,
   }) : _client = SessionClient(
          session,
          client,
          onUnauthorized: onUnauthorized,
+         onReachability: onReachability,
          adapter: adapter,
        );
 

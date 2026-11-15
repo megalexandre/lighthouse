@@ -12,6 +12,7 @@ import '../../../core/failure.dart';
 import '../../auth/application/auth_controller.dart';
 import '../../auth/data/session.dart';
 import '../../auth/data/session_client.dart';
+import '../../server/application/connection_controller.dart';
 
 /// Browsing the signed-in user's media. Every method throws a [Failure].
 abstract interface class LibraryRepository {
@@ -92,6 +93,8 @@ final libraryRepositoryProvider = Provider<LibraryRepository>((ref) {
     () => ref.read(clientInfoProvider.future),
     onUnauthorized: () =>
         ref.read(authControllerProvider.notifier).sessionExpired(),
+    onReachability: ({required reachable}) =>
+        ref.read(connectionProvider.notifier).report(reachable: reachable),
   );
 });
 
@@ -100,11 +103,13 @@ class JellyfinLibraryRepository implements LibraryRepository {
     Session session,
     Future<ClientInfo> Function() client, {
     required void Function() onUnauthorized,
+    void Function({required bool reachable})? onReachability,
     HttpClientAdapter? adapter,
   }) : _client = SessionClient(
          session,
          client,
          onUnauthorized: onUnauthorized,
+         onReachability: onReachability,
          adapter: adapter,
        );
 

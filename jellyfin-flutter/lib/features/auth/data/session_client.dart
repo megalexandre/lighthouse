@@ -7,12 +7,14 @@ import 'session.dart';
 
 /// Calls the API as the signed-in user. A 401 means the token was revoked
 /// while the app was open: [onUnauthorized] sends the app back to login,
-/// and the call still fails.
+/// and the call still fails. [onReachability] hears after every call
+/// whether the server answered (false: nothing did).
 class SessionClient {
   SessionClient(
     this.session,
     Future<ClientInfo> Function() client, {
     required this.onUnauthorized,
+    this.onReachability,
     HttpClientAdapter? adapter,
   }) : _api = client().then(
          (c) => JellyfinApi(
@@ -25,6 +27,7 @@ class SessionClient {
 
   final Session session;
   final void Function() onUnauthorized;
+  final void Function({required bool reachable})? onReachability;
   final Future<JellyfinApi> _api;
 
   String get userId => session.userId;
@@ -32,9 +35,18 @@ class SessionClient {
 
   Future<T> call<T>(Future<T> Function(JellyfinApi api) request) async {
     try {
-      return await request(await _api);
+      final result = await request(await _api);
+      onReachability?.call(reachable: true);
+      return result;
+    } on ServerUnreachable {
+      onReachability?.call(reachable: false);
+      rethrow;
     } on Unauthorized {
+      onReachability?.call(reachable: true);
       onUnauthorized();
+      rethrow;
+    } on Failure {
+      onReachability?.call(reachable: true);
       rethrow;
     }
   }

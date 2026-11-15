@@ -5,6 +5,7 @@ import 'package:dio/dio.dart';
 import '../core/failure.dart';
 import 'auth_interceptor.dart';
 import 'client_info.dart';
+import 'log_interceptor.dart';
 
 /// HTTP client for one server, optionally signed in ([token]). Endpoints
 /// live in extensions by area (system.dart, users.dart, items.dart...);
@@ -23,7 +24,9 @@ class JellyfinApi {
            contentType: Headers.jsonContentType,
          ),
        ) {
-    dio.interceptors.add(AuthInterceptor(client, token: token));
+    dio.interceptors
+      ..add(AuthInterceptor(client, token: token))
+      ..add(RequestLogInterceptor());
     if (adapter != null) dio.httpClientAdapter = adapter;
   }
 

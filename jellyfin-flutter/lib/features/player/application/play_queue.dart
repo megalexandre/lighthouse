@@ -1,8 +1,8 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../api/models/base_item_dto.dart';
 import '../../../core/failure.dart';
+import '../../../core/log.dart';
 import '../../library/data/library_repository.dart';
 
 /// What plays before and after an item: the episodes around it in its
@@ -36,7 +36,7 @@ final playNeighborsProvider = FutureProvider.autoDispose
         return neighborsIn(queue, itemId);
       } on Failure catch (e) {
         // Playback goes on without Next / Previous.
-        debugPrint('could not find what plays next: $e');
+        log.warning('player', 'could not find what plays next', e);
         return noNeighbors;
       }
     });

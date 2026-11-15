@@ -13,6 +13,7 @@ import '../../../core/storage.dart';
 import '../../auth/application/auth_controller.dart';
 import '../../auth/data/session.dart';
 import '../../auth/data/session_client.dart';
+import '../../server/application/connection_controller.dart';
 
 /// The user's playback settings. Languages, subtitles and autoplay live on
 /// the server (every client of that user follows them); the quality limit
@@ -50,6 +51,8 @@ final settingsRepositoryProvider = Provider<SettingsRepository>((ref) {
     store,
     onUnauthorized: () =>
         ref.read(authControllerProvider.notifier).sessionExpired(),
+    onReachability: ({required reachable}) =>
+        ref.read(connectionProvider.notifier).report(reachable: reachable),
   );
 });
 
@@ -87,11 +90,13 @@ class JellyfinSettingsRepository
     Future<ClientInfo> Function() client,
     this.store, {
     required void Function() onUnauthorized,
+    void Function({required bool reachable})? onReachability,
     HttpClientAdapter? adapter,
   }) : _client = SessionClient(
          session,
          client,
          onUnauthorized: onUnauthorized,
+         onReachability: onReachability,
          adapter: adapter,
        );
 

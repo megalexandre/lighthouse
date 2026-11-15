@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../api/models/base_item_dto.dart';
 import '../../../core/failure.dart';
+import '../../../core/log.dart';
 import '../../auth/application/auth_controller.dart';
 import '../../library/application/library_providers.dart';
 import '../../library/data/library_repository.dart';
@@ -12,6 +13,7 @@ import '../data/playback_plan.dart';
 import '../data/playback_repository.dart';
 import '../data/player_engine.dart';
 import '../data/tracks.dart';
+import 'pending_reports.dart';
 import 'playback_reporter.dart';
 
 /// What to play: an item, from a position (zero = from the start).
@@ -27,6 +29,7 @@ class PlayerSession {
     this.audioStreamIndex,
     this.subtitleStreamIndex,
     this.ended = false,
+    this.interruptedAt,
   });
 
   final BaseItemDto item;
@@ -40,11 +43,16 @@ class PlayerSession {
   /// Played to the end; the screen closes.
   final bool ended;
 
+  /// The stream stopped short of the end, here (the connection was lost):
+  /// the screen offers to resume from there.
+  final Duration? interruptedAt;
+
   PlayerSession copyWith({
     PlaybackPlan? plan,
     int? Function()? audioStreamIndex,
     int? Function()? subtitleStreamIndex,
     bool? ended,
+    Duration? Function()? interruptedAt,
   }) => PlayerSession(
     item: item,
     plan: plan ?? this.plan,
@@ -56,6 +64,7 @@ class PlayerSession {
         ? this.subtitleStreamIndex
         : subtitleStreamIndex(),
     ended: ended ?? this.ended,
+    interruptedAt: interruptedAt == null ? this.interruptedAt : interruptedAt(),
   );
 }
 
@@ -73,6 +82,10 @@ class PlayerController extends AsyncNotifier<PlayerSession> {
   PlaybackReporter? _reporter;
   PlayerEngine? _engine;
   final _subscriptions = <StreamSubscription<Object?>>[];
+
+  /// The last position seen while playing: after the stream ends, the
+  /// player's own position no longer tells where it stopped.
+  Duration _lastPosition = Duration.zero;
 
   /// The subtitle [toggleSubtitles] brings back.
   int? _lastSubtitle;
@@ -106,6 +119,7 @@ class PlayerController extends AsyncNotifier<PlayerSession> {
           unawaited(_reporter?.progress());
         }),
       )
+      ..add(engine.positionStream.listen((p) => _lastPosition = p))
       ..add(engine.completedStream.listen((_) => unawaited(_ended())));
 
     await _open(engine, plan);
@@ -116,9 +130,16 @@ class PlayerController extends AsyncNotifier<PlayerSession> {
   }
 
   Future<void> _open(PlayerEngine engine, PlaybackPlan plan) async {
+    log.info(
+      'player',
+      '${plan.item.type.name} "${plan.item.name}": ${plan.method.name}, '
+          'from ${plan.start}, audio ${plan.audioStreamIndex}, '
+          'subtitle ${plan.subtitleStreamIndex}, ${plan.url.path}',
+    );
     try {
       await engine.open(plan.url, headers: plan.headers, start: plan.start);
     } on Object catch (e) {
+      log.error('player', 'could not open the stream', e);
       throw PlayerError('$e');
     }
   }
@@ -145,9 +166,11 @@ class PlayerController extends AsyncNotifier<PlayerSession> {
 
   void _startReporting(PlayerSession session) {
     final engine = session.engine;
+    final pending = ref.read(pendingReportsProvider.notifier);
     final reporter = _reporter = PlaybackReporter(
       _repository,
       session.plan,
+      onStopUnsent: pending.add,
       status: () {
         final now = _session ?? session;
         return (
@@ -250,11 +273,11 @@ class PlayerController extends AsyncNotifier<PlayerSession> {
 
   /// A new stream from the server with other tracks, at the same place
   /// (a transcode carries only the tracks it was made with).
-  Future<void> _restart({int? audio, int? subtitle}) async {
+  Future<void> _restart({int? audio, int? subtitle, Duration? at}) async {
     final session = state.value;
     if (session == null) return;
     final engine = session.engine;
-    final position = engine.position;
+    final position = at ?? engine.position;
     await _reporter?.stop();
     final plan = await _repository.prepare(
       session.item,
@@ -268,6 +291,7 @@ class PlayerController extends AsyncNotifier<PlayerSession> {
       plan: plan,
       audioStreamIndex: () => audio,
       subtitleStreamIndex: () => subtitle,
+      interruptedAt: () => null,
     );
     // Subtitles that are files on their own still have to be added.
     if (subtitle != null &&
@@ -310,12 +334,33 @@ class PlayerController extends AsyncNotifier<PlayerSession> {
   }
 
   Future<void> _ended() async {
+    final length = _engine?.duration ?? Duration.zero;
+    final stoppedAt = _lastPosition;
+    if (length > Duration.zero && !reachedTheEnd(stoppedAt, length)) {
+      // Not the end: the stream broke off (server or network gone).
+      // Keep the place, do not mark it watched, offer to resume.
+      log.warning('player', 'stream ended at $stoppedAt of $length');
+      await _reporter?.stop(at: stoppedAt);
+      _update((s) => s.copyWith(interruptedAt: () => stoppedAt));
+      return;
+    }
     // Played to the end: report the end, so the server marks it watched
     // whatever position mpv shows after EOF.
-    final length = _engine?.duration ?? Duration.zero;
     await _reporter?.stop(at: length > Duration.zero ? length : null);
     _invalidateWatchState();
     _update((s) => s.copyWith(ended: true));
+  }
+
+  /// After a lost connection: a new stream from where it stopped.
+  Future<void> resumeAfterInterruption() async {
+    final session = state.value;
+    final at = session?.interruptedAt;
+    if (session == null || at == null) return;
+    await _restart(
+      audio: session.audioStreamIndex,
+      subtitle: session.subtitleStreamIndex,
+      at: at,
+    );
   }
 
   /// The item's position / watched state changed on the server.
@@ -341,3 +386,9 @@ class PlayerController extends AsyncNotifier<PlayerSession> {
     }());
   }
 }
+
+/// Whether a stream that stopped at [position] of [length] played to its
+/// end, rather than broke off: within the last 10 s, or past 95 %.
+bool reachedTheEnd(Duration position, Duration length) =>
+    position >= length - const Duration(seconds: 10) ||
+    position.inMilliseconds >= length.inMilliseconds * 0.95;
