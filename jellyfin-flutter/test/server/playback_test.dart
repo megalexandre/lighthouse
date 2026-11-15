@@ -74,8 +74,14 @@ void main() {
     final reporter = PlaybackReporter(
       playback,
       plan,
-      position: () => position,
-      paused: () => false,
+      status: () => (
+        position: position,
+        paused: false,
+        audioStreamIndex: plan.audioStreamIndex,
+        subtitleStreamIndex: plan.subtitleStreamIndex,
+        volume: 100,
+        muted: false,
+      ),
     );
     await reporter.start();
     await reporter.progress();

@@ -4,6 +4,7 @@
 import 'dart:convert';
 
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:jellyfin_flutter/api/client_info.dart';
@@ -14,6 +15,8 @@ import 'package:jellyfin_flutter/features/auth/data/session_store.dart';
 import 'package:jellyfin_flutter/features/home/presentation/home_screen.dart';
 import 'package:jellyfin_flutter/features/item/presentation/item_screen.dart';
 import 'package:jellyfin_flutter/features/library/presentation/library_screen.dart';
+import 'package:jellyfin_flutter/features/player/application/player_controller.dart';
+import 'package:jellyfin_flutter/features/player/data/player_engine.dart';
 import 'package:jellyfin_flutter/features/player/presentation/player_screen.dart';
 import 'package:jellyfin_flutter/features/server/data/server_repository.dart';
 import 'package:jellyfin_test_server/jellyfin_test_server.dart';
@@ -143,5 +146,58 @@ void main() {
             as Map<String, dynamic>;
     expect(data['Played'], isTrue);
     expect(find.byKey(ItemScreen.resumeButton), findsNothing);
+  });
+
+  testWidgets('audio to Portuguese, then the external Portuguese subtitle: '
+      'mpv plays and shows them', (tester) async {
+    await openTestMovie(tester);
+    await tapOn(tester, find.byKey(ItemScreen.playButton));
+    await waitFor(tester, find.byKey(PlayerScreen.audioMenu));
+
+    final request = tester
+        .widget<PlayerScreen>(find.byType(PlayerScreen))
+        .request;
+    final container = ProviderScope.containerOf(
+      tester.element(find.byType(PlayerScreen)),
+    );
+    final engine =
+        container.read(playerControllerProvider(request)).value!.engine
+            as MediaKitEngine;
+
+    /// Waits until mpv's [property] is [expected].
+    Future<void> mpvShows(String property, String expected) async {
+      var last = '';
+      final deadline = DateTime.now().add(const Duration(seconds: 10));
+      while (DateTime.now().isBefore(deadline)) {
+        last = await engine.mpvProperty(property);
+        if (last == expected) return;
+        await tester.pump(const Duration(milliseconds: 100));
+      }
+      fail('mpv $property is "$last", expected "$expected"');
+    }
+
+    await mpvShows('current-tracks/audio/lang', 'eng');
+
+    // The OSD hides while playing: pause so the menus stay up.
+    await engine.pause();
+    await engine.seek(const Duration(seconds: 1));
+    await tester.pump(const Duration(milliseconds: 300));
+
+    await tapOn(tester, find.byKey(PlayerScreen.audioMenu));
+    await tapOn(tester, find.byKey(PlayerScreen.audioItem(3)));
+    await mpvShows('current-tracks/audio/lang', 'por');
+
+    await tapOn(tester, find.byKey(PlayerScreen.subtitleMenu));
+    await tapOn(tester, find.byKey(PlayerScreen.subtitleItem(0)));
+    await mpvShows('current-tracks/sub/external', 'yes');
+    // The line on screen at 1 s, accents intact (fixture has a BOM).
+    await mpvShows('sub-text', 'Português subtitle one');
+
+    await tapOn(tester, find.byKey(PlayerScreen.subtitleMenu));
+    await tapOn(tester, find.byKey(PlayerScreen.subtitleOff));
+    await mpvShows('sid', 'no');
+
+    await tapOn(tester, find.byKey(PlayerScreen.backButton));
+    await waitFor(tester, find.byKey(ItemScreen.resumeButton));
   });
 }

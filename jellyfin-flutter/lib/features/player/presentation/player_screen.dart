@@ -7,16 +7,19 @@ import 'package:material_ui/material_ui.dart';
 
 import '../../../api/models/base_item_dto.dart';
 import '../../../core/ticks.dart';
+import '../../../core/window.dart';
 import '../../../widgets/error_retry.dart';
 import '../../library/presentation/item_card.dart';
 import '../application/player_controller.dart';
 import '../data/player_engine.dart';
+import '../data/tracks.dart';
+import 'player_keys.dart';
 
 /// Full-window playback of one item, with an on-screen display (OSD) that
 /// shows on mouse movement and hides after a few seconds of playing.
 ///
-/// Keys: Space / K play-pause, Left / Right seek 10 s, Esc / Backspace
-/// back (more come with F3b).
+/// Keys: see player_keys.dart (Space play/pause, arrows seek and volume,
+/// A / L / S audio and subtitles, F11 full screen, Esc back...).
 class PlayerScreen extends ConsumerWidget {
   const PlayerScreen({super.key, required this.request});
 
@@ -24,6 +27,14 @@ class PlayerScreen extends ConsumerWidget {
   static const playPauseButton = Key('player.playPause');
   static const seekBar = Key('player.seek');
   static const positionText = Key('player.position');
+  static const muteButton = Key('player.mute');
+  static const volumeSlider = Key('player.volume');
+  static const audioMenu = Key('player.audio');
+  static const subtitleMenu = Key('player.subtitles');
+  static const subtitleOff = Key('player.subtitle.off');
+  static const fullscreenButton = Key('player.fullscreen');
+  static Key audioItem(int index) => Key('player.audio.$index');
+  static Key subtitleItem(int index) => Key('player.subtitle.$index');
 
   final PlayRequest request;
 
@@ -47,6 +58,7 @@ class PlayerScreen extends ConsumerWidget {
         body: switch (session) {
           AsyncData(value: final session) => _Playing(
             session: session,
+            controller: ref.read(provider.notifier),
             onBack: () => _close(context, ref),
           ),
           AsyncError(:final error) => _Message(
@@ -94,19 +106,31 @@ class _Message extends StatelessWidget {
   );
 }
 
-class _Playing extends StatefulWidget {
-  const _Playing({required this.session, required this.onBack});
+class _Playing extends ConsumerStatefulWidget {
+  const _Playing({
+    required this.session,
+    required this.controller,
+    required this.onBack,
+  });
 
   final PlayerSession session;
+  final PlayerController controller;
   final VoidCallback onBack;
 
   @override
-  State<_Playing> createState() => _PlayingState();
+  ConsumerState<_Playing> createState() => _PlayingState();
 }
 
-class _PlayingState extends State<_Playing> {
+class _PlayingState extends ConsumerState<_Playing> {
   static const hideAfter = Duration(seconds: 3);
   static const seekStep = Duration(seconds: 10);
+  static const longSeekStep = Duration(seconds: 60);
+  static const volumeStep = 5.0;
+
+  late final AppWindow _window = ref.read(appWindowProvider);
+
+  /// Whether this screen made the window full screen (and so undoes it).
+  bool _fullscreen = false;
 
   PlayerEngine get engine => widget.session.engine;
 
@@ -128,7 +152,13 @@ class _PlayingState extends State<_Playing> {
   void dispose() {
     _hideTimer?.cancel();
     unawaited(_playing?.cancel());
+    if (_fullscreen) _window.isFullScreen = false;
     super.dispose();
+  }
+
+  void _toggleFullscreen() {
+    setState(() => _fullscreen = !_fullscreen);
+    _window.isFullScreen = _fullscreen;
   }
 
   void _show({bool hide = true}) {
@@ -155,22 +185,27 @@ class _PlayingState extends State<_Playing> {
   }
 
   KeyEventResult _onKey(FocusNode _, KeyEvent event) {
-    if (event is! KeyDownEvent && event is! KeyRepeatEvent) {
-      return KeyEventResult.ignored;
-    }
-    final key = event.logicalKey;
-    if (key == LogicalKeyboardKey.space || key == LogicalKeyboardKey.keyK) {
-      if (event is KeyDownEvent) unawaited(engine.playOrPause());
-    } else if (key == LogicalKeyboardKey.arrowLeft) {
-      unawaited(_seekBy(-seekStep));
-    } else if (key == LogicalKeyboardKey.arrowRight) {
-      unawaited(_seekBy(seekStep));
-    } else if (key == LogicalKeyboardKey.escape ||
-        key == LogicalKeyboardKey.backspace) {
-      if (event is KeyDownEvent) widget.onBack();
-    } else {
-      return KeyEventResult.ignored;
-    }
+    final action = playerActionFor(event, HardwareKeyboard.instance);
+    if (action == null) return KeyEventResult.ignored;
+    final c = widget.controller;
+    unawaited(switch (action) {
+      PlayerAction.playPause => engine.playOrPause(),
+      PlayerAction.pause => engine.pause(),
+      PlayerAction.stop || PlayerAction.back => Future.sync(widget.onBack),
+      PlayerAction.seekBack => _seekBy(-seekStep),
+      PlayerAction.seekForward => _seekBy(seekStep),
+      PlayerAction.seekBackLong => _seekBy(-longSeekStep),
+      PlayerAction.seekForwardLong => _seekBy(longSeekStep),
+      PlayerAction.volumeUp => c.changeVolume(volumeStep),
+      PlayerAction.volumeDown => c.changeVolume(-volumeStep),
+      PlayerAction.mute => c.toggleMute(),
+      PlayerAction.nextAudio => c.cycleAudio(),
+      PlayerAction.previousAudio => c.cycleAudio(back: true),
+      PlayerAction.nextSubtitle => c.cycleSubtitles(),
+      PlayerAction.previousSubtitle => c.cycleSubtitles(back: true),
+      PlayerAction.toggleSubtitles => c.toggleSubtitles(),
+      PlayerAction.fullscreen => Future.sync(_toggleFullscreen),
+    });
     _show();
     return KeyEventResult.handled;
   }
@@ -206,8 +241,10 @@ class _PlayingState extends State<_Playing> {
               child: IgnorePointer(
                 ignoring: !_osdVisible,
                 child: _Osd(
-                  item: widget.session.item,
-                  engine: engine,
+                  session: widget.session,
+                  controller: widget.controller,
+                  fullscreen: _fullscreen,
+                  onFullscreen: _toggleFullscreen,
                   onBack: widget.onBack,
                   onInteract: _show,
                 ),
@@ -222,16 +259,23 @@ class _PlayingState extends State<_Playing> {
 
 class _Osd extends StatelessWidget {
   const _Osd({
-    required this.item,
-    required this.engine,
+    required this.session,
+    required this.controller,
+    required this.fullscreen,
+    required this.onFullscreen,
     required this.onBack,
     required this.onInteract,
   });
 
-  final BaseItemDto item;
-  final PlayerEngine engine;
+  final PlayerSession session;
+  final PlayerController controller;
+  final bool fullscreen;
+  final VoidCallback onFullscreen;
   final VoidCallback onBack;
   final VoidCallback onInteract;
+
+  BaseItemDto get item => session.item;
+  PlayerEngine get engine => session.engine;
 
   @override
   Widget build(BuildContext context) {
@@ -321,6 +365,58 @@ class _Osd extends StatelessWidget {
                   Expanded(
                     child: _SeekBar(engine: engine, onSeek: onInteract),
                   ),
+                  _Volume(
+                    engine: engine,
+                    controller: controller,
+                    onInteract: onInteract,
+                  ),
+                  if (session.plan.audioStreams.length > 1)
+                    _TrackMenu(
+                      key: PlayerScreen.audioMenu,
+                      tooltip: 'Audio',
+                      icon: Icons.audiotrack,
+                      selected: session.audioStreamIndex,
+                      options: [
+                        for (final s in session.plan.audioStreams)
+                          (
+                            s.index,
+                            trackLabel(s),
+                            PlayerScreen.audioItem(s.index),
+                          ),
+                      ],
+                      onSelected: (i) => controller.selectAudio(i!),
+                      onInteract: onInteract,
+                    ),
+                  if (session.plan.subtitleStreams.isNotEmpty)
+                    _TrackMenu(
+                      key: PlayerScreen.subtitleMenu,
+                      tooltip: 'Subtitles',
+                      icon: Icons.subtitles,
+                      selected: session.subtitleStreamIndex,
+                      options: [
+                        (null, 'Off', PlayerScreen.subtitleOff),
+                        for (final s in session.plan.subtitleStreams)
+                          (
+                            s.index,
+                            trackLabel(s),
+                            PlayerScreen.subtitleItem(s.index),
+                          ),
+                      ],
+                      onSelected: controller.selectSubtitle,
+                      onInteract: onInteract,
+                    ),
+                  IconButton(
+                    key: PlayerScreen.fullscreenButton,
+                    color: Colors.white,
+                    tooltip: fullscreen ? 'Exit full screen' : 'Full screen',
+                    icon: Icon(
+                      fullscreen ? Icons.fullscreen_exit : Icons.fullscreen,
+                    ),
+                    onPressed: () {
+                      onFullscreen();
+                      onInteract();
+                    },
+                  ),
                 ],
               ),
             ),
@@ -397,4 +493,104 @@ class _SeekBarState extends State<_SeekBar> {
       ),
     );
   }
+}
+
+/// Mute button and a short volume bar.
+class _Volume extends StatelessWidget {
+  const _Volume({
+    required this.engine,
+    required this.controller,
+    required this.onInteract,
+  });
+
+  final PlayerEngine engine;
+  final PlayerController controller;
+  final VoidCallback onInteract;
+
+  @override
+  Widget build(BuildContext context) => StreamBuilder<bool>(
+    stream: engine.mutedStream,
+    initialData: engine.muted,
+    builder: (_, mutedSnap) => StreamBuilder<double>(
+      stream: engine.volumeStream,
+      initialData: engine.volume,
+      builder: (_, volumeSnap) {
+        final muted = mutedSnap.data ?? false;
+        final volume = muted ? 0.0 : (volumeSnap.data ?? 100).clamp(0, 100);
+        return Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            IconButton(
+              key: PlayerScreen.muteButton,
+              color: Colors.white,
+              tooltip: muted ? 'Unmute' : 'Mute',
+              icon: Icon(
+                muted || volume == 0
+                    ? Icons.volume_off
+                    : (volume < 50 ? Icons.volume_down : Icons.volume_up),
+              ),
+              onPressed: () {
+                unawaited(controller.toggleMute());
+                onInteract();
+              },
+            ),
+            SizedBox(
+              width: 100,
+              child: Slider(
+                key: PlayerScreen.volumeSlider,
+                max: 100,
+                value: volume.toDouble(),
+                onChanged: (v) {
+                  unawaited(controller.setVolume(v));
+                  onInteract();
+                },
+              ),
+            ),
+          ],
+        );
+      },
+    ),
+  );
+}
+
+/// A menu of tracks (audio or subtitles), the current one checked.
+class _TrackMenu extends StatelessWidget {
+  const _TrackMenu({
+    super.key,
+    required this.tooltip,
+    required this.icon,
+    required this.selected,
+    required this.options,
+    required this.onSelected,
+    required this.onInteract,
+  });
+
+  final String tooltip;
+  final IconData icon;
+  final int? selected;
+
+  /// (server index or null for "off", label, key).
+  final List<(int?, String, Key)> options;
+  final Future<void> Function(int? index) onSelected;
+  final VoidCallback onInteract;
+
+  @override
+  Widget build(BuildContext context) => PopupMenuButton<(int?,)>(
+    tooltip: tooltip,
+    icon: Icon(icon, color: Colors.white),
+    onOpened: onInteract,
+    onSelected: (choice) {
+      unawaited(onSelected(choice.$1));
+      onInteract();
+    },
+    itemBuilder: (_) => [
+      for (final (index, label, key) in options)
+        CheckedPopupMenuItem<(int?,)>(
+          key: key,
+          value: (index,),
+          checked: index == selected,
+          child: Text(label),
+        ),
+    ],
+  );
 }

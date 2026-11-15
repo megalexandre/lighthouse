@@ -17,11 +17,19 @@ void main() {
     paused = false;
   });
 
+  PlaybackStatus status() => (
+    position: position,
+    paused: paused,
+    audioStreamIndex: 3,
+    subtitleStreamIndex: null,
+    volume: 80,
+    muted: false,
+  );
+
   Future<PlaybackReporter> reporter() async => PlaybackReporter(
     repo,
     await repo.prepare(TestItems.testMovie),
-    position: () => position,
-    paused: () => paused,
+    status: status,
   );
 
   int ticks(int seconds) => seconds * 10000000;
@@ -72,6 +80,10 @@ void main() {
     await r.progress();
     expect(repo.progress.single.isPaused, isTrue);
     expect(repo.progress.single.positionTicks, ticks(4));
+    // The tracks and volume as they are now; no subtitle is -1.
+    expect(repo.progress.single.audioStreamIndex, 3);
+    expect(repo.progress.single.subtitleStreamIndex, -1);
+    expect(repo.progress.single.volumeLevel, 80);
     await r.stop();
   });
 
@@ -94,12 +106,19 @@ void main() {
     final r = PlaybackReporter(
       failing,
       await repo.prepare(TestItems.testMovie),
-      position: () => position,
-      paused: () => paused,
+      status: status,
     );
     await r.start();
     await r.progress();
     await r.stop();
+  });
+
+  test('at the end, the stop reports the given position', () async {
+    final r = await reporter();
+    await r.start();
+    position = Duration.zero; // mpv after EOF
+    await r.stop(at: const Duration(seconds: 10));
+    expect(repo.stopped.single.positionTicks, ticks(10));
   });
 }
 

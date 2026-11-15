@@ -7,11 +7,13 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:jellyfin_flutter/api/models/base_item_dto.dart';
 import 'package:jellyfin_flutter/api/models/base_item_dto_query_result.dart';
 import 'package:jellyfin_flutter/api/models/media_source_info.dart';
+import 'package:jellyfin_flutter/api/models/media_stream.dart';
 import 'package:jellyfin_flutter/api/models/playback_report.dart';
 import 'package:jellyfin_flutter/api/models/user_item_data_dto.dart';
 import 'package:jellyfin_flutter/app.dart';
 import 'package:jellyfin_flutter/core/failure.dart';
 import 'package:jellyfin_flutter/core/storage.dart';
+import 'package:jellyfin_flutter/core/window.dart';
 import 'package:jellyfin_flutter/features/auth/data/auth_repository.dart';
 import 'package:jellyfin_flutter/features/auth/data/session.dart';
 import 'package:jellyfin_flutter/features/auth/data/session_store.dart';
@@ -274,23 +276,80 @@ class FakePlaybackRepository implements PlaybackRepository {
   /// itemId → played, from [setPlayed].
   final played = <String, bool>{};
 
-  static Uri urlFor(String itemId) =>
-      Uri.parse('$testUrl/Videos/$itemId/stream?static=true');
+  static Uri urlFor(String itemId, {int attempt = 0}) =>
+      Uri.parse('$testUrl/Videos/$itemId/stream?static=true&attempt=$attempt');
+
+  /// The tracks of every plan, numbered like the Test Movie on a real
+  /// server: an external Portuguese .srt first, then the file's video,
+  /// two audio tracks and an English subtitle.
+  static const streams = [
+    MediaStream(
+      index: 0,
+      type: MediaStreamType.subtitle,
+      language: 'por',
+      displayTitle: 'Portuguese - SUBRIP - External',
+      isExternal: true,
+      deliveryMethod: SubtitleDeliveryMethod.external,
+      deliveryUrl: '/Videos/x/x/Subtitles/0/0/Stream.subrip?ApiKey=k',
+    ),
+    MediaStream(index: 1, type: MediaStreamType.video),
+    MediaStream(
+      index: 2,
+      type: MediaStreamType.audio,
+      language: 'eng',
+      displayTitle: 'English - AAC - Mono - Default',
+      isDefault: true,
+    ),
+    MediaStream(
+      index: 3,
+      type: MediaStreamType.audio,
+      language: 'por',
+      displayTitle: 'Português - Portuguese - AAC - Mono',
+    ),
+    MediaStream(
+      index: 4,
+      type: MediaStreamType.subtitle,
+      language: 'eng',
+      displayTitle: 'English - SUBRIP',
+      deliveryMethod: SubtitleDeliveryMethod.embed,
+    ),
+  ];
+
+  /// How plans play; set to transcode to test track changes that need a
+  /// new stream.
+  PlayMethod method = PlayMethod.directPlay;
+
+  /// Subtitle the server suggests (null: none).
+  int? defaultSubtitle;
+
+  /// (start, audio, subtitle) of every prepare() call.
+  final prepareCalls = <(Duration, int?, int?)>[];
 
   @override
   Future<PlaybackPlan> prepare(
     BaseItemDto item, {
     Duration start = Duration.zero,
+    int? audioStreamIndex,
+    int? subtitleStreamIndex,
   }) async {
     if (failures['prepare'] case final Failure f) throw f;
+    prepareCalls.add((start, audioStreamIndex, subtitleStreamIndex));
+    final subtitle = subtitleStreamIndex ?? defaultSubtitle;
     return PlaybackPlan(
       item: item,
-      source: MediaSourceInfo(id: item.id, supportsDirectPlay: true),
+      source: MediaSourceInfo(
+        id: item.id,
+        supportsDirectPlay: method != PlayMethod.transcode,
+        mediaStreams: streams,
+        defaultAudioStreamIndex: 2,
+      ),
       playSessionId: 'play-session',
-      method: PlayMethod.directPlay,
-      url: urlFor(item.id),
+      method: method,
+      url: urlFor(item.id, attempt: prepareCalls.length - 1),
       headers: const {'Authorization': 'MediaBrowser Token="token-1"'},
       start: start,
+      audioStreamIndex: audioStreamIndex ?? 2,
+      subtitleStreamIndex: subtitle == null || subtitle < 0 ? null : subtitle,
     );
   }
 
@@ -348,6 +407,7 @@ class FakePlayerEngine implements PlayerEngine {
   }) async {
     if (openError case final Object e) throw e;
     openedUrl = url;
+    opened.add(url);
     openedHeaders = headers;
     openedStart = start;
     position = start;
@@ -404,6 +464,59 @@ class FakePlayerEngine implements PlayerEngine {
   @override
   Stream<String> get errorStream => _error.stream;
 
+  /// Every track change, in order: `audio 2`, `subtitle no`, `add PATH`.
+  final trackLog = <String>[];
+
+  @override
+  EngineTrack audioTrack = (id: 'auto', language: null, title: null);
+  @override
+  EngineTrack subtitleTrack = (id: 'auto', language: null, title: null);
+
+  @override
+  Future<void> selectAudioTrack(String mpvId) async {
+    trackLog.add('audio $mpvId');
+    audioTrack = (id: mpvId, language: null, title: null);
+  }
+
+  @override
+  Future<void> selectSubtitleTrack(String mpvId) async {
+    trackLog.add('subtitle $mpvId');
+    subtitleTrack = (id: mpvId, language: null, title: null);
+  }
+
+  @override
+  Future<void> addSubtitle(Uri url, {String? title, String? language}) async {
+    trackLog.add('add ${url.path}');
+    subtitleTrack = (id: '$url', language: language, title: title);
+  }
+
+  @override
+  double volume = 100;
+  @override
+  bool muted = false;
+  final _volume = StreamController<double>.broadcast();
+  final _muted = StreamController<bool>.broadcast();
+
+  @override
+  Stream<double> get volumeStream => _volume.stream;
+  @override
+  Stream<bool> get mutedStream => _muted.stream;
+
+  @override
+  Future<void> setVolume(double v) async {
+    volume = v.clamp(0, 100).toDouble();
+    _volume.add(volume);
+  }
+
+  @override
+  Future<void> setMuted(bool m) async {
+    muted = m;
+    _muted.add(m);
+  }
+
+  /// URLs opened, in order (a transcode track change reopens).
+  final opened = <Uri>[];
+
   @override
   Widget buildVideo() => const ColoredBox(color: Color(0xFF000000));
 
@@ -416,7 +529,15 @@ class FakePlayerEngine implements PlayerEngine {
     await _buffering.close();
     await _completed.close();
     await _error.close();
+    await _volume.close();
+    await _muted.close();
   }
+}
+
+/// A window that only remembers whether it is full screen.
+class FakeAppWindow implements AppWindow {
+  @override
+  bool isFullScreen = false;
 }
 
 /// The app with fake server/auth repositories and an in-memory keyring.
@@ -429,6 +550,7 @@ class TestApp {
   final auth = FakeAuthRepository();
   final library = FakeLibraryRepository();
   final playback = FakePlaybackRepository();
+  final window = FakeAppWindow();
 
   /// Every engine the app made, last one = current playback.
   final engines = <FakePlayerEngine>[];
@@ -447,6 +569,7 @@ class TestApp {
     authRepositoryProvider.overrideWithValue(auth),
     libraryRepositoryProvider.overrideWithValue(library),
     playbackRepositoryProvider.overrideWithValue(playback),
+    appWindowProvider.overrideWithValue(window),
     playerEngineFactoryProvider.overrideWithValue(() {
       final engine = FakePlayerEngine();
       engines.add(engine);

@@ -8,6 +8,16 @@ import '../../../core/ticks.dart';
 import '../data/playback_plan.dart';
 import '../data/playback_repository.dart';
 
+/// Where a playback is, as the reports tell it.
+typedef PlaybackStatus = ({
+  Duration position,
+  bool paused,
+  int? audioStreamIndex,
+  int? subtitleStreamIndex,
+  double volume,
+  bool muted,
+});
+
 /// Tells the server how one playback goes: started, where it is every
 /// [interval] and at every pause / resume, and where it stopped (the
 /// resume point). A failed report is logged and dropped: it must never
@@ -16,15 +26,15 @@ class PlaybackReporter {
   PlaybackReporter(
     this._repository,
     this._plan, {
-    required this.position,
-    required this.paused,
+    required this.status,
     this.interval = const Duration(seconds: 10),
   });
 
   final PlaybackRepository _repository;
   final PlaybackPlan _plan;
-  final Duration Function() position;
-  final bool Function() paused;
+
+  /// Read at each report.
+  final PlaybackStatus Function() status;
   final Duration interval;
 
   Timer? _timer;
@@ -44,33 +54,42 @@ class PlaybackReporter {
     await _send(_repository.reportProgress(_progress()));
   }
 
-  /// Reports the stop once; later calls wait for that same report.
-  Future<void> stop({bool failed = false}) => _stopped ??= () async {
-    _timer?.cancel();
-    if (!_started) return;
-    await _send(
-      _repository.reportStopped(
-        PlaybackStopInfo(
-          itemId: _plan.item.id,
-          mediaSourceId: _plan.source.id,
-          playSessionId: _plan.playSessionId,
-          positionTicks: durationToTicks(position()),
-          failed: failed,
-        ),
-      ),
-    );
-  }();
+  /// Reports the stop once; later calls wait for that same report. [at]
+  /// overrides the position: at the end of the media it is the length,
+  /// since the player's own position may already have moved on.
+  Future<void> stop({bool failed = false, Duration? at}) =>
+      _stopped ??= () async {
+        _timer?.cancel();
+        if (!_started) return;
+        await _send(
+          _repository.reportStopped(
+            PlaybackStopInfo(
+              itemId: _plan.item.id,
+              mediaSourceId: _plan.source.id,
+              playSessionId: _plan.playSessionId,
+              positionTicks: durationToTicks(at ?? status().position),
+              failed: failed,
+            ),
+          ),
+        );
+      }();
 
-  PlaybackProgressInfo _progress() => PlaybackProgressInfo(
-    itemId: _plan.item.id,
-    mediaSourceId: _plan.source.id,
-    playSessionId: _plan.playSessionId,
-    positionTicks: durationToTicks(position()),
-    isPaused: paused(),
-    playMethod: _plan.method,
-    audioStreamIndex: _plan.audioStreamIndex,
-    subtitleStreamIndex: _plan.subtitleStreamIndex,
-  );
+  PlaybackProgressInfo _progress() {
+    final now = status();
+    return PlaybackProgressInfo(
+      itemId: _plan.item.id,
+      mediaSourceId: _plan.source.id,
+      playSessionId: _plan.playSessionId,
+      positionTicks: durationToTicks(now.position),
+      isPaused: now.paused,
+      isMuted: now.muted,
+      volumeLevel: now.volume.round(),
+      playMethod: _plan.method,
+      audioStreamIndex: now.audioStreamIndex,
+      // The server's "none" is -1.
+      subtitleStreamIndex: now.subtitleStreamIndex ?? -1,
+    );
+  }
 
   Future<void> _send(Future<void> report) async {
     try {

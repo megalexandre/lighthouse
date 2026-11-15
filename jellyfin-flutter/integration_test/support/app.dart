@@ -2,8 +2,18 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:jellyfin_flutter/app.dart';
 import 'package:jellyfin_flutter/core/storage.dart';
+import 'package:jellyfin_flutter/core/window.dart';
 import 'package:jellyfin_flutter/features/player/data/player_engine.dart';
 import 'package:material_ui/material_ui.dart';
+
+/// Stands in for the window: Xvfb has no window manager to go full
+/// screen with.
+class TestWindow implements AppWindow {
+  @override
+  bool isFullScreen = false;
+}
+
+final window = TestWindow();
 
 /// Starts the app (or restarts it: new providers, same [store]). Only the
 /// keyring is swapped for [store], so tests never touch the desktop's
@@ -19,6 +29,7 @@ Future<void> launch(WidgetTester tester, MemoryKeyValueStore store) =>
           playerOptionsProvider.overrideWithValue(
             const PlayerOptions(hardwareDecoding: false, audio: false),
           ),
+          appWindowProvider.overrideWithValue(window),
         ],
         child: const JellyfinApp(),
       ),

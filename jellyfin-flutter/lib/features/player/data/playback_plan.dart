@@ -55,12 +55,15 @@ class PlaybackPlan {
 /// Picks how to play [item] from the server's [response]: direct play
 /// when the server allows it (the usual case, mpv plays nearly anything),
 /// else the server's transcode. Throws [NotPlayable] when neither works.
+/// [subtitleStreamIndex] -1 asks for no subtitle.
 PlaybackPlan planPlayback(
   BaseItemDto item,
   PlaybackInfoResponse response, {
   required String baseUrl,
   required String authorization,
   Duration start = Duration.zero,
+  int? audioStreamIndex,
+  int? subtitleStreamIndex,
 }) {
   if (response.errorCode case final String code) throw NotPlayable(code);
   if (response.mediaSources.isEmpty) throw const NotPlayable('no source');
@@ -82,7 +85,9 @@ PlaybackPlan planPlayback(
     _ => throw const NotPlayable('no compatible stream'),
   };
 
-  final subtitle = source.defaultSubtitleStreamIndex;
+  // Asked for, else the server's default (which follows the user's
+  // language preferences).
+  final subtitle = subtitleStreamIndex ?? source.defaultSubtitleStreamIndex;
   return PlaybackPlan(
     item: item,
     source: source,
@@ -91,7 +96,7 @@ PlaybackPlan planPlayback(
     url: url,
     headers: {'Authorization': authorization},
     start: start,
-    audioStreamIndex: source.defaultAudioStreamIndex,
+    audioStreamIndex: audioStreamIndex ?? source.defaultAudioStreamIndex,
     // -1 is the server's "none".
     subtitleStreamIndex: subtitle == null || subtitle < 0 ? null : subtitle,
   );

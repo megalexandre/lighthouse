@@ -17,8 +17,14 @@ import 'playback_plan.dart';
 /// Starting playback and telling the server how it goes. Every method
 /// throws a [Failure].
 abstract interface class PlaybackRepository {
-  /// Asks the server how to play [item] and picks the stream.
-  Future<PlaybackPlan> prepare(BaseItemDto item, {Duration start});
+  /// Asks the server how to play [item] and picks the stream, with the
+  /// given tracks (server indexes; subtitle -1 = none) or the defaults.
+  Future<PlaybackPlan> prepare(
+    BaseItemDto item, {
+    Duration start,
+    int? audioStreamIndex,
+    int? subtitleStreamIndex,
+  });
 
   Future<void> reportStart(PlaybackProgressInfo info);
   Future<void> reportProgress(PlaybackProgressInfo info);
@@ -62,6 +68,8 @@ class JellyfinPlaybackRepository implements PlaybackRepository {
   Future<PlaybackPlan> prepare(
     BaseItemDto item, {
     Duration start = Duration.zero,
+    int? audioStreamIndex,
+    int? subtitleStreamIndex,
   }) => _client.call((api) async {
     final response = await api.playbackInfo(
       item.id,
@@ -69,6 +77,8 @@ class JellyfinPlaybackRepository implements PlaybackRepository {
         userId: _client.userId,
         deviceProfile: appDeviceProfile(),
         startTimeTicks: start.inMicroseconds * 10,
+        audioStreamIndex: audioStreamIndex,
+        subtitleStreamIndex: subtitleStreamIndex,
       ),
     );
     return planPlayback(
@@ -77,6 +87,8 @@ class JellyfinPlaybackRepository implements PlaybackRepository {
       baseUrl: _client.baseUrl,
       authorization: api.client.authorizationHeader(token: api.token),
       start: start,
+      audioStreamIndex: audioStreamIndex,
+      subtitleStreamIndex: subtitleStreamIndex,
     );
   });
 
@@ -108,8 +120,12 @@ class SignedOutPlaybackRepository implements PlaybackRepository {
   Future<T> _fail<T>() => Future.error(const Unauthorized());
 
   @override
-  Future<PlaybackPlan> prepare(BaseItemDto item, {Duration start = .zero}) =>
-      _fail();
+  Future<PlaybackPlan> prepare(
+    BaseItemDto item, {
+    Duration start = .zero,
+    int? audioStreamIndex,
+    int? subtitleStreamIndex,
+  }) => _fail();
 
   @override
   Future<void> reportStart(PlaybackProgressInfo info) => _fail();
