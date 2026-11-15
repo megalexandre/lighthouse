@@ -24,7 +24,7 @@ Everything else (Flutter, libmpv, a Jellyfin server) lives in containers.
  ┌─────────────────────────────────────────────────────────────┐
  │ container "jellyfin"  (official image 12.4)                 │
  │   http://jellyfin:8096   (host: http://localhost:8096)      │
- │   /media  ← jellyfin-desktop/resources/testmedia (read-only)│
+ │   /media  ← jellyfin-flutter/fixtures/media (read-only)     │
  └─────────────────────────────────────────────────────────────┘
  ┌─────────────────────────────────────────────────────────────┐
  │ container "jellyfin-test"  (same image, settings in memory) │
@@ -41,7 +41,8 @@ Everything else (Flutter, libmpv, a Jellyfin server) lives in containers.
   the server source is mounted read-only on top of it.
 - **jellyfin**: a real server for the app to talk to. Inside the compose
   network its hostname is `jellyfin`; from the host it is `localhost:8096`.
-  Its library is the test media shipped in the desktop repository.
+  Its library is the generated fixtures in `jellyfin-flutter/fixtures/media`
+  (two movies, a three-episode show, an album), the same as the test server.
 - **jellyfin-test**: a second server, only for the automated tests. It
   keeps nothing between restarts; the tests run its setup wizard and
   create its libraries. Don't use it by hand: see
@@ -63,10 +64,15 @@ Everything else (Flutter, libmpv, a Jellyfin server) lives in containers.
 1. Open the workspace root (the folder holding `jellyfin/` and
    `jellyfin-desktop/`) in VS Code and choose **Reopen in Container**.
    The first build downloads Flutter and takes a few minutes.
-2. Open <http://localhost:8096> in your browser and finish the setup wizard.
-3. Add a library pointing to `/media`.
-4. In the container terminal, check the server answers:
-   `curl $JELLYFIN_URL/System/Info/Public`
+2. In the container terminal, set up the dev server:
+   `bash jellyfin-flutter/tool/dev_server.sh`. It finishes the setup wizard
+   (user `dev`, password `dev`) and creates the Movies, Shows and Music
+   libraries. The launch config "Jellyfin Flutter (dev server)" runs it too.
+   You can also do it by hand at <http://localhost:8096>.
+3. To start the dev server from scratch (new libraries, no users), on the
+   host: `docker compose -p jellyfin-dev down`, then
+   `docker volume rm jellyfin-dev_jellyfin-config jellyfin-dev_jellyfin-cache`,
+   then **Rebuild Container**.
 
 ## Building from the command line
 
