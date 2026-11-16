@@ -1,15 +1,73 @@
 {
   // Tasks for jellyfin-flutter/. Run with "Tasks: Run Task", or as a
-  // preLaunchTask from launch.json.
+  // preLaunchTask from launch.json. Ctrl+Shift+B lists the build tasks
+  // (release build, AppImage, generated code).
   "version": "2.0.0",
+  "options": { "cwd": "${workspaceFolder}/jellyfin-flutter" },
   "tasks": [
+    {
+      // The release app: build/linux/x64/release/bundle/jellyfin_flutter.
+      "label": "jellyfin-flutter: build (release)",
+      "type": "shell",
+      "command": "flutter build linux --release",
+      "group": "build",
+      "problemMatcher": [],
+      "presentation": { "reveal": "always", "panel": "dedicated", "clear": true }
+    },
+    {
+      // Build, then pack it as build/JellyfinFlutter-<version>-x86_64.AppImage
+      // (see jellyfin-flutter/tool/build_appimage.sh).
+      "label": "jellyfin-flutter: AppImage",
+      "type": "shell",
+      "command": "tool/build_appimage.sh",
+      "group": "build",
+      "problemMatcher": [],
+      "presentation": { "reveal": "always", "panel": "dedicated", "clear": true }
+    },
+    {
+      // Regenerates the freezed / json_serializable files after a model change.
+      "label": "jellyfin-flutter: generate code",
+      "type": "shell",
+      "command": "dart run build_runner build --delete-conflicting-outputs",
+      "group": "build",
+      "problemMatcher": [],
+      "presentation": { "reveal": "always", "panel": "dedicated", "clear": true }
+    },
+    {
+      // Everything: format, analyze, unit / widget, server and integration
+      // tests (see jellyfin-flutter/tool/check.sh).
+      "label": "jellyfin-flutter: check (all tests)",
+      "type": "shell",
+      "command": "tool/check.sh",
+      "group": { "kind": "test", "isDefault": true },
+      "problemMatcher": [],
+      "presentation": { "reveal": "always", "panel": "dedicated", "clear": true }
+    },
+    {
+      // Unit and widget tests only: fast, no server needed.
+      "label": "jellyfin-flutter: unit tests",
+      "type": "shell",
+      "command": "flutter test --exclude-tags server",
+      "group": "test",
+      "problemMatcher": [],
+      "presentation": { "reveal": "always", "panel": "dedicated", "clear": true }
+    },
+    {
+      // Integration tests on the release-like (AOT) build, headless.
+      "label": "jellyfin-flutter: integration tests (profile)",
+      "type": "shell",
+      "command": "tool/profile_test.sh",
+      "group": "test",
+      "problemMatcher": [],
+      "presentation": { "reveal": "always", "panel": "dedicated", "clear": true }
+    },
     {
       // Waits for the dev server and finishes its setup if it was never
       // done (user dev / dev, libraries over /media). Changes nothing on an
       // already set-up server. See jellyfin-flutter/tool/dev_server.sh.
       "label": "jellyfin-flutter: prepare dev server",
       "type": "shell",
-      "command": "${workspaceFolder}/jellyfin-flutter/tool/dev_server.sh",
+      "command": "tool/dev_server.sh",
       "problemMatcher": [],
       "presentation": { "reveal": "silent", "panel": "dedicated", "clear": true }
     }
