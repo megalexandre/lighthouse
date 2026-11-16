@@ -3,6 +3,8 @@ import 'dart:typed_data';
 
 import 'package:archive/archive.dart';
 
+import 'epub/epub_book.dart';
+
 /// What kind of book a file is, told by its content (the server's names
 /// and types vary; the bytes do not).
 enum BookFormat {
@@ -39,22 +41,31 @@ HeadFormat headFormat(Uint8List head) {
   return HeadFormat.unknown;
 }
 
-/// What a zip book holds: [BookFormat.epub], [BookFormat.comic] with its
-/// page images in reading order, or [BookFormat.unknown] (no images, or
-/// not a readable zip). Plain data, so it can come back from an isolate.
-typedef ZipBook = ({BookFormat format, List<Uint8List> pages});
+/// What a zip book holds: [BookFormat.epub] with its content ([epub]; null
+/// when it cannot be read), [BookFormat.comic] with its page images in
+/// reading order, or [BookFormat.unknown] (no images, or not a readable
+/// zip). Plain data, so it can come back from an isolate.
+typedef ZipBook = ({BookFormat format, List<Uint8List> pages, EpubBook? epub});
 
 ZipBook readZipBook(Uint8List bytes) {
-  const none = (format: BookFormat.unknown, pages: <Uint8List>[]);
+  const none = (format: BookFormat.unknown, pages: <Uint8List>[], epub: null);
   try {
     final zip = ZipDecoder().decodeBytes(bytes);
     final mimetype = zip.findFile('mimetype');
     if (mimetype != null &&
         utf8.decode(mimetype.content).trim() == 'application/epub+zip') {
-      return (format: BookFormat.epub, pages: <Uint8List>[]);
+      EpubBook? epub;
+      try {
+        epub = EpubBook.read(zip);
+      } on Object {
+        // An EPUB, but a broken one.
+      }
+      return (format: BookFormat.epub, pages: <Uint8List>[], epub: epub);
     }
     final pages = [for (final f in comicPages(zip)) f.content];
-    return pages.isEmpty ? none : (format: BookFormat.comic, pages: pages);
+    return pages.isEmpty
+        ? none
+        : (format: BookFormat.comic, pages: pages, epub: null);
   } on Object {
     return none;
   }

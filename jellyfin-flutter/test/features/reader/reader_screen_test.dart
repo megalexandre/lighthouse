@@ -154,9 +154,60 @@ void main() {
     expect(app.books.saved, [(comic.id, 10000)]);
   });
 
-  testWidgets('an EPUB says it cannot be read yet', (tester) async {
-    await app.open(tester, Routes.read(TestItems.testNovel.id));
-    expect(find.text(const NotReadable('EPUB').message), findsOneWidget);
+  group('EPUB', () {
+    final novel = TestItems.testNovel;
+
+    testWidgets('laid out for the sheet: a page per chapter, turned like '
+        'the others; the place saved as the fraction read', (tester) async {
+      await app.open(tester, Routes.read(novel.id));
+      expect(pageText(tester), 'Page 1 of 3');
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+      await tester.pumpAndSettle();
+      expect(pageText(tester), 'Page 2 of 3');
+      await wait(tester);
+      // 12.4 keeps an EPUB's place as a fraction of 10^7 ticks.
+      final (id, position) = app.books.saved.single;
+      expect(id, novel.id);
+      expect(position, inExclusiveRange(0, novel.runTimeTicks!));
+
+      // Opened again: there.
+      await tester.tap(find.byKey(ReaderScreen.backButton));
+      await tester.pumpAndSettle();
+      app.library.books = [
+        novel.copyWith(
+          userData: UserItemDataDto(playbackPositionTicks: position),
+        ),
+      ];
+      await app.open(tester, Routes.read(novel.id));
+      expect(pageText(tester), 'Page 2 of 3');
+    });
+
+    testWidgets('halfway through the book: opens on the middle chapter', (
+      tester,
+    ) async {
+      app.library.books = [
+        novel.copyWith(
+          userData: const UserItemDataDto(playbackPositionTicks: 5000000),
+        ),
+      ];
+      await app.open(tester, Routes.read(novel.id));
+      expect(pageText(tester), 'Page 2 of 3');
+    });
+
+    testWidgets('the window changes size: laid out again, same place', (
+      tester,
+    ) async {
+      await app.open(tester, Routes.read(novel.id));
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+      await tester.pumpAndSettle();
+      final before = tester.getSize(find.byKey(ReaderScreen.pages));
+
+      tester.view.physicalSize = const Size(900, 1400);
+      addTearDown(tester.view.resetPhysicalSize);
+      await tester.pumpAndSettle();
+      expect(tester.getSize(find.byKey(ReaderScreen.pages)), isNot(before));
+      expect(pageText(tester), 'Page 2 of 3');
+    });
   });
 
   testWidgets('a download that fails can be retried', (tester) async {

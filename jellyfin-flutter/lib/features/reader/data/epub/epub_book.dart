@@ -1,0 +1,418 @@
+import 'dart:convert';
+import 'dart:typed_data';
+
+import 'package:archive/archive.dart';
+import 'package:html/dom.dart' as dom;
+import 'package:html/parser.dart' as html;
+import 'package:xml/xml.dart';
+
+/// An EPUB's content, ready to lay out: its chapters in reading order, each
+/// a list of blocks, and the images they show. Plain data, so it can be
+/// built in another isolate and sent back.
+///
+/// Only what reads well as a paged book is kept: paragraphs, headings,
+/// quotes, lists, preformatted text, images, rules, and bold / italic /
+/// monospace inside text. Publisher CSS is left out (text-align: center
+/// excepted): the reader sets the type.
+class EpubBook {
+  const EpubBook({this.title, required this.chapters, required this.images});
+
+  final String? title;
+  final List<EpubChapter> chapters;
+
+  /// Encoded images (PNG, JPEG...), by their path in the zip.
+  final Map<String, Uint8List> images;
+
+  /// Reads the EPUB in [zip]. Throws [FormatException] when it is not one
+  /// (no container, no package, no readable chapter).
+  factory EpubBook.read(Archive zip) {
+    final container = _text(zip, 'META-INF/container.xml');
+    if (container == null) throw const FormatException('no container.xml');
+    final opfPath = XmlDocument.parse(container)
+        .findAllElements('rootfile', namespaceUri: '*')
+        .map((e) => e.getAttribute('full-path'))
+        .nonNulls
+        .firstOrNull;
+    final opfText = opfPath == null ? null : _text(zip, opfPath);
+    if (opfPath == null || opfText == null) {
+      throw const FormatException('no package document');
+    }
+    final opf = XmlDocument.parse(opfText);
+    final base = _directory(opfPath);
+
+    final manifest = <String, ({String path, String type})>{
+      for (final item in opf.findAllElements('item', namespaceUri: '*'))
+        if (item.getAttribute('id') case final id?)
+          if (item.getAttribute('href') case final href?)
+            id: (
+              path: _resolve(base, href),
+              type: item.getAttribute('media-type') ?? '',
+            ),
+    };
+    final title = opf
+        .findAllElements('title', namespaceUri: '*')
+        .map((e) => e.innerText.trim())
+        .where((t) => t.isNotEmpty)
+        .firstOrNull;
+
+    final images = <String, Uint8List>{};
+    final chapters = <EpubChapter>[];
+    for (final ref in opf.findAllElements('itemref', namespaceUri: '*')) {
+      if (ref.getAttribute('linear') == 'no') continue;
+      final item = manifest[ref.getAttribute('idref')];
+      if (item == null || !item.type.contains('html')) continue;
+      final source = _text(zip, item.path);
+      if (source == null) continue;
+      final blocks = chapterBlocks(source, _directory(item.path));
+      for (final block in blocks) {
+        if (block is ImageBlock && !images.containsKey(block.path)) {
+          final bytes = zip.findFile(block.path)?.content;
+          if (bytes != null) images[block.path] = bytes;
+        }
+      }
+      final shown = [
+        for (final b in blocks)
+          if (b is! ImageBlock || images.containsKey(b.path)) b,
+      ];
+      if (shown.isNotEmpty) {
+        chapters.add(EpubChapter(path: item.path, blocks: shown));
+      }
+    }
+    if (chapters.isEmpty) throw const FormatException('no readable chapter');
+    return EpubBook(title: title, chapters: chapters, images: images);
+  }
+}
+
+class EpubChapter {
+  const EpubChapter({required this.path, required this.blocks});
+
+  final String path;
+  final List<EpubBlock> blocks;
+}
+
+sealed class EpubBlock {
+  const EpubBlock();
+}
+
+enum TextKind { paragraph, heading, quote, listItem, preformatted }
+
+/// A run of text laid out as one paragraph.
+final class TextBlock extends EpubBlock {
+  const TextBlock(
+    this.runs, {
+    this.kind = TextKind.paragraph,
+    this.level = 0,
+    this.centered = false,
+    this.indent = 0,
+    this.marker,
+  });
+
+  final List<TextRun> runs;
+  final TextKind kind;
+
+  /// Heading level, 1 to 6 (0 for other kinds).
+  final int level;
+  final bool centered;
+
+  /// How deep in quotes and lists (each level indents the text).
+  final int indent;
+
+  /// A list item's bullet or number ("•", "3.").
+  final String? marker;
+
+  String get text => runs.map((r) => r.text).join();
+}
+
+/// Text in one style.
+final class TextRun {
+  const TextRun(
+    this.text, {
+    this.bold = false,
+    this.italic = false,
+    this.mono = false,
+  });
+
+  final String text;
+  final bool bold;
+  final bool italic;
+  final bool mono;
+
+  @override
+  String toString() =>
+      [if (bold) 'b', if (italic) 'i', if (mono) 'm', '"$text"'].join(':');
+}
+
+/// An image on its own line ([path]: its path in the zip).
+final class ImageBlock extends EpubBlock {
+  const ImageBlock(this.path);
+
+  final String path;
+}
+
+/// A horizontal rule (a scene break).
+final class RuleBlock extends EpubBlock {
+  const RuleBlock();
+}
+
+/// The blocks of a chapter's (X)HTML [source], whose own folder in the zip
+/// is [base] (image paths are relative to it). Parsed as a browser would:
+/// unclosed tags and stray markup do not stop it.
+List<EpubBlock> chapterBlocks(String source, String base) {
+  final body = html.parse(source).body;
+  if (body == null) return const [];
+  final builder = _BlockBuilder(base);
+  builder.walk(body, const _Style());
+  builder.flush(const _Style());
+  return builder.blocks;
+}
+
+/// The inherited style while walking the tree.
+class _Style {
+  const _Style({
+    this.bold = false,
+    this.italic = false,
+    this.mono = false,
+    this.pre = false,
+    this.centered = false,
+    this.kind = TextKind.paragraph,
+    this.level = 0,
+    this.indent = 0,
+    this.marker,
+  });
+
+  final bool bold;
+  final bool italic;
+  final bool mono;
+  final bool pre;
+  final bool centered;
+  final TextKind kind;
+  final int level;
+  final int indent;
+  final String? marker;
+
+  _Style copyWith({
+    bool? bold,
+    bool? italic,
+    bool? mono,
+    bool? pre,
+    bool? centered,
+    TextKind? kind,
+    int? level,
+    int? indent,
+    String? Function()? marker,
+  }) => _Style(
+    bold: bold ?? this.bold,
+    italic: italic ?? this.italic,
+    mono: mono ?? this.mono,
+    pre: pre ?? this.pre,
+    centered: centered ?? this.centered,
+    kind: kind ?? this.kind,
+    level: level ?? this.level,
+    indent: indent ?? this.indent,
+    marker: marker == null ? this.marker : marker(),
+  );
+}
+
+const _skipped = {'head', 'script', 'style', 'title', 'template', 'noscript'};
+
+const _blockTags = {
+  'p', 'div', 'section', 'article', 'header', 'footer', 'main', 'aside', //
+  'nav', 'figure', 'figcaption', 'address', 'dl', 'dt', 'dd', 'table',
+  'thead', 'tbody', 'tfoot', 'tr', 'td', 'th', 'caption', 'center', 'body',
+  'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'blockquote', 'pre', 'ul', 'ol', 'li',
+};
+
+class _BlockBuilder {
+  _BlockBuilder(this.base);
+
+  final String base;
+  final blocks = <EpubBlock>[];
+  final _runs = <TextRun>[];
+
+  /// The block style of the text gathered in [_runs].
+  _Style? _blockStyle;
+
+  void walk(dom.Node node, _Style style) {
+    for (final child in node.nodes) {
+      switch (child) {
+        case dom.Text(:final data):
+          _addText(data, style);
+        case dom.Element():
+          _element(child, style);
+      }
+    }
+  }
+
+  void _element(dom.Element e, _Style style) {
+    final tag = e.localName?.toLowerCase() ?? '';
+    if (_skipped.contains(tag) || e.attributes['hidden'] != null) return;
+    switch (tag) {
+      case 'br':
+        _addText('\n', style.copyWith(pre: true));
+        return;
+      case 'hr':
+        flush(style);
+        blocks.add(const RuleBlock());
+        return;
+      case 'img' || 'image':
+        final src =
+            e.attributes['src'] ??
+            e.attributes['xlink:href'] ??
+            e.attributes['href'];
+        if (src != null && !src.startsWith('data:')) {
+          flush(style);
+          blocks.add(ImageBlock(_resolve(base, src)));
+        }
+        return;
+    }
+
+    var inner = style;
+    final css = (e.attributes['style'] ?? '').replaceAll(' ', '').toLowerCase();
+    final classes = (e.attributes['class'] ?? '').toLowerCase();
+    if (tag == 'center' ||
+        css.contains('text-align:center') ||
+        RegExp(r'\b(center|centered|centre)\b').hasMatch(classes)) {
+      inner = inner.copyWith(centered: true);
+    }
+    if (css.contains('font-style:italic')) inner = inner.copyWith(italic: true);
+    if (css.contains('font-weight:bold')) inner = inner.copyWith(bold: true);
+
+    switch (tag) {
+      case 'b' || 'strong':
+        inner = inner.copyWith(bold: true);
+      case 'i' || 'em' || 'cite' || 'dfn' || 'var':
+        inner = inner.copyWith(italic: true);
+      case 'code' || 'kbd' || 'samp' || 'tt':
+        inner = inner.copyWith(mono: true);
+      case 'h1' || 'h2' || 'h3' || 'h4' || 'h5' || 'h6':
+        inner = inner.copyWith(
+          kind: TextKind.heading,
+          level: int.parse(tag.substring(1)),
+          bold: true,
+        );
+      case 'blockquote':
+        inner = inner.copyWith(kind: TextKind.quote, indent: style.indent + 1);
+      case 'pre':
+        inner = inner.copyWith(
+          kind: TextKind.preformatted,
+          pre: true,
+          mono: true,
+        );
+      case 'ul' || 'ol':
+        inner = inner.copyWith(indent: style.indent + 1);
+    }
+
+    if (!_blockTags.contains(tag)) {
+      walk(e, inner);
+      return;
+    }
+    flush(style);
+    if (tag == 'ul' || tag == 'ol') {
+      var number = int.tryParse(e.attributes['start'] ?? '') ?? 1;
+      for (final child in e.nodes) {
+        if (child is dom.Element && child.localName == 'li') {
+          final marker = tag == 'ol' ? '${number++}.' : '•';
+          _element(
+            child,
+            inner.copyWith(kind: TextKind.listItem, marker: () => marker),
+          );
+        } else {
+          walk(dom.DocumentFragment()..append(child.clone(true)), inner);
+        }
+      }
+    } else {
+      walk(e, inner);
+    }
+    flush(inner);
+  }
+
+  void _addText(String data, _Style style) {
+    var text = data;
+    if (!style.pre) {
+      text = text.replaceAll(RegExp(r'\s+'), ' ');
+      // One space between words, whatever the markup between them.
+      final last = _runs.lastOrNull?.text;
+      if (text.startsWith(' ') &&
+          (last == null || last.endsWith(' ') || last.endsWith('\n'))) {
+        text = text.substring(1);
+      }
+    }
+    if (text.isEmpty) return;
+    _blockStyle ??= style;
+    _runs.add(
+      TextRun(text, bold: style.bold, italic: style.italic, mono: style.mono),
+    );
+  }
+
+  /// Ends the paragraph gathered so far.
+  void flush(_Style style) {
+    if (_runs.isEmpty) return;
+    final block = _blockStyle ?? style;
+    final runs = [..._runs];
+    _runs.clear();
+    _blockStyle = null;
+    // No space or line break at either end of a paragraph.
+    while (runs.isNotEmpty) {
+      final trimmed = runs.first.text.trimLeft();
+      if (trimmed.isNotEmpty) {
+        runs.first = _withText(runs.first, trimmed);
+        break;
+      }
+      runs.removeAt(0);
+    }
+    while (runs.isNotEmpty) {
+      final trimmed = runs.last.text.trimRight();
+      if (trimmed.isNotEmpty) {
+        runs.last = _withText(runs.last, trimmed);
+        break;
+      }
+      runs.removeLast();
+    }
+    if (runs.isEmpty) return;
+    blocks.add(
+      TextBlock(
+        runs,
+        kind: block.kind,
+        level: block.level,
+        centered: block.centered,
+        indent: block.indent,
+        marker: block.marker,
+      ),
+    );
+  }
+
+  TextRun _withText(TextRun r, String text) =>
+      TextRun(text, bold: r.bold, italic: r.italic, mono: r.mono);
+}
+
+String? _text(Archive zip, String path) {
+  final file = zip.findFile(path);
+  if (file == null) return null;
+  return utf8.decode(file.content, allowMalformed: true);
+}
+
+String _directory(String path) {
+  final slash = path.lastIndexOf('/');
+  return slash < 0 ? '' : path.substring(0, slash + 1);
+}
+
+/// [href] (relative, maybe %-encoded, maybe with a #fragment) as a path in
+/// the zip, from the folder [base].
+String _resolve(String base, String href) {
+  var path = href.split('#').first.split('?').first;
+  try {
+    path = Uri.decodeFull(path);
+  } on ArgumentError {
+    // Not %-encoded after all.
+  }
+  final parts = <String>[];
+  for (final part in (path.startsWith('/') ? path : '$base$path').split('/')) {
+    if (part.isEmpty || part == '.') continue;
+    if (part == '..') {
+      if (parts.isNotEmpty) parts.removeLast();
+    } else {
+      parts.add(part);
+    }
+  }
+  return parts.join('/');
+}

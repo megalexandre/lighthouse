@@ -33,6 +33,7 @@ class PageCurlView extends ConsumerStatefulWidget {
     required this.sheetImage,
     required this.onTurned,
     this.paper = const Color(0xFFFFFFFF),
+    this.layoutVersion = 0,
   });
 
   final int pageCount;
@@ -45,6 +46,10 @@ class PageCurlView extends ConsumerStatefulWidget {
   /// A turn finished: [page] is now the one to show.
   final ValueChanged<int> onTurned;
   final Color paper;
+
+  /// Changes when the pages do (an EPUB laid out again): the pictures of
+  /// the old ones are dropped, and a turn in progress ends where it is.
+  final int layoutVersion;
 
   @override
   PageCurlViewState createState() => PageCurlViewState();
@@ -108,6 +113,16 @@ class PageCurlViewState extends ConsumerState<PageCurlView>
   @override
   void didUpdateWidget(PageCurlView oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (widget.layoutVersion != oldWidget.layoutVersion) {
+      _settle.stop();
+      _settleTo = null;
+      _turn = null;
+      _dragStart = null;
+      _turnedTo = null;
+      _dropImages();
+      _imagesSize = null;
+      return;
+    }
     if (widget.page != oldWidget.page || widget.page == _turnedTo) {
       _turnedTo = null;
     }
@@ -151,11 +166,14 @@ class PageCurlViewState extends ConsumerState<PageCurlView>
     if (_images.containsKey(index) || _loading.contains(index)) return;
     _loading.add(index);
     final size = _size;
+    final version = widget.layoutVersion;
     final ratio = MediaQuery.devicePixelRatioOf(context);
     unawaited(
       widget.sheetImage(index, size, ratio).then((image) {
         _loading.remove(index);
-        if (!mounted || _imagesSize != size) {
+        if (!mounted ||
+            _imagesSize != size ||
+            widget.layoutVersion != version) {
           image.dispose();
           return;
         }

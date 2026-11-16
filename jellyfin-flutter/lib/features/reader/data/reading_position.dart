@@ -22,3 +22,26 @@ int pageForPosition(int positionTicks, int pageCount, int? runTimeTicks) {
       : (positionTicks * pageCount / runTimeTicks).round();
   return page.clamp(0, pageCount - 1);
 }
+
+/// The position of [fraction] of a book (see [BookDocument.fractionOf]):
+/// for a PDF or a comic the same as [positionForPage] gives for its page;
+/// an EPUB's length is 10^7, so its position is the fraction read.
+/// Without a length, [pageCount] pages at [ticksPerPage].
+int positionForFraction(double fraction, int pageCount, int? runTimeTicks) {
+  if (runTimeTicks == null || runTimeTicks <= 0) {
+    return (fraction * pageCount).round() * ticksPerPage;
+  }
+  return (fraction * runTimeTicks).round();
+}
+
+/// How far into the book a saved [positionTicks] is, from 0 to 1.
+double fractionForPosition(
+  int positionTicks,
+  int pageCount,
+  int? runTimeTicks,
+) {
+  final fraction = runTimeTicks == null || runTimeTicks <= 0
+      ? (pageCount <= 0 ? 0.0 : positionTicks / ticksPerPage / pageCount)
+      : positionTicks / runTimeTicks;
+  return fraction.clamp(0.0, 1.0);
+}

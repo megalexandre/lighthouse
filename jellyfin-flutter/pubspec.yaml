@@ -25,6 +25,10 @@ dependencies:
   # Pinned: versions with a few weeks of use behind them.
   pdfrx: 2.11.0
   archive: 4.6.0
+  # EPUB: the package files (container.xml, the OPF) are strict XML; the
+  # chapters are parsed leniently, as browsers do (real books are sloppy).
+  xml: 7.1.0
+  html: 0.15.7
   # Where downloaded books are cached.
   path_provider: ^2.1.6
   window_manager: ^0.7.0

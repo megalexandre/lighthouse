@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:ui' show Size;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -50,7 +51,10 @@ class ReaderController extends AsyncNotifier<ReaderSession> {
   static const saveDelay = Duration(seconds: 1);
 
   Timer? _saveTimer;
-  int? _unsavedPage;
+
+  /// The place to save, taken when the page was turned to (an EPUB's page
+  /// numbers change with the window; its place does not).
+  ({int position, bool last})? _unsaved;
   bool _markedRead = false;
   ReaderSession? _session;
   late final BookRepository _books = ref.read(bookRepositoryProvider);
@@ -66,22 +70,56 @@ class ReaderController extends AsyncNotifier<ReaderSession> {
       throw const NotReadable('a book closed while opening');
     }
     final data = item.userData;
-    final start = (data?.played ?? false)
-        ? 0
-        : pageForPosition(
+    final fraction = (data?.played ?? false)
+        ? 0.0
+        : fractionForPosition(
             data?.playbackPositionTicks ?? 0,
             document.pageCount,
             item.runTimeTicks,
           );
+    // An EPUB has no pages yet: it opens there once laid out.
+    if (document.reflowable) _openAt = fraction;
+    final start = document.pageAt(fraction);
     log.info(
       'reader',
-      '"${item.name}": ${document.pageCount} pages, opened at ${start + 1}',
+      document.reflowable
+          ? '"${item.name}": EPUB, opened at ${(fraction * 100).round()} %'
+          : '"${item.name}": ${document.pageCount} pages, '
+                'opened at ${start + 1}',
     );
     return _session = ReaderSession(
       item: item,
       document: document,
       page: start,
     );
+  }
+
+  /// Where a reflowable book opens, until its first layout.
+  double? _openAt;
+
+  /// Lays a reflowable book (an EPUB) out in pages of [size], the sheet
+  /// the screen shows, keeping the reader where they were: on the page
+  /// that holds the first word they could see.
+  void layout(Size size) {
+    final session = _session;
+    if (session == null) return;
+    final document = session.document;
+    final fraction =
+        _openAt ??
+        (document.pageCount > 0 ? document.fractionOf(session.page) : 0.0);
+    if (!document.layout(size)) return;
+    _openAt = null;
+    log.debug(
+      'reader',
+      '${document.pageCount} pages of ${size.width.round()} × '
+          '${size.height.round()}',
+    );
+    _session = ReaderSession(
+      item: session.item,
+      document: document,
+      page: document.pageAt(fraction),
+    );
+    state = AsyncData(_session!);
   }
 
   /// Shows [page] (0-based, clamped to the book).
@@ -96,7 +134,14 @@ class ReaderController extends AsyncNotifier<ReaderSession> {
       page: target,
     );
     state = AsyncData(_session!);
-    _unsavedPage = target;
+    _unsaved = (
+      position: positionForFraction(
+        session.document.fractionOf(target),
+        session.pageCount,
+        session.item.runTimeTicks,
+      ),
+      last: target == session.pageCount - 1,
+    );
     _saveTimer?.cancel();
     _saveTimer = Timer(saveDelay, () => unawaited(_save()));
   }
@@ -116,16 +161,12 @@ class ReaderController extends AsyncNotifier<ReaderSession> {
   }
 
   Future<void> _save() async {
-    final session = _session;
-    final page = _unsavedPage;
-    if (session == null || page == null) return;
-    _unsavedPage = null;
+    final unsaved = _unsaved;
+    if (unsaved == null) return;
+    _unsaved = null;
     try {
-      await _books.savePosition(
-        itemId,
-        positionForPage(page, session.pageCount, session.item.runTimeTicks),
-      );
-      if (page == session.pageCount - 1 && !_markedRead) {
+      await _books.savePosition(itemId, unsaved.position);
+      if (unsaved.last && !_markedRead) {
         _markedRead = true;
         await _books.setRead(itemId, read: true);
       }

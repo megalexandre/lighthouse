@@ -104,11 +104,24 @@ void main() {
     });
   });
 
-  test('an EPUB is not readable yet, and says so', () async {
-    await expectLater(
-      openBook(File(FakeBookRepository.files['book-epub']!)),
-      throwsA(isA<NotReadable>()),
-    );
+  test('an EPUB opens: no pages until laid out for a size', () async {
+    final doc = await openBook(File(FakeBookRepository.files['book-epub']!));
+    addTearDown(doc.dispose);
+    expect(doc.reflowable, isTrue);
+    expect(doc.pageCount, 0);
+    expect(doc.layout(const Size(400, 600)), isTrue);
+    expect(doc.pageCount, 3); // A chapter a page.
+    expect(doc.layout(const Size(400, 600)), isFalse);
+  });
+
+  test('a broken EPUB says so', () async {
+    final dir = await Directory.systemTemp.createTemp('jf-book-');
+    addTearDown(() => dir.delete(recursive: true));
+    final zip = Archive()
+      ..add(ArchiveFile.string('mimetype', 'application/epub+zip'));
+    final file = File('${dir.path}/x.epub')
+      ..writeAsBytesSync(ZipEncoder().encode(zip));
+    await expectLater(openBook(file), throwsA(isA<NotReadable>()));
   });
 
   group('position ↔ page, on the 12.4 scale (10000 ticks a page)', () {

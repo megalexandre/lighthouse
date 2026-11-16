@@ -29,6 +29,7 @@ import 'package:jellyfin_flutter/features/reader/application/reader_controller.d
 import 'package:jellyfin_flutter/features/reader/data/book_document.dart';
 import 'package:jellyfin_flutter/features/reader/data/book_format.dart';
 import 'package:jellyfin_flutter/features/reader/data/book_repository.dart';
+import 'package:jellyfin_flutter/features/reader/data/epub/epub_document.dart';
 import 'package:jellyfin_flutter/features/server/application/connection_controller.dart';
 import 'package:jellyfin_flutter/features/server/data/server_info.dart';
 import 'package:jellyfin_flutter/features/server/data/server_repository.dart';
@@ -715,19 +716,20 @@ class FakeBookRepository implements BookRepository {
 
 /// Opens a fixture book the way the app does, but reading the file
 /// synchronously: widget tests run on a fake clock, where real async file
-/// reads never finish. Comics are the real thing; a PDF needs PDFium (the
-/// integration tests cover it), so here it is a blank 5-page stand-in.
+/// reads never finish. Comics and EPUBs are the real thing; a PDF needs
+/// PDFium (the integration tests cover it), so here it is a blank 5-page
+/// stand-in.
 Future<BookDocument> openBookForTests(File file) async {
   final bytes = file.readAsBytesSync();
   return switch (detectBookFormat(bytes)) {
     BookFormat.comic => ComicBookDocument(readZipBook(bytes).pages),
     BookFormat.pdf => const _BlankDocument(5),
-    BookFormat.epub => throw const NotReadable('EPUB'),
+    BookFormat.epub => EpubBookDocument(readZipBook(bytes).epub!),
     BookFormat.unknown => throw const NotReadable('this file type'),
   };
 }
 
-class _BlankDocument implements BookDocument {
+class _BlankDocument with FixedPages implements BookDocument {
   const _BlankDocument(this.pageCount);
 
   @override

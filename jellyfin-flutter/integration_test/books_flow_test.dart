@@ -121,4 +121,36 @@ void main() {
     await tapOn(tester, find.byKey(ReaderScreen.backButton));
     await waitFor(tester, find.byKey(ItemScreen.readButton));
   });
+
+  testWidgets('an EPUB: laid out in pages, turned; the server keeps the '
+      'fraction read on its 10^7 scale', (tester) async {
+    await launch(tester, store);
+    await openBook(tester, Fixtures.testNovel);
+    await tapOn(tester, find.byKey(ItemScreen.readButton));
+
+    // The pages exist once the sheet's size is known: a chapter a page.
+    await waitUntil(
+      tester,
+      () =>
+          find.byKey(ReaderScreen.pageText).evaluate().isNotEmpty &&
+          pageText(tester) == 'Page 1 of 3',
+      reason: 'the EPUB laid out',
+    );
+    await pressKey(tester, LogicalKeyboardKey.arrowRight);
+    await waitUntil(
+      tester,
+      () => pageText(tester) == 'Page 2 of 3',
+      reason: 'the EPUB page to turn',
+    );
+    await tapOn(tester, find.byKey(ReaderScreen.backButton));
+    await waitFor(tester, find.byKey(ItemScreen.readButton));
+
+    final saved = await server.findItem(user, Fixtures.testNovel, type: 'Book');
+    expect(saved['RunTimeTicks'], 10000000);
+    final data = saved['UserData'] as Map<String, dynamic>;
+    final position = data['PlaybackPositionTicks'] as int;
+    expect(position, inExclusiveRange(0, 10000000));
+    // The server's "% read" is that fraction (what jellyfin-web shows).
+    expect(data['PlayedPercentage'] as num, closeTo(position / 100000, 0.01));
+  });
 }

@@ -46,6 +46,18 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
   final _curl = GlobalKey<PageCurlViewState>();
   bool _chromeVisible = true;
 
+  /// The keys go to the book. Asked for when it appears (autofocus alone
+  /// loses to whatever held focus while the route was coming in) and
+  /// again on any click or touch on the page.
+  final _focus = FocusNode(debugLabel: 'reader');
+  bool _focusAsked = false;
+
+  @override
+  void dispose() {
+    _focus.dispose();
+    super.dispose();
+  }
+
   ReaderController get _controller =>
       ref.read(readerControllerProvider(widget.itemId).notifier);
 
@@ -125,65 +137,120 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
     child: Center(child: session.document.buildPage(index)),
   );
 
+  /// An EPUB's page: the shape of a book's, between 0.55 and 0.72 (wide
+  /// enough for comfortable lines on a phone, not a wall of text on a
+  /// desktop), as large as fits in [screen].
+  static double _reflowAspect(Size screen) {
+    final room = ReaderScreen.margin.deflateSize(screen);
+    if (room.isEmpty) return 2 / 3;
+    return room.aspectRatio.clamp(0.55, 0.72);
+  }
+
+  /// The sheet an EPUB is laid out for, in [screen].
+  static Size _reflowSheet(Size screen) {
+    final room = ReaderScreen.margin.deflateSize(screen);
+    final aspect = _reflowAspect(screen);
+    final width = room.width / room.height > aspect
+        ? room.height * aspect
+        : room.width;
+    return Size(width, width / aspect);
+  }
+
+  /// The sheet size last asked for (an EPUB), so a rebuild asks only on a
+  /// change.
+  Size? _laidOutFor;
+
   Widget _reading(BuildContext context, ReaderSession session) {
+    if (!_focusAsked) {
+      _focusAsked = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _focus.requestFocus();
+      });
+    }
     return Focus(
+      focusNode: _focus,
       autofocus: true,
       onKeyEvent: (_, event) => _onKey(session, event),
       child: LayoutBuilder(
-        builder: (context, constraints) => Stack(
-          fit: StackFit.expand,
-          children: [
-            GestureDetector(
-              behavior: HitTestBehavior.opaque,
-              onTapUp: (details) {
-                final x = details.localPosition.dx / constraints.maxWidth;
-                if (x < ReaderScreen.edge) {
-                  _previous();
-                } else if (x > 1 - ReaderScreen.edge) {
-                  _next();
-                } else {
-                  setState(() => _chromeVisible = !_chromeVisible);
-                }
-              },
-              // The sheet that turns is the page itself: its shape, as
-              // large as fits, on the desk.
-              child: Padding(
-                padding: ReaderScreen.margin,
-                child: Center(
-                  child: AspectRatio(
-                    aspectRatio: session.document.pageAspectRatio(session.page),
-                    child: PageCurlView(
-                      key: _curl,
-                      pageCount: session.pageCount,
-                      page: session.page,
-                      paper: ReaderScreen.paper,
-                      sheetBuilder: (index) => KeyedSubtree(
-                        key: index == session.page ? ReaderScreen.pages : null,
-                        child: _sheet(session, index),
+        builder: (context, constraints) {
+          if (session.document.reflowable) {
+            final sheet = _reflowSheet(constraints.biggest);
+            // Pages are cut for the sheet once its size is known (after
+            // this frame: state cannot change while building).
+            if (sheet != _laidOutFor && !sheet.isEmpty) {
+              _laidOutFor = sheet;
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (mounted) _controller.layout(sheet);
+              });
+            }
+          }
+          return Stack(
+            fit: StackFit.expand,
+            children: [
+              // Sees every touch without taking part in deciding what it is
+              // (a tap, a page turn).
+              Listener(
+                onPointerDown: (_) => _focus.requestFocus(),
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTapUp: (details) {
+                    final x = details.localPosition.dx / constraints.maxWidth;
+                    if (x < ReaderScreen.edge) {
+                      _previous();
+                    } else if (x > 1 - ReaderScreen.edge) {
+                      _next();
+                    } else {
+                      setState(() => _chromeVisible = !_chromeVisible);
+                    }
+                  },
+                  // The sheet that turns is the page itself: its shape, as
+                  // large as fits, on the desk.
+                  child: Padding(
+                    padding: ReaderScreen.margin,
+                    child: Center(
+                      child: AspectRatio(
+                        aspectRatio: session.document.reflowable
+                            ? _reflowAspect(constraints.biggest)
+                            : session.document.pageAspectRatio(session.page),
+                        child: session.pageCount == 0
+                            ? const SizedBox.shrink()
+                            : PageCurlView(
+                                key: _curl,
+                                pageCount: session.pageCount,
+                                page: session.page,
+                                paper: ReaderScreen.paper,
+                                layoutVersion: session.document.layoutVersion,
+                                sheetBuilder: (index) => KeyedSubtree(
+                                  key: index == session.page
+                                      ? ReaderScreen.pages
+                                      : null,
+                                  child: _sheet(session, index),
+                                ),
+                                sheetImage: (index, size, ratio) =>
+                                    sheetImage(session, index, size, ratio),
+                                onTurned: _controller.goTo,
+                              ),
                       ),
-                      sheetImage: (index, size, ratio) =>
-                          sheetImage(session, index, size, ratio),
-                      onTurned: _controller.goTo,
                     ),
                   ),
                 ),
               ),
-            ),
-            AnimatedOpacity(
-              key: ReaderScreen.chrome,
-              opacity: _chromeVisible ? 1 : 0,
-              duration: const Duration(milliseconds: 150),
-              child: IgnorePointer(
-                ignoring: !_chromeVisible,
-                child: _Chrome(
-                  session: session,
-                  onBack: () => unawaited(_close()),
-                  onSeek: _controller.goTo,
+              AnimatedOpacity(
+                key: ReaderScreen.chrome,
+                opacity: _chromeVisible ? 1 : 0,
+                duration: const Duration(milliseconds: 150),
+                child: IgnorePointer(
+                  ignoring: !_chromeVisible,
+                  child: _Chrome(
+                    session: session,
+                    onBack: () => unawaited(_close()),
+                    onSeek: _controller.goTo,
+                  ),
                 ),
               ),
-            ),
-          ],
-        ),
+            ],
+          );
+        },
       ),
     );
   }

@@ -8,6 +8,8 @@ import 'package:pdfrx/pdfrx.dart';
 
 import '../../../core/failure.dart';
 import 'book_format.dart';
+import 'epub/epub_book.dart';
+import 'epub/epub_document.dart';
 import 'image_size.dart';
 
 /// An open book, page by page.
@@ -24,15 +26,54 @@ abstract interface class BookDocument {
   /// Width ÷ height of page [index]: the sheet that turns has its shape.
   double pageAspectRatio(int index);
 
+  /// Whether the pages depend on the space they get (an EPUB): such a
+  /// book has no pages until [layout], and new ones whenever the size
+  /// changes. A PDF or a comic has its pages ([FixedPages]).
+  bool get reflowable;
+
+  /// Cuts the book into pages of [size] (logical pixels). True when the
+  /// pages changed.
+  bool layout(Size size);
+
+  /// Changes whenever the pages do: pictures of the old ones are stale.
+  int get layoutVersion;
+
+  /// How far into the book page [index] starts, from 0 to 1: the place as
+  /// the server keeps it, whatever the pages.
+  double fractionOf(int index);
+
+  /// The page at [fraction] of the book.
+  int pageAt(double fraction);
+
   Future<void> dispose();
+}
+
+/// A book whose pages are what the file says (PDF, comic).
+mixin FixedPages implements BookDocument {
+  @override
+  bool get reflowable => false;
+
+  @override
+  bool layout(Size size) => false;
+
+  @override
+  int get layoutVersion => 0;
+
+  @override
+  double fractionOf(int index) => pageCount == 0 ? 0 : index / pageCount;
+
+  @override
+  int pageAt(double fraction) => pageCount == 0
+      ? 0
+      : (fraction * pageCount).round().clamp(0, pageCount - 1);
 }
 
 /// The book [file] opened for reading. Throws [NotReadable] for a format
 /// the reader does not handle (yet).
 ///
 /// A PDF stays on disk (PDFium reads what it needs); only its first bytes
-/// are read here. A comic is read and unzipped in another isolate, so a
-/// big one does not freeze the screen.
+/// are read here. A comic or an EPUB is read, unzipped and parsed in
+/// another isolate, so a big one does not freeze the screen.
 Future<BookDocument> openBook(File file) async {
   final head = await _readHead(file);
   switch (headFormat(head)) {
@@ -47,7 +88,10 @@ Future<BookDocument> openBook(File file) async {
       );
       return switch (zip.format) {
         BookFormat.comic => ComicBookDocument(zip.pages),
-        BookFormat.epub => throw const NotReadable('EPUB'),
+        BookFormat.epub => switch (zip.epub) {
+          final EpubBook book => EpubBookDocument(book),
+          null => throw const NotReadable('this EPUB file'),
+        },
         _ => throw const NotReadable('this file type'),
       };
   }
@@ -63,7 +107,7 @@ Future<Uint8List> _readHead(File file) async {
 }
 
 /// A comic: each page is an image in the zip.
-class ComicBookDocument implements BookDocument {
+class ComicBookDocument with FixedPages implements BookDocument {
   /// The page images, encoded (PNG, JPEG...), in reading order.
   ComicBookDocument(this._pages);
 
@@ -125,7 +169,7 @@ Size _fit(Size natural, Size box) {
 }
 
 /// A PDF, drawn by PDFium (pdfrx).
-class PdfBookDocument implements BookDocument {
+class PdfBookDocument with FixedPages implements BookDocument {
   PdfBookDocument._(this._document);
 
   static Future<PdfBookDocument> open(String path) async {
