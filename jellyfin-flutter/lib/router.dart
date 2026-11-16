@@ -8,6 +8,7 @@ import 'features/home/presentation/home_screen.dart';
 import 'features/item/presentation/item_screen.dart';
 import 'features/library/presentation/library_screen.dart';
 import 'features/player/presentation/player_screen.dart';
+import 'features/reader/presentation/reader_screen.dart';
 import 'features/search/presentation/search_screen.dart';
 import 'features/server/presentation/connect_screen.dart';
 import 'features/settings/presentation/settings_screen.dart';
@@ -26,6 +27,9 @@ abstract final class Routes {
 
   static const search = '/search';
   static const settings = '/settings';
+
+  /// Reads a book.
+  static String read(String id) => '/read/$id';
 
   /// Plays an item, from [start] (default: the beginning).
   static String play(String id, {Duration start = Duration.zero}) =>
@@ -82,6 +86,11 @@ final routerProvider = Provider<GoRouter>((ref) {
           ),
           GoRoute(path: 'search', builder: (_, _) => const SearchScreen()),
           GoRoute(path: 'settings', builder: (_, _) => const SettingsScreen()),
+          GoRoute(
+            path: 'read/:id',
+            builder: (_, state) =>
+                ReaderScreen(itemId: state.pathParameters['id']!),
+          ),
           GoRoute(
             path: 'play/:id',
             builder: (_, state) => PlayerScreen(

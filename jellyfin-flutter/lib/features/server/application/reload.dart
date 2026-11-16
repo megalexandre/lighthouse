@@ -12,6 +12,7 @@ void reloadAfterOutage(Ref ref) {
   ref
     ..invalidate(userViewsProvider)
     ..invalidate(resumeProvider)
+    ..invalidate(resumeBooksProvider)
     ..invalidate(nextUpProvider)
     ..invalidate(latestProvider)
     ..invalidate(itemProvider)

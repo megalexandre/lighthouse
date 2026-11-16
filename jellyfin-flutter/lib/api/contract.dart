@@ -8,6 +8,7 @@ import 'models/playback_info_dto.dart';
 import 'models/playback_info_response.dart';
 import 'models/playback_report.dart';
 import 'models/public_system_info.dart';
+import 'models/update_user_item_data_dto.dart';
 import 'models/user_configuration.dart';
 import 'models/user_dto.dart';
 import 'models/user_item_data_dto.dart';
@@ -189,6 +190,14 @@ const apiContract = [
     '/Users/Configuration',
     query: ['userId'],
     request: UserConfiguration.jsonShape,
+  ),
+  ApiEndpoint('GET', '/Items/{itemId}/Download', kind: ResponseKind.file),
+  ApiEndpoint(
+    'POST',
+    '/UserItems/{itemId}/UserData',
+    query: ['userId'],
+    request: UpdateUserItemDataDto.jsonShape,
+    response: UserItemDataDto.jsonShape,
   ),
   ApiEndpoint(
     'GET',

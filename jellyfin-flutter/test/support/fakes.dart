@@ -1,6 +1,9 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
+import 'dart:ui' as ui;
 
+import 'package:archive/archive.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -23,6 +26,10 @@ import 'package:jellyfin_flutter/features/library/data/library_repository.dart';
 import 'package:jellyfin_flutter/features/player/data/playback_plan.dart';
 import 'package:jellyfin_flutter/features/player/data/playback_repository.dart';
 import 'package:jellyfin_flutter/features/player/data/player_engine.dart';
+import 'package:jellyfin_flutter/features/reader/application/reader_controller.dart';
+import 'package:jellyfin_flutter/features/reader/data/book_document.dart';
+import 'package:jellyfin_flutter/features/reader/data/book_format.dart';
+import 'package:jellyfin_flutter/features/reader/data/book_repository.dart';
 import 'package:jellyfin_flutter/features/server/application/connection_controller.dart';
 import 'package:jellyfin_flutter/features/server/data/server_info.dart';
 import 'package:jellyfin_flutter/features/server/data/server_repository.dart';
@@ -167,6 +174,34 @@ abstract final class TestItems {
     type: BaseItemKind.musicAlbum,
     albumArtist: 'Test Artist',
   );
+
+  /// Books, shaped like the 12.4 server reports them: a "length" of 10000
+  /// ticks per page. Their files are the fixtures (fixtures/media/books).
+  static const booksView = BaseItemDto(
+    id: 'view-books',
+    name: 'Books',
+    type: BaseItemKind.collectionFolder,
+    collectionType: 'books',
+  );
+  static const testComic = BaseItemDto(
+    id: 'book-comic',
+    name: 'Test Comic',
+    type: BaseItemKind.book,
+    runTimeTicks: 50000,
+  );
+  static const testBook = BaseItemDto(
+    id: 'book-pdf',
+    name: 'Test Book',
+    type: BaseItemKind.book,
+    runTimeTicks: 50000,
+  );
+  static const testNovel = BaseItemDto(
+    id: 'book-epub',
+    name: 'Test Novel',
+    type: BaseItemKind.book,
+    runTimeTicks: 10000000,
+  );
+
   static final tracks = [
     for (var n = 1; n <= 2; n++)
       BaseItemDto(
@@ -187,6 +222,13 @@ abstract final class TestItems {
 class FakeLibraryRepository implements LibraryRepository {
   List<BaseItemDto> movies = [TestItems.testMovie, TestItems.hevcMovie];
   List<BaseItemDto> resumeItems = [];
+
+  /// The books (replace one to give it a reading position).
+  List<BaseItemDto> books = [
+    TestItems.testComic,
+    TestItems.testBook,
+    TestItems.testNovel,
+  ];
   List<BaseItemDto> nextUpItems = [];
 
   /// Method name (views, children, item, latest, resume, nextUp, seasons,
@@ -205,11 +247,14 @@ class FakeLibraryRepository implements LibraryRepository {
     'view-movies' => movies,
     'view-shows' => [TestItems.testShow],
     'view-music' => [TestItems.testAlbum],
+    'view-books' => books,
     _ => const [],
   };
 
   List<BaseItemDto> get _all => [
     ...TestItems.views,
+    TestItems.booksView,
+    ...books,
     ...movies,
     TestItems.testShow,
     TestItems.season1,
@@ -251,6 +296,12 @@ class FakeLibraryRepository implements LibraryRepository {
 
   @override
   Future<List<BaseItemDto>> resume() => _answer('resume', () => resumeItems);
+
+  List<BaseItemDto> resumeBookItems = [];
+
+  @override
+  Future<List<BaseItemDto>> resumeBooks() =>
+      _answer('resumeBooks', () => resumeBookItems);
 
   @override
   Future<List<BaseItemDto>> nextUp() => _answer('nextUp', () => nextUpItems);
@@ -630,6 +681,82 @@ class FakeSettingsRepository implements SettingsRepository {
       bitrate = bitsPerSecond;
 }
 
+/// Serves the fixture files and records what the reader saves.
+class FakeBookRepository implements BookRepository {
+  final failures = <String, Failure>{};
+
+  /// (itemId, positionTicks) of every save.
+  final saved = <(String, int)>[];
+
+  /// itemId → read, from setRead.
+  final read = <String, bool>{};
+
+  static const files = {
+    'book-comic': 'fixtures/media/books/Test Author/Test Comic/Test Comic.cbz',
+    'book-pdf': 'fixtures/media/books/Test Author/Test Book/Test Book.pdf',
+    'book-epub': 'fixtures/media/books/Test Author/Test Novel/Test Novel.epub',
+  };
+
+  @override
+  Future<File> file(BaseItemDto book) async {
+    if (failures['file'] case final Failure f) throw f;
+    return File(files[book.id]!);
+  }
+
+  @override
+  Future<void> savePosition(String itemId, int positionTicks) async {
+    if (failures['save'] case final Failure f) throw f;
+    saved.add((itemId, positionTicks));
+  }
+
+  @override
+  Future<void> setRead(String itemId, {required bool read}) async =>
+      this.read[itemId] = read;
+}
+
+/// Opens a fixture book the way the app does, but reading the file
+/// synchronously: widget tests run on a fake clock, where real async file
+/// reads never finish. Comics are the real thing; a PDF needs PDFium (the
+/// integration tests cover it), so here it is a blank 5-page stand-in.
+Future<BookDocument> openBookForTests(File file) async {
+  final bytes = file.readAsBytesSync();
+  return switch (detectBookFormat(bytes)) {
+    BookFormat.comic => ComicBookDocument(ZipDecoder().decodeBytes(bytes)),
+    BookFormat.pdf => const _BlankDocument(5),
+    BookFormat.epub => throw const NotReadable('EPUB'),
+    BookFormat.unknown => throw const NotReadable('this file type'),
+  };
+}
+
+class _BlankDocument implements BookDocument {
+  const _BlankDocument(this.pageCount);
+
+  @override
+  final int pageCount;
+
+  @override
+  Widget buildPage(int index) => ColoredBox(
+    color: const Color(0xFFFFFFFF),
+    child: Center(child: Text('PDF page ${index + 1}')),
+  );
+
+  @override
+  double pageAspectRatio(int index) => 2 / 3;
+
+  @override
+  Future<ui.Image> pageImage(int index, Size maxSize) async {
+    final recorder = ui.PictureRecorder();
+    Canvas(recorder).drawColor(const Color(0xFFFFFFFF), BlendMode.src);
+    return recorder.endRecording().toImageSync(
+      maxSize.width.round().clamp(1, 4096),
+      maxSize.height.round().clamp(1, 4096),
+    );
+  }
+
+  @override
+  Future<void> dispose() async {}
+}
+
 /// A window that only remembers whether it is full screen.
 class FakeAppWindow implements AppWindow {
   @override
@@ -648,6 +775,7 @@ class TestApp {
   final playback = FakePlaybackRepository();
   final window = FakeAppWindow();
   final settings = FakeSettingsRepository();
+  final books = FakeBookRepository();
 
   /// What the connection check answers while the app thinks the server
   /// is down.
@@ -679,6 +807,8 @@ class TestApp {
     playbackRepositoryProvider.overrideWithValue(playback),
     appWindowProvider.overrideWithValue(window),
     settingsRepositoryProvider.overrideWithValue(settings),
+    bookRepositoryProvider.overrideWithValue(books),
+    bookOpenerProvider.overrideWithValue(openBookForTests),
     serverPingProvider.overrideWithValue((url) async {
       pings.add(url);
       return serverUp;

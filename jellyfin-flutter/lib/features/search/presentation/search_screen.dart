@@ -98,6 +98,7 @@ class _Results extends StatelessWidget {
     BaseItemKind.episode: 'Episodes',
     BaseItemKind.musicAlbum: 'Albums',
     BaseItemKind.audio: 'Songs',
+    BaseItemKind.book: 'Books',
   };
 
   @override

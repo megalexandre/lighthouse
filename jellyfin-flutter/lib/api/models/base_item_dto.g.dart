@@ -112,5 +112,6 @@ const _$BaseItemKindEnumMap = {
   BaseItemKind.boxSet: 'BoxSet',
   BaseItemKind.userView: 'UserView',
   BaseItemKind.video: 'Video',
+  BaseItemKind.book: 'Book',
   BaseItemKind.unknown: 'Unknown',
 };

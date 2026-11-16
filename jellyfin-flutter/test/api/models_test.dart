@@ -119,8 +119,8 @@ void main() {
     test('a kind the app does not know parses as unknown', () {
       final item = BaseItemDto.fromJson({
         'Id': 'x',
-        'Name': 'A book',
-        'Type': 'Book',
+        'Name': 'A photo',
+        'Type': 'Photo',
       });
       expect(item.type, BaseItemKind.unknown);
       expect(BaseItemKind.musicAlbum.jsonValue, 'MusicAlbum');

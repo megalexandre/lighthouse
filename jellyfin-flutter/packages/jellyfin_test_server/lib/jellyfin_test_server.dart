@@ -22,12 +22,20 @@ abstract final class Fixtures {
   static const movieCount = 2;
   static const episodeCount = 3;
   static const audioCount = 2;
+  static const bookCount = 3;
 
   static const testMovie = 'Test Movie (2020)';
   static const hevcMovie = 'HEVC Movie (2021)';
   static const testShow = 'Test Show';
   static const testAlbum = 'Test Album';
   static const testArtist = 'Test Artist';
+
+  /// Books (fixtures/media/books, tool/gen_books.py): 5 pages each for the
+  /// PDF and the comic, 3 chapters for the EPUB.
+  static const testBook = 'Test Book';
+  static const testComic = 'Test Comic';
+  static const testNovel = 'Test Novel';
+  static const bookPages = 5;
 
   /// Items with a local poster (fixtures/media/**/poster.jpg, folder.jpg).
   /// HEVC Movie has none.
@@ -208,6 +216,7 @@ class TestServer {
     'Movies': ('movies', '/media/movies'),
     'Shows': ('tvshows', '/media/shows'),
     'Music': ('music', '/media/music'),
+    'Books': ('books', '/media/books'),
   };
 
   Future<void> _ensureLibraries() async {
@@ -259,6 +268,7 @@ class TestServer {
     'EnableInternetProviders': false,
     'TypeOptions': [
       for (final type in [
+        'Book',
         'Movie',
         'Series',
         'Season',
@@ -283,10 +293,12 @@ class TestServer {
         'Movie': await _count('Movie'),
         'Episode': await _count('Episode'),
         'Audio': await _count('Audio'),
+        'Book': await _count('Book'),
       };
       if (counts['Movie'] == Fixtures.movieCount &&
           counts['Episode'] == Fixtures.episodeCount &&
           counts['Audio'] == Fixtures.audioCount &&
+          counts['Book'] == Fixtures.bookCount &&
           !await _scanRunning()) {
         return;
       }

@@ -111,13 +111,28 @@ Future<void> waitUntil(
 /// text through the (simulated) platform text input, so onChanged fires
 /// and filters react. Works under `flutter test` and `flutter drive`
 /// (profile), where enterText alone does not reach the field.
+///
+/// Focus moves a frame or more after the tap; text sent before that goes
+/// to the field that still had it. So it checks the text landed in
+/// [field], and tries again (up to 5 times) when it did not.
 Future<void> typeInto(WidgetTester tester, Finder field, String text) async {
   _simulateTextInput(tester);
-  await tester.tap(field);
-  await tester.pump();
-  await tester.showKeyboard(field);
-  tester.testTextInput.enterText(text);
-  await tester.pump();
+  final editable = find.descendant(
+    of: field,
+    matching: find.byType(EditableText),
+  );
+  for (var attempt = 0; attempt < 5; attempt++) {
+    await tester.tap(field);
+    await tester.pump(const Duration(milliseconds: 50));
+    await tester.showKeyboard(field);
+    await tester.pump();
+    tester.testTextInput.enterText(text);
+    await tester.pump();
+    final typed = tester.widget<EditableText>(editable.first).controller.text;
+    if (typed == text) return;
+    await tester.pump(const Duration(milliseconds: 200));
+  }
+  fail('could not type "$text" into $field');
 }
 
 /// The physical keys of the logical keys tests press. Under `flutter

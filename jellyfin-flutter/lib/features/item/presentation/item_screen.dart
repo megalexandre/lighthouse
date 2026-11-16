@@ -10,6 +10,7 @@ import '../../../widgets/error_retry.dart';
 import '../../library/application/library_providers.dart';
 import '../../library/presentation/item_card.dart';
 import '../../player/data/playback_repository.dart';
+import '../../reader/data/book_repository.dart';
 
 /// Detail page of one item: picture, facts and overview, then what is
 /// inside it (seasons of a series, episodes of a season, tracks of an
@@ -22,6 +23,7 @@ class ItemScreen extends ConsumerWidget {
   static const playButton = Key('item.play');
   static const resumeButton = Key('item.resume');
   static const watchedButton = Key('item.watched');
+  static const readButton = Key('item.read');
   static Key episodeKey(String id) => Key('episode.$id');
   static Key trackKey(String id) => Key('track.$id');
 
@@ -40,6 +42,10 @@ class ItemScreen extends ConsumerWidget {
             if (isPlayable(item)) ...[
               const SizedBox(height: 24),
               _PlayButtons(item: item),
+            ],
+            if (item.type == BaseItemKind.book) ...[
+              const SizedBox(height: 24),
+              _ReadButtons(item: item),
             ],
             const SizedBox(height: 32),
             ...switch (item.type) {
@@ -158,11 +164,75 @@ class _PlayButtonsState extends ConsumerState<_PlayButtons> {
   }
 }
 
+/// Read (or Continue reading, with how much is read) and read / not.
+class _ReadButtons extends ConsumerStatefulWidget {
+  const _ReadButtons({required this.item});
+
+  final BaseItemDto item;
+
+  @override
+  ConsumerState<_ReadButtons> createState() => _ReadButtonsState();
+}
+
+class _ReadButtonsState extends ConsumerState<_ReadButtons> {
+  bool _saving = false;
+
+  BaseItemDto get item => widget.item;
+
+  Future<void> _toggleRead(bool read) async {
+    setState(() => _saving = true);
+    try {
+      await ref.read(bookRepositoryProvider).setRead(item.id, read: !read);
+      ref
+        ..invalidate(itemProvider(item.id))
+        ..invalidate(resumeBooksProvider);
+    } on Failure catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(e.message)));
+      }
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final data = item.userData;
+    final read = data?.played ?? false;
+    final percent = (data?.playedPercentage ?? 0).round();
+    final started = !read && (data?.playbackPositionTicks ?? 0) > 0;
+    return Wrap(
+      spacing: 12,
+      runSpacing: 12,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      children: [
+        FilledButton.icon(
+          key: ItemScreen.readButton,
+          icon: const Icon(Icons.auto_stories),
+          label: Text(started ? 'Continue reading · $percent%' : 'Read'),
+          onPressed: () => context.push(Routes.read(item.id)),
+        ),
+        IconButton(
+          key: ItemScreen.watchedButton,
+          tooltip: read ? 'Mark as unread' : 'Mark as read',
+          isSelected: read,
+          icon: const Icon(Icons.check_circle_outline),
+          selectedIcon: const Icon(Icons.check_circle),
+          onPressed: _saving ? null : () => _toggleRead(read),
+        ),
+      ],
+    );
+  }
+}
+
 /// Year · 1h 32m · rating, whichever are known.
 String itemFacts(BaseItemDto item) => [
   ?episodeNumber(item),
   ?item.productionYear?.toString(),
-  if (item.runTimeTicks case final int ticks when ticks > 0)
+  // A book's "length" is its page count in server units, not a time.
+  if (item.runTimeTicks case final int ticks
+      when ticks > 0 && item.type != BaseItemKind.book)
     formatRuntime(ticksToDuration(ticks)),
   ?item.officialRating,
 ].join(' · ');

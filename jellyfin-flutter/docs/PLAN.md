@@ -148,6 +148,29 @@ Ajuste feito no F4c: um build release não pode ser conduzido por teste (não te
 integração rodam em **profile** (`tool/profile_test.sh`: AOT, compilado como o release), e o AppImage release
 (`tool/build_appimage.sh`) passa por um teste de fumaça (abre sob Xvfb e grava o log).
 
+**Livros (pedido depois do MVP, em fases L)**
+Estilo Google Play Livros: biblioteca de capas, "Continue reading", leitor página a página (deslizar, tocar nas
+bordas, teclado), progresso no servidor.
+- **L1 (feito):** navegação de livros (tipo `Book`, biblioteca `books`, busca, home) e leitor de **PDF**
+  (pdfrx/PDFium) e **quadrinhos CBZ** (zip de imagens). Arquivo baixado uma vez para o cache local
+  (`/Items/{id}/Download`). Posição em `POST /UserItems/{id}/UserData`: o 12.4 dá a PDF/CBZ uma "duração" de
+  10000 ticks por página e calcula a % lida com ela; a posição segue essa escala (`reading_position.dart`), então
+  a % do servidor e outros clientes concordam. Chegar à última página marca como lido. Fixtures: um PDF, um CBZ e
+  um EPUB pequenos e determinísticos (`tool/gen_books.py`).
+- **L2:** EPUB paginado. No Linux o Flutter não tem WebView confiável: paginador próprio (HTML/CSS básico →
+  páginas medidas para a tela e a fonte). No Android, WebView + epub.js é a alternativa barata.
+- **Virada de página (feita, página única):** guiada pelo dedo como no Play Livros. A folha (no formato da página,
+  sobre um fundo neutro) enrola num cilindro (`page_curl/curl_geometry.dart`, Dart puro e testado) desenhado por um
+  shader de fragmento (`shaders/page_curl.frag`): verso com a tinta da própria página vista pelo papel (espelhada,
+  fraca), sombra na curva, brilho na crista, sombra projetada que some ao assentar; presa na lombada; soltar antes do
+  meio volta, depois (ou com flick) vira, com ease-out; metade esquerda traz a anterior; teclado e toques nas bordas
+  fazem a mesma animação; "reduzir animações" troca sem animar. Quadros de referência em
+  `test/features/reader/goldens/` (conferidos a olho ao mudar o shader: `flutter test --update-goldens`).
+  Falta: modo de duas páginas com lombada (paisagem/tablet) e adaptar verso/sombras aos temas da L3.
+- **L3:** sumário, tamanho de fonte, temas (claro/escuro/sépia), marcadores.
+- PDFium vem de `bblanchon/pdfium-binaries` (versão fixa `chromium/8125`), baixado no build pelo hook do
+  `pdfium_dart`, sem conferência de hash.
+
 **F5+ — Pós-MVP (planejar em detalhe ao chegar)**
 MPRIS (D-Bus), gamepads/remotes (demais inputmaps), WebSocket de sessão (controle remoto a partir de outro cliente),
 múltiplos servidores/perfis, troca de refresh rate e passthrough de áudio, Windows e macOS.

@@ -114,8 +114,11 @@ an API call, add it to `apiContract`.**
 `fixtures/media` (~800 KB, committed) comes from `tool/gen_fixtures.sh`
 (ffmpeg, byte-for-byte reproducible): a movie with two audio tracks
 (eng, por) and embedded + external subtitles, a HEVC 10-bit movie, a show
-with three episodes, and a two-track album. If you change it, update
-`Fixtures` in `packages/jellyfin_test_server`.
+with three episodes, a two-track album, and three small books (a 5-page
+PDF, a 5-page comic, a 3-chapter EPUB; `tool/gen_books.py`, Python
+standard library only). If you change it, update `Fixtures` in
+`packages/jellyfin_test_server`. The script empties the folder in place:
+the servers bind-mount it, so it must never be deleted and recreated.
 
 ## Layout
 

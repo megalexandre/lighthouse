@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../../../api/models/base_item_dto.dart';
+import '../../../api/models/user_item_data_dto.dart';
 import '../../../router.dart';
 import '../data/library_repository.dart';
 
@@ -62,10 +63,12 @@ class ItemImage extends ConsumerWidget {
     BaseItemKind.musicAlbum ||
     BaseItemKind.musicArtist ||
     BaseItemKind.audio => Icons.album_outlined,
+    BaseItemKind.book => Icons.menu_book_outlined,
     _ => switch (item.collectionType) {
       'movies' => Icons.movie_outlined,
       'tvshows' => Icons.tv_outlined,
       'music' => Icons.library_music_outlined,
+      'books' => Icons.auto_stories_outlined,
       _ => Icons.folder_outlined,
     },
   };
@@ -176,11 +179,17 @@ class ItemCard extends StatelessWidget {
   }
 }
 
-/// "Test Show · S1:E2" for an episode, the artist for an album, the year
-/// otherwise.
+/// "Test Show · S1:E2" for an episode, the artist for an album, how much
+/// is read for a book, the year otherwise.
 String? cardSubtitle(BaseItemDto item) => switch (item.type) {
   BaseItemKind.episode => [?item.seriesName, ?episodeNumber(item)].join(' · '),
   BaseItemKind.musicAlbum || BaseItemKind.audio => item.albumArtist,
+  BaseItemKind.book => switch (item.userData) {
+    UserItemDataDto(played: true) => 'Read',
+    UserItemDataDto(playedPercentage: final double p) when p > 0 =>
+      '${p.round()}% read',
+    _ => item.productionYear?.toString(),
+  },
   _ => item.productionYear?.toString(),
 };
 

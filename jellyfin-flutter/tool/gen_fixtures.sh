@@ -8,6 +8,8 @@
 #   movies/HEVC Movie (2021)/   HEVC 10-bit, for the transcode path
 #   shows/Test Show/Season 01/  3 episodes (next episode, Next Up)
 #   music/Test Artist/Test Album/  2 tagged tracks
+#   books/Test Author/...          a PDF, a comic (CBZ) and an EPUB
+#                                  (tool/gen_books.py)
 #
 # Test Movie, Test Show and Test Album have a local poster (poster.jpg,
 # folder.jpg), read by the server without internet metadata; HEVC Movie has
@@ -99,5 +101,8 @@ for n in 1 2; do
      "$d/0$n - Track $n.mp3"
 done
 poster "$d/folder.jpg" rgbtestsrc 300x300
+
+# --- Books -----------------------------------------------------------------------
+python3 "$(dirname "$0")/gen_books.py" "$root/books"
 
 du -sh "$root"

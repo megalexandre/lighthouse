@@ -23,6 +23,7 @@ class HomeScreen extends ConsumerWidget {
   static const viewsRow = Key('home.views');
   static const resumeRow = Key('home.resume');
   static const nextUpRow = Key('home.nextUp');
+  static const resumeBooksRow = Key('home.resumeBooks');
   static Key latestRow(String viewId) => Key('home.latest.$viewId');
 
   @override
@@ -87,6 +88,7 @@ class HomeScreen extends ConsumerWidget {
             ref
               ..invalidate(userViewsProvider)
               ..invalidate(resumeProvider)
+              ..invalidate(resumeBooksProvider)
               ..invalidate(nextUpProvider)
               ..invalidate(latestProvider);
           },
@@ -123,6 +125,13 @@ class HomeScreen extends ConsumerWidget {
                 onRetry: () => ref.invalidate(nextUpProvider),
                 cardWidth: 240,
                 aspectRatio: 16 / 9,
+              ),
+              ItemRow(
+                key: resumeBooksRow,
+                title: 'Continue reading',
+                items: ref.watch(resumeBooksProvider),
+                onRetry: () => ref.invalidate(resumeBooksProvider),
+                aspectRatio: 2 / 3,
               ),
               for (final view in views)
                 ItemRow(

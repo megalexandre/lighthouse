@@ -22,6 +22,7 @@ enum BaseItemKind {
   boxSet,
   userView,
   video,
+  book,
   unknown;
 
   /// The name the server uses, e.g. MusicAlbum.

@@ -68,14 +68,15 @@ extension ItemsApi on JellyfinApi {
     query: {'userId': userId, 'parentId': ?parentId, 'limit': ?limit},
   );
 
-  /// Partly watched videos ("Continue watching"), last watched first.
-  Future<BaseItemDtoQueryResult> resume(String userId, {int? limit}) => getJson(
+  /// Partly watched videos ("Continue watching"), last watched first; with
+  /// [mediaTypes] ['Book'], partly read books ("Continue reading").
+  Future<BaseItemDtoQueryResult> resume(
+    String userId, {
+    int? limit,
+    List<String> mediaTypes = const ['Video'],
+  }) => getJson(
     '/UserItems/Resume',
     BaseItemDtoQueryResult.fromJson,
-    query: {
-      'userId': userId,
-      'mediaTypes': ['Video'],
-      'limit': ?limit,
-    },
+    query: {'userId': userId, 'mediaTypes': mediaTypes, 'limit': ?limit},
   );
 }

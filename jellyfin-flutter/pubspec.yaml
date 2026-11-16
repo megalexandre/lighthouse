@@ -21,6 +21,12 @@ dependencies:
   media_kit_video: ^2.0.1
   media_kit_libs_linux: ^1.2.1
   flutter_secure_storage: ^11.2.0
+  # Book reader: PDF pages (PDFium), comics (CBZ = a zip of images).
+  # Pinned: versions with a few weeks of use behind them.
+  pdfrx: 2.11.0
+  archive: 4.6.0
+  # Where downloaded books are cached.
+  path_provider: ^2.1.6
   window_manager: ^0.7.0
   freezed_annotation: ^3.1.0
   json_annotation: ^4.12.0
@@ -43,6 +49,8 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  shaders:
+    - shaders/page_curl.frag
 
 # media_kit_video with a patch for video on Wayland: see third_party/README.md.
 dependency_overrides:

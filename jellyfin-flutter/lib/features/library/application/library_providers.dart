@@ -17,6 +17,10 @@ final resumeProvider = FutureProvider.autoDispose<List<BaseItemDto>>(
   (ref) => ref.watch(libraryRepositoryProvider).resume(),
 );
 
+final resumeBooksProvider = FutureProvider.autoDispose<List<BaseItemDto>>(
+  (ref) => ref.watch(libraryRepositoryProvider).resumeBooks(),
+);
+
 final nextUpProvider = FutureProvider.autoDispose<List<BaseItemDto>>(
   (ref) => ref.watch(libraryRepositoryProvider).nextUp(),
 );

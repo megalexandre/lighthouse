@@ -48,11 +48,16 @@ void main() {
   Future<BaseItemDto> named(String collectionType, String name) async =>
       (await all(await view(collectionType))).firstWhere((i) => i.name == name);
 
-  test('the three fixture libraries', () async {
+  test('the fixture libraries', () async {
     final views = await library.views();
     expect(
       {for (final v in views) v.name: v.collectionType},
-      {'Movies': 'movies', 'Shows': 'tvshows', 'Music': 'music'},
+      {
+        'Movies': 'movies',
+        'Shows': 'tvshows',
+        'Music': 'music',
+        'Books': 'books',
+      },
     );
     expect(views.map((v) => v.type.isFolder), everyElement(isTrue));
   });

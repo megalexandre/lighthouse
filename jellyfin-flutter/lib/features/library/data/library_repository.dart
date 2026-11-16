@@ -34,6 +34,9 @@ abstract interface class LibraryRepository {
   /// Continue watching.
   Future<List<BaseItemDto>> resume();
 
+  /// Continue reading: books partly read, last read first.
+  Future<List<BaseItemDto>> resumeBooks();
+
   /// Next episode of each series in progress.
   Future<List<BaseItemDto>> nextUp();
 
@@ -62,6 +65,7 @@ const searchKinds = [
   BaseItemKind.episode,
   BaseItemKind.musicAlbum,
   BaseItemKind.audio,
+  BaseItemKind.book,
 ];
 
 /// How many items the home rows ask for.
@@ -77,6 +81,7 @@ const homeRowLimit = 16;
   'tvshows' => (recursive: true, types: [BaseItemKind.series]),
   'music' => (recursive: true, types: [BaseItemKind.musicAlbum]),
   'boxsets' => (recursive: true, types: [BaseItemKind.boxSet]),
+  'books' => (recursive: true, types: [BaseItemKind.book]),
   _ => (recursive: false, types: const []),
 };
 
@@ -157,6 +162,15 @@ class JellyfinLibraryRepository implements LibraryRepository {
   @override
   Future<List<BaseItemDto>> resume() => _call(
     (api) async => (await api.resume(_user, limit: homeRowLimit)).items,
+  );
+
+  @override
+  Future<List<BaseItemDto>> resumeBooks() => _call(
+    (api) async => (await api.resume(
+      _user,
+      limit: homeRowLimit,
+      mediaTypes: const ['Book'],
+    )).items,
   );
 
   @override
@@ -253,6 +267,9 @@ class SignedOutLibraryRepository implements LibraryRepository {
 
   @override
   Future<List<BaseItemDto>> resume() => _fail();
+
+  @override
+  Future<List<BaseItemDto>> resumeBooks() => _fail();
 
   @override
   Future<List<BaseItemDto>> nextUp() => _fail();

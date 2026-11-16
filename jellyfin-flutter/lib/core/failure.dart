@@ -83,3 +83,11 @@ final class PlayerError extends Failure {
   @override
   String get message => 'Playback failed: $detail';
 }
+
+/// The book is in a format the reader cannot open.
+final class NotReadable extends Failure {
+  const NotReadable(this.format);
+  final String format;
+  @override
+  String get message => 'Reading $format is not supported yet.';
+}
