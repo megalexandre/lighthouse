@@ -173,4 +173,52 @@ void main() {
     expect(turned, [2]);
     expect(curlPainter(), findsNothing);
   });
+
+  testWidgets('two quick turns, the second mid-animation: two pages', (
+    tester,
+  ) async {
+    await pump(tester, page: 0);
+    key.currentState!.turnNext();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+    // The first turn ends at once; the second goes on from page 1.
+    key.currentState!.turnNext();
+    await tester.pumpAndSettle();
+    expect(turned, [1, 2]);
+    expect(find.text('Sheet 2'), findsOneWidget);
+
+    key.currentState!.turnPrevious();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+    key.currentState!.turnPrevious();
+    await tester.pumpAndSettle();
+    expect(turned, [1, 2, 1, 0]);
+  });
+
+  testWidgets('a key held down (turns before a frame): one page each', (
+    tester,
+  ) async {
+    await pump(tester, page: 0, reduceMotion: true);
+    key.currentState!
+      ..turnNext()
+      ..turnNext()
+      ..turnNext();
+    await tester.pump();
+    expect(turned, [1, 2, 3]);
+  });
+
+  testWidgets('a drag mid-animation starts from the page being turned to', (
+    tester,
+  ) async {
+    await pump(tester, page: 0);
+    key.currentState!.turnNext();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+    final gesture = await tester.startGesture(const Offset(380, 300));
+    await gesture.moveBy(const Offset(-40, 0));
+    await gesture.moveBy(const Offset(-300, 0));
+    await gesture.up();
+    await tester.pumpAndSettle();
+    expect(turned, [1, 2]);
+  });
 }

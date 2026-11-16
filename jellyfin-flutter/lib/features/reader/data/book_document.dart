@@ -62,21 +62,30 @@ class ComicBookDocument implements BookDocument {
 
   @override
   Future<ui.Image> pageImage(int index, Size maxSize) async {
-    // Decoded straight at the size needed, not at full scan resolution.
-    final probe = await ui.instantiateImageCodec(_pages[index].content);
-    final natural = (await probe.getNextFrame()).image;
-    final fit = _fit(
-      Size(natural.width.toDouble(), natural.height.toDouble()),
-      maxSize,
-    );
-    natural.dispose();
-    probe.dispose();
-    final codec = await ui.instantiateImageCodec(
+    // The size from the header (ImageDescriptor does not decode), then one
+    // decode straight at the size needed, not at full scan resolution.
+    final buffer = await ui.ImmutableBuffer.fromUint8List(
       _pages[index].content,
-      targetWidth: fit.width.round(),
-      targetHeight: fit.height.round(),
     );
-    return (await codec.getNextFrame()).image;
+    final descriptor = await ui.ImageDescriptor.encoded(buffer);
+    try {
+      final fit = _fit(
+        Size(descriptor.width.toDouble(), descriptor.height.toDouble()),
+        maxSize,
+      );
+      final codec = await descriptor.instantiateCodec(
+        targetWidth: fit.width.round(),
+        targetHeight: fit.height.round(),
+      );
+      try {
+        return (await codec.getNextFrame()).image;
+      } finally {
+        codec.dispose();
+      }
+    } finally {
+      descriptor.dispose();
+      buffer.dispose();
+    }
   }
 
   @override

@@ -97,6 +97,22 @@ class PageCurlViewState extends ConsumerState<PageCurlView>
 
   bool get _reduceMotion => MediaQuery.disableAnimationsOf(context);
 
+  /// The page a finished turn went to, until [PageCurlView.page] says so
+  /// too (the parent rebuilds a frame later): a turn started meanwhile
+  /// (a key held down, a second tap mid-animation) goes on from it, not
+  /// from the page before.
+  int? _turnedTo;
+
+  int get _page => _turnedTo ?? widget.page;
+
+  @override
+  void didUpdateWidget(PageCurlView oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.page != oldWidget.page || widget.page == _turnedTo) {
+      _turnedTo = null;
+    }
+  }
+
   @override
   void dispose() {
     _settle.dispose();
@@ -121,7 +137,7 @@ class PageCurlViewState extends ConsumerState<PageCurlView>
       _imagesSize = _size;
     }
     final wanted = {
-      for (var i = widget.page - 1; i <= widget.page + 1; i++)
+      for (var i = _page - 1; i <= _page + 1; i++)
         if (i >= 0 && i < widget.pageCount) i,
       if (_turn case final _Turn t) ...[t.sheet, t.under],
     };
@@ -157,7 +173,7 @@ class PageCurlViewState extends ConsumerState<PageCurlView>
     _finishNow();
     final start = details.localPosition;
     final forward = start.dx >= _size.width / 2;
-    final from = widget.page;
+    final from = _page;
     if (forward ? from >= widget.pageCount - 1 : from <= 0) return;
     final grab = Offset(_size.width, start.dy.clamp(0, _size.height));
     _dragStart = start;
@@ -218,10 +234,10 @@ class PageCurlViewState extends ConsumerState<PageCurlView>
 
   void _autoTurn({required bool forward}) {
     _finishNow();
-    final from = widget.page;
+    final from = _page;
     if (forward ? from >= widget.pageCount - 1 : from <= 0) return;
     if (_reduceMotion || _size.isEmpty) {
-      widget.onTurned(forward ? from + 1 : from - 1);
+      _turned(forward ? from + 1 : from - 1);
       return;
     }
     final grab = autoGrab(_size);
@@ -278,7 +294,12 @@ class PageCurlViewState extends ConsumerState<PageCurlView>
     final completes = _settleCompletes;
     _settleTo = null;
     setState(() => _turn = null);
-    if (completes) widget.onTurned(turn.after);
+    if (completes) _turned(turn.after);
+  }
+
+  void _turned(int page) {
+    _turnedTo = page;
+    widget.onTurned(page);
   }
 
   /// A new turn while one settles: the old one ends where it was going.
@@ -333,7 +354,7 @@ class PageCurlViewState extends ConsumerState<PageCurlView>
     final turn = _turn;
     if (turn == null) {
       _schedulePrefetch();
-      return widget.sheetBuilder(widget.page);
+      return widget.sheetBuilder(_page);
     }
     final curl = curlFor(size, turn.grab, turn.finger);
     if (curl == null) return widget.sheetBuilder(turn.sheet);

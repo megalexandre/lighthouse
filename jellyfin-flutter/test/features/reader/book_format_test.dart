@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'dart:typed_data';
+import 'dart:ui' as ui;
 
 import 'package:archive/archive.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -7,6 +8,7 @@ import 'package:jellyfin_flutter/core/failure.dart';
 import 'package:jellyfin_flutter/features/reader/data/book_document.dart';
 import 'package:jellyfin_flutter/features/reader/data/book_format.dart';
 import 'package:jellyfin_flutter/features/reader/data/reading_position.dart';
+import 'package:material_ui/material_ui.dart';
 
 import '../../support/fakes.dart';
 
@@ -50,6 +52,27 @@ void main() {
     final doc = await openBook(File(FakeBookRepository.files['book-comic']!));
     expect(doc, isA<ComicBookDocument>());
     expect(doc.pageCount, 5);
+  });
+
+  testWidgets('a comic page image: one decode, at the size asked for', (
+    tester,
+  ) async {
+    await tester.runAsync(() async {
+      // A tall scan, 1200 × 1800, as PNG.
+      final recorder = ui.PictureRecorder();
+      Canvas(recorder).drawColor(const Color(0xFF336699), BlendMode.src);
+      final scan = await recorder.endRecording().toImage(1200, 1800);
+      final png = (await scan.toByteData(format: ui.ImageByteFormat.png))!;
+      scan.dispose();
+      final doc = ComicBookDocument(
+        Archive()..add(ArchiveFile.bytes('1.png', png.buffer.asUint8List())),
+      );
+
+      final page = await doc.pageImage(0, const Size(400, 400));
+      expect((page.width, page.height), (267, 400));
+      page.dispose();
+      expect(doc.pageAspectRatio(0), closeTo(2 / 3, 1e-9));
+    });
   });
 
   test('an EPUB is not readable yet, and says so', () async {
