@@ -8,12 +8,12 @@ import 'package:material_ui/material_ui.dart';
 import '../../../api/models/base_item_dto.dart';
 import '../../../core/failure.dart';
 import '../../../core/ticks.dart';
-import '../../../core/window.dart';
 import '../../../router.dart';
 import '../../../widgets/error_retry.dart';
 import '../../library/presentation/item_card.dart';
 import '../../settings/application/settings_providers.dart';
 import '../application/play_queue.dart';
+import '../application/player_carry_over.dart';
 import '../application/player_controller.dart';
 import '../data/player_engine.dart';
 import '../data/tracks.dart';
@@ -80,37 +80,39 @@ class PlayerScreen extends ConsumerWidget {
       );
     });
 
-    return PopScope(
-      canPop: false,
-      onPopInvokedWithResult: (didPop, _) {
-        if (!didPop) unawaited(_close(context, ref));
-      },
-      child: Scaffold(
-        backgroundColor: Colors.black,
-        body: switch (session) {
-          AsyncData(value: final session) => _Playing(
-            session: session,
-            controller: ref.read(provider.notifier),
-            onBack: () => _close(context, ref),
-            onNext: neighbors.next == null
-                ? null
-                : () => _goTo(context, ref, neighbors.next!),
-            onPrevious: neighbors.previous == null
-                ? null
-                : () => _goTo(context, ref, neighbors.previous!),
-          ),
-          AsyncError(:final error) => _Message(
-            onBack: () => context.pop(),
-            child: ErrorRetry(
-              error: error,
-              onRetry: () => ref.invalidate(provider),
-            ),
-          ),
-          _ => _Message(
-            onBack: () => context.pop(),
-            child: const CircularProgressIndicator(),
-          ),
+    return _FullscreenScope(
+      child: PopScope(
+        canPop: false,
+        onPopInvokedWithResult: (didPop, _) {
+          if (!didPop) unawaited(_close(context, ref));
         },
+        child: Scaffold(
+          backgroundColor: Colors.black,
+          body: switch (session) {
+            AsyncData(value: final session) => _Playing(
+              session: session,
+              controller: ref.read(provider.notifier),
+              onBack: () => _close(context, ref),
+              onNext: neighbors.next == null
+                  ? null
+                  : () => _goTo(context, ref, neighbors.next!),
+              onPrevious: neighbors.previous == null
+                  ? null
+                  : () => _goTo(context, ref, neighbors.previous!),
+            ),
+            AsyncError(:final error) => _Message(
+              onBack: () => context.pop(),
+              child: ErrorRetry(
+                error: error,
+                onRetry: () => ref.invalidate(provider),
+              ),
+            ),
+            _ => _Message(
+              onBack: () => context.pop(),
+              child: const CircularProgressIndicator(),
+            ),
+          },
+        ),
       ),
     );
   }
@@ -133,6 +135,39 @@ class PlayerScreen extends ConsumerWidget {
       context.pushReplacement(Routes.play(item.id));
     }
   }
+}
+
+/// Counts this screen among the player screens open, so full screen
+/// lasts from one item to the next and ends when the player closes (see
+/// playerFullscreenProvider).
+class _FullscreenScope extends ConsumerStatefulWidget {
+  const _FullscreenScope({required this.child});
+
+  final Widget child;
+
+  @override
+  ConsumerState<_FullscreenScope> createState() => _FullscreenScopeState();
+}
+
+class _FullscreenScopeState extends ConsumerState<_FullscreenScope> {
+  late final PlayerFullscreenNotifier _fullscreen = ref.read(
+    playerFullscreenProvider.notifier,
+  );
+
+  @override
+  void initState() {
+    super.initState();
+    _fullscreen.enter();
+  }
+
+  @override
+  void dispose() {
+    _fullscreen.leave();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.child;
 }
 
 class _Message extends StatelessWidget {
@@ -184,11 +219,6 @@ class _PlayingState extends ConsumerState<_Playing> {
   static const longSeekStep = Duration(seconds: 60);
   static const volumeStep = 5.0;
 
-  late final AppWindow _window = ref.read(appWindowProvider);
-
-  /// Whether this screen made the window full screen (and so undoes it).
-  bool _fullscreen = false;
-
   PlayerEngine get engine => widget.session.engine;
 
   /// Music: a cover instead of a picture, and the OSD stays up.
@@ -216,14 +246,11 @@ class _PlayingState extends ConsumerState<_Playing> {
   void dispose() {
     _hideTimer?.cancel();
     unawaited(_playing?.cancel());
-    if (_fullscreen) _window.isFullScreen = false;
     super.dispose();
   }
 
-  void _toggleFullscreen() {
-    setState(() => _fullscreen = !_fullscreen);
-    _window.isFullScreen = _fullscreen;
-  }
+  void _toggleFullscreen() =>
+      ref.read(playerFullscreenProvider.notifier).toggle();
 
   void _show({bool hide = true}) {
     if (!_osdVisible) setState(() => _osdVisible = true);
@@ -329,7 +356,7 @@ class _PlayingState extends ConsumerState<_Playing> {
                 child: _Osd(
                   session: widget.session,
                   controller: widget.controller,
-                  fullscreen: _fullscreen,
+                  fullscreen: ref.watch(playerFullscreenProvider),
                   onFullscreen: _toggleFullscreen,
                   onNext: widget.onNext == null ? null : _next,
                   onPrevious: _previous,
@@ -693,8 +720,21 @@ class _TrackMenu extends StatelessWidget {
     icon: Icon(icon, color: Colors.white),
     onOpened: onInteract,
     onSelected: (choice) {
-      unawaited(onSelected(choice.$1));
       onInteract();
+      final messenger = ScaffoldMessenger.maybeOf(context);
+      unawaited(
+        onSelected(choice.$1).catchError((Object e) {
+          // A track that needs a new stream can fail (server gone): the
+          // old one keeps playing; say so instead of doing nothing.
+          messenger?.showSnackBar(
+            SnackBar(
+              content: Text(
+                e is Failure ? e.message : 'Could not change the track.',
+              ),
+            ),
+          );
+        }),
+      );
     },
     itemBuilder: (_) => [
       for (final (index, label, key) in options)

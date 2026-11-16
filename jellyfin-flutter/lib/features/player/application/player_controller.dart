@@ -15,6 +15,7 @@ import '../data/player_engine.dart';
 import '../data/tracks.dart';
 import 'pending_reports.dart';
 import 'playback_reporter.dart';
+import 'player_carry_over.dart';
 
 /// What to play: an item, from a position (zero = from the start).
 typedef PlayRequest = ({String itemId, Duration start});
@@ -122,6 +123,12 @@ class PlayerController extends AsyncNotifier<PlayerSession> {
       ..add(engine.positionStream.listen((p) => _lastPosition = p))
       ..add(engine.completedStream.listen((_) => unawaited(_ended())));
 
+    // The volume and mute the user left the last item at.
+    final sound = ref.read(playerSoundProvider);
+    if (sound != PlayerSoundNotifier.initial) {
+      await engine.setVolume(sound.volume);
+      await engine.setMuted(sound.muted);
+    }
     await _open(engine, plan);
     var session = PlayerSession(item: item, plan: plan, engine: engine);
     session = _session = await _applyInitialTracks(session);
@@ -284,6 +291,7 @@ class PlayerController extends AsyncNotifier<PlayerSession> {
     if (engine == null) return;
     await engine.setVolume(volume);
     if (engine.muted && volume > 0) await engine.setMuted(false);
+    _rememberSound(engine);
   }
 
   /// Volume up / down by [delta] (0–100 scale).
@@ -294,7 +302,17 @@ class PlayerController extends AsyncNotifier<PlayerSession> {
 
   Future<void> toggleMute() async {
     final engine = state.value?.engine;
-    if (engine != null) await engine.setMuted(!engine.muted);
+    if (engine == null) return;
+    await engine.setMuted(!engine.muted);
+    _rememberSound(engine);
+  }
+
+  void _rememberSound(PlayerEngine engine) {
+    if (ref.mounted) {
+      ref
+          .read(playerSoundProvider.notifier)
+          .set(volume: engine.volume, muted: engine.muted);
+    }
   }
 
   /// A new stream from the server with other tracks, at the same place
@@ -304,7 +322,9 @@ class PlayerController extends AsyncNotifier<PlayerSession> {
     if (session == null) return;
     final engine = session.engine;
     final position = at ?? engine.position;
-    await _reporter?.stop();
+    // The new stream first: if the server cannot give one, the old stream
+    // keeps playing and keeps being reported (stopping the reporter first
+    // lost the place on the server).
     final plan = await _repository.prepare(
       session.item,
       start: position,
@@ -312,7 +332,14 @@ class PlayerController extends AsyncNotifier<PlayerSession> {
       subtitleStreamIndex: subtitle ?? -1,
     );
     if (!ref.mounted) return;
-    await _open(engine, plan);
+    await _reporter?.stop();
+    try {
+      await _open(engine, plan);
+    } catch (_) {
+      // Whatever mpv now plays, the server hears about it again.
+      if (ref.mounted) _startReporting(session);
+      rethrow;
+    }
     final next = session.copyWith(
       plan: plan,
       audioStreamIndex: () => audio,

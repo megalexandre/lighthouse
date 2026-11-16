@@ -133,6 +133,10 @@ class MediaKitEngine implements PlayerEngine {
       'hwdec',
       options.hardwareDecoding ? 'auto-safe' : 'no',
     );
+    // mpv does not check HTTPS certificates by default, yet the request
+    // carries the session token (header, and api_key in subtitle URLs):
+    // check them, with the system's CAs, as the API client (dio) does.
+    await _mpv.setProperty('tls-verify', 'yes');
     if (!options.audio) await _mpv.setProperty('ao', 'null');
     await _mpv.setProperty('audio-fallback-to-null', 'yes');
     await _mpv.setProperty('demuxer-max-bytes', '${150 * 1024 * 1024}');

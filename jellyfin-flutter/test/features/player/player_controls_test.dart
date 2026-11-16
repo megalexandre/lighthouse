@@ -3,6 +3,7 @@
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:jellyfin_flutter/api/models/playback_report.dart';
+import 'package:jellyfin_flutter/core/failure.dart';
 import 'package:jellyfin_flutter/features/item/presentation/item_screen.dart';
 import 'package:jellyfin_flutter/features/player/presentation/player_screen.dart';
 import 'package:jellyfin_flutter/router.dart';
@@ -203,5 +204,25 @@ void main() {
     expect(app.playback.started, hasLength(2));
     expect(app.playback.started.last.audioStreamIndex, 3);
     await leave(tester);
+  });
+
+  testWidgets('transcoding: when the server cannot give the new stream, the '
+      'old one plays on, is still reported, and the error shows', (
+    tester,
+  ) async {
+    app.playback.method = PlayMethod.transcode;
+    await startPlaying(tester);
+    app.engine.advance(const Duration(seconds: 30));
+    app.playback.failures['prepare'] = const ServerUnreachable(testUrl);
+
+    await pick(tester, PlayerScreen.audioMenu, PlayerScreen.audioItem(3));
+    expect(app.engine.opened, hasLength(1));
+    expect(app.playback.stopped, isEmpty);
+    expect(find.text(const ServerUnreachable(testUrl).message), findsOneWidget);
+
+    // Leaving still saves the place, from the reporter of the old stream.
+    app.engine.advance(const Duration(seconds: 10));
+    await leave(tester);
+    expect(app.playback.stopped.single.positionTicks, 40 * 10000000);
   });
 }

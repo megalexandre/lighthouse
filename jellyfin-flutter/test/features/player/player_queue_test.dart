@@ -151,4 +151,31 @@ void main() {
     expect(find.byKey(PlayerScreen.nextButton), findsNothing);
     await leave(tester);
   });
+
+  testWidgets('binge: full screen, volume and mute carry to the next '
+      'episode; leaving the player gives the window back', (tester) async {
+    await play(tester, e1.id);
+    await tester.sendKeyEvent(LogicalKeyboardKey.keyF);
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+    await tester.sendKeyEvent(LogicalKeyboardKey.keyM);
+    await tester.pump();
+    expect(app.window.isFullScreen, isTrue);
+    expect((app.engine.volume, app.engine.muted), (90.0, true));
+
+    app.engine.finish();
+    await tester.pumpAndSettle();
+    expect(playing(e2.name), findsOneWidget);
+    expect(app.window.isFullScreen, isTrue);
+    expect((app.engine.volume, app.engine.muted), (90.0, true));
+
+    // Next, by its key: the same.
+    await tester.sendKeyEvent(LogicalKeyboardKey.mediaTrackNext);
+    await tester.pumpAndSettle();
+    expect(app.window.isFullScreen, isTrue);
+
+    await leave(tester);
+    expect(find.byType(PlayerScreen), findsNothing);
+    expect(app.window.isFullScreen, isFalse);
+  });
 }

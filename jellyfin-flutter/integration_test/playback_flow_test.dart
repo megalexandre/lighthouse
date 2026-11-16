@@ -177,6 +177,8 @@ void main() {
     }
 
     await mpvShows('current-tracks/audio/lang', 'eng');
+    // HTTPS certificates are checked (the token goes with each request).
+    expect(await engine.mpvProperty('tls-verify'), 'yes');
 
     // The OSD hides while playing: pause so the menus stay up.
     await engine.pause();
