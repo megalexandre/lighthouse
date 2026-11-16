@@ -1,7 +1,8 @@
 import 'dart:io';
+import 'dart:isolate';
+import 'dart:typed_data';
 import 'dart:ui' as ui;
 
-import 'package:archive/archive.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:pdfrx/pdfrx.dart';
 
@@ -28,45 +29,64 @@ abstract interface class BookDocument {
 
 /// The book [file] opened for reading. Throws [NotReadable] for a format
 /// the reader does not handle (yet).
+///
+/// A PDF stays on disk (PDFium reads what it needs); only its first bytes
+/// are read here. A comic is read and unzipped in another isolate, so a
+/// big one does not freeze the screen.
 Future<BookDocument> openBook(File file) async {
-  final bytes = await file.readAsBytes();
-  return switch (detectBookFormat(bytes)) {
-    BookFormat.pdf => PdfBookDocument.open(file.path),
-    BookFormat.comic => ComicBookDocument(ZipDecoder().decodeBytes(bytes)),
-    BookFormat.epub => throw const NotReadable('EPUB'),
-    BookFormat.unknown => throw const NotReadable('this file type'),
-  };
+  final head = await _readHead(file);
+  switch (headFormat(head)) {
+    case HeadFormat.pdf:
+      return PdfBookDocument.open(file.path);
+    case HeadFormat.unknown:
+      throw const NotReadable('this file type');
+    case HeadFormat.zip:
+      final path = file.path;
+      final zip = await Isolate.run(
+        () => readZipBook(File(path).readAsBytesSync()),
+      );
+      return switch (zip.format) {
+        BookFormat.comic => ComicBookDocument(zip.pages),
+        BookFormat.epub => throw const NotReadable('EPUB'),
+        _ => throw const NotReadable('this file type'),
+      };
+  }
+}
+
+Future<Uint8List> _readHead(File file) async {
+  final raf = await file.open();
+  try {
+    return await raf.read(headLength);
+  } finally {
+    await raf.close();
+  }
 }
 
 /// A comic: each page is an image in the zip.
 class ComicBookDocument implements BookDocument {
-  ComicBookDocument(Archive zip) : _pages = comicPages(zip);
+  /// The page images, encoded (PNG, JPEG...), in reading order.
+  ComicBookDocument(this._pages);
 
-  final List<ArchiveFile> _pages;
+  final List<Uint8List> _pages;
 
   @override
   int get pageCount => _pages.length;
 
   @override
   double pageAspectRatio(int index) {
-    final size = encodedImageSize(_pages[index].content);
+    final size = encodedImageSize(_pages[index]);
     return size == null || size.height == 0 ? 2 / 3 : size.width / size.height;
   }
 
   @override
-  Widget buildPage(int index) => Image.memory(
-    _pages[index].content,
-    fit: BoxFit.contain,
-    gaplessPlayback: true,
-  );
+  Widget buildPage(int index) =>
+      Image.memory(_pages[index], fit: BoxFit.contain, gaplessPlayback: true);
 
   @override
   Future<ui.Image> pageImage(int index, Size maxSize) async {
     // The size from the header (ImageDescriptor does not decode), then one
     // decode straight at the size needed, not at full scan resolution.
-    final buffer = await ui.ImmutableBuffer.fromUint8List(
-      _pages[index].content,
-    );
+    final buffer = await ui.ImmutableBuffer.fromUint8List(_pages[index]);
     final descriptor = await ui.ImageDescriptor.encoded(buffer);
     try {
       final fit = _fit(

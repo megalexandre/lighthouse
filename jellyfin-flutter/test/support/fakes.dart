@@ -3,7 +3,6 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:ui' as ui;
 
-import 'package:archive/archive.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -721,7 +720,7 @@ class FakeBookRepository implements BookRepository {
 Future<BookDocument> openBookForTests(File file) async {
   final bytes = file.readAsBytesSync();
   return switch (detectBookFormat(bytes)) {
-    BookFormat.comic => ComicBookDocument(ZipDecoder().decodeBytes(bytes)),
+    BookFormat.comic => ComicBookDocument(readZipBook(bytes).pages),
     BookFormat.pdf => const _BlankDocument(5),
     BookFormat.epub => throw const NotReadable('EPUB'),
     BookFormat.unknown => throw const NotReadable('this file type'),

@@ -49,9 +49,40 @@ void main() {
   });
 
   test('the fixture comic has its 5 pages in order', () async {
+    // Unzipped in another isolate: the pages come back as plain bytes.
     final doc = await openBook(File(FakeBookRepository.files['book-comic']!));
     expect(doc, isA<ComicBookDocument>());
     expect(doc.pageCount, 5);
+  });
+
+  test('the first bytes are enough to tell a PDF from a zip', () {
+    Uint8List head(String id) =>
+        Uint8List.sublistView(fixture(id), 0, headLength);
+    expect(headFormat(head('book-pdf')), HeadFormat.pdf);
+    expect(headFormat(head('book-comic')), HeadFormat.zip);
+    expect(headFormat(head('book-epub')), HeadFormat.zip);
+    expect(headFormat(Uint8List(0)), HeadFormat.unknown);
+  });
+
+  test('a zip book: its pages, by name, as bytes', () {
+    final zip = Archive()
+      ..add(ArchiveFile.bytes('p10.png', Uint8List.fromList([10])))
+      ..add(ArchiveFile.bytes('p2.png', Uint8List.fromList([2])))
+      ..add(ArchiveFile.string('info.txt', 'x'));
+    final book = readZipBook(Uint8List.fromList(ZipEncoder().encode(zip)));
+    expect(book.format, BookFormat.comic);
+    expect(book.pages.map((p) => p.single), [2, 10]);
+    expect(
+      readZipBook(Uint8List.fromList([1, 2, 3])).format,
+      BookFormat.unknown,
+    );
+  });
+
+  test('anything else is not readable, without reading it all', () async {
+    final dir = await Directory.systemTemp.createTemp('jf-book-');
+    addTearDown(() => dir.delete(recursive: true));
+    final file = File('${dir.path}/x')..writeAsStringSync('hello world');
+    await expectLater(openBook(file), throwsA(isA<NotReadable>()));
   });
 
   testWidgets('a comic page image: one decode, at the size asked for', (
@@ -64,9 +95,7 @@ void main() {
       final scan = await recorder.endRecording().toImage(1200, 1800);
       final png = (await scan.toByteData(format: ui.ImageByteFormat.png))!;
       scan.dispose();
-      final doc = ComicBookDocument(
-        Archive()..add(ArchiveFile.bytes('1.png', png.buffer.asUint8List())),
-      );
+      final doc = ComicBookDocument([png.buffer.asUint8List()]);
 
       final page = await doc.pageImage(0, const Size(400, 400));
       expect((page.width, page.height), (267, 400));

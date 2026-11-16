@@ -20,19 +20,43 @@ enum BookFormat {
 
 /// The format of a book file, from its first bytes (and, for a zip, from
 /// its EPUB "mimetype" entry).
-BookFormat detectBookFormat(Uint8List bytes) {
-  if (_startsWith(bytes, '%PDF-')) return BookFormat.pdf;
-  if (!_startsWith(bytes, 'PK\u0003\u0004')) return BookFormat.unknown;
+BookFormat detectBookFormat(Uint8List bytes) => switch (headFormat(bytes)) {
+  HeadFormat.pdf => BookFormat.pdf,
+  HeadFormat.zip => readZipBook(bytes).format,
+  HeadFormat.unknown => BookFormat.unknown,
+};
+
+/// What the first bytes of a file say: enough to tell a PDF (opened from
+/// the file, not read into memory) from a zip (read whole, see
+/// [readZipBook]). [headLength] bytes are enough.
+enum HeadFormat { pdf, zip, unknown }
+
+const headLength = 8;
+
+HeadFormat headFormat(Uint8List head) {
+  if (_startsWith(head, '%PDF-')) return HeadFormat.pdf;
+  if (_startsWith(head, 'PK\u0003\u0004')) return HeadFormat.zip;
+  return HeadFormat.unknown;
+}
+
+/// What a zip book holds: [BookFormat.epub], [BookFormat.comic] with its
+/// page images in reading order, or [BookFormat.unknown] (no images, or
+/// not a readable zip). Plain data, so it can come back from an isolate.
+typedef ZipBook = ({BookFormat format, List<Uint8List> pages});
+
+ZipBook readZipBook(Uint8List bytes) {
+  const none = (format: BookFormat.unknown, pages: <Uint8List>[]);
   try {
     final zip = ZipDecoder().decodeBytes(bytes);
     final mimetype = zip.findFile('mimetype');
     if (mimetype != null &&
         utf8.decode(mimetype.content).trim() == 'application/epub+zip') {
-      return BookFormat.epub;
+      return (format: BookFormat.epub, pages: <Uint8List>[]);
     }
-    return comicPages(zip).isEmpty ? BookFormat.unknown : BookFormat.comic;
+    final pages = [for (final f in comicPages(zip)) f.content];
+    return pages.isEmpty ? none : (format: BookFormat.comic, pages: pages);
   } on Object {
-    return BookFormat.unknown;
+    return none;
   }
 }
 
