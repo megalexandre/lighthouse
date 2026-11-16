@@ -101,6 +101,32 @@ volume (mounted at `/home/dev/.claude`, with `CLAUDE_CONFIG_DIR` pointing
 there), so they survive **Rebuild Container**. To log out everywhere and
 start fresh: `docker volume rm jellyfin-dev_claude-config`.
 
+Skills installed for every project in the container live in the same
+volume, under `~/.claude/skills/`:
+
+- `security-audit` (Cloudflare,
+  [security-audit-skill](https://github.com/cloudflare/security-audit-skill),
+  MIT): security reviews and, when asked explicitly, a full multi-phase
+  audit. Its validators run with Node.js, installed by the Dockerfile.
+  The pinned commit is in `~/.claude/skills/security-audit/SOURCE.txt`;
+  to update, download a newer commit, read it, and replace the folder.
+  It executes audited code only inside an OS-enforced sandbox, which this
+  container does not provide: here its audits are source-only, and what
+  would need running is reported as `needs_validation`.
+- `open-code-review` and `open-code-review-delegate` (Alibaba,
+  [open-code-review](https://github.com/alibaba/open-code-review),
+  Apache-2.0): code review of Git changes (workspace, a commit, a branch
+  range) with line-level comments. Both drive the `ocr` CLI, which the
+  Dockerfile installs as a native binary at a pinned version (not through
+  npm, whose launcher auto-updates itself).
+  - *delegate* needs nothing else: `ocr` only picks the files and rules,
+    and Claude does the review.
+  - *open-code-review* has `ocr` call an LLM itself: configure a provider
+    and API key first (`ocr config provider`, kept in
+    `~/.opencodereview/config.json`; your code goes to that provider).
+  Fixes are applied only when asked ("review and fix"). Commits are in
+  each skill's `SOURCE.txt`.
+
 ## Limits and common problems
 
 - **Hardware decoding, audio passthrough and refresh rate switching** depend

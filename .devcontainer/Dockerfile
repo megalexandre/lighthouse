@@ -50,7 +50,25 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
         ffmpeg \
         # AppImage packing (jellyfin-flutter/tool/build_appimage.sh):
         # appimagetool calls `file`
-        file
+        file \
+        # Runs the validators of the security-audit Claude Code skill
+        # (installed in ~/.claude/skills, see .devcontainer/README.md)
+        nodejs
+
+# --- OpenCodeReview CLI (`ocr`) -----------------------------------------------
+# Used by the open-code-review Claude Code skills (in ~/.claude/skills, see
+# README.md). Only the native binary, from its npm platform package, at a
+# pinned version checked against the tarball's SHA-512. Not through npm:
+# the npm launcher (bin/ocr.js) auto-updates itself in the background
+# (`npm i -g ...@latest`), which would undo the pin.
+ARG OCR_VERSION=1.13.10
+ARG OCR_SHA512=5dd864f8a4ed71f2eabff5a998612e7c41ebbc21fadce56d3572cb791132ca357f4eda97e55e7b30c060b73cf975eac82ef7e5838df629bcbed490f6f770730d
+RUN curl -fsSL -o /tmp/ocr.tgz \
+        "https://registry.npmjs.org/@alibaba-group/ocr-linux-x64/-/ocr-linux-x64-${OCR_VERSION}.tgz" \
+    && echo "${OCR_SHA512}  /tmp/ocr.tgz" | sha512sum --check --quiet \
+    && tar -xzf /tmp/ocr.tgz -C /tmp package/bin/opencodereview \
+    && install -m 0755 /tmp/package/bin/opencodereview /usr/local/bin/ocr \
+    && rm -rf /tmp/ocr.tgz /tmp/package
 
 # --- Non-root user "dev" ----------------------------------------------------
 # ubuntu:24.04 ships a user "ubuntu" with uid/gid 1000. Remove it first so
