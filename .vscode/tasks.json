@@ -54,6 +54,38 @@
       "presentation": { "reveal": "always", "panel": "dedicated", "clear": true }
     },
     {
+      // Behaviour scenarios (test/**/*.feature): makes their tests from the
+      // .feature files, then runs every one. See tool/scenarios.sh.
+      "label": "jellyfin-flutter: scenarios (all features)",
+      "type": "shell",
+      "command": "tool/scenarios.sh",
+      "group": "test",
+      "problemMatcher": [],
+      "presentation": { "reveal": "always", "panel": "dedicated", "clear": true }
+    },
+    {
+      // The feature open in the editor (its .feature, its _test.dart or one
+      // of its steps); asks for part of a scenario's name, empty for all.
+      "label": "jellyfin-flutter: scenarios (this feature)",
+      "type": "shell",
+      "command": "tool/scenarios.sh",
+      "args": ["${file}", "${input:scenarioName}"],
+      "group": "test",
+      "problemMatcher": [],
+      "presentation": { "reveal": "always", "panel": "dedicated", "clear": true }
+    },
+    {
+      // Keeps the tests in step with the .feature files while you write
+      // them (and makes the stub of a new step). Stop it with the trash
+      // icon of its terminal.
+      "label": "jellyfin-flutter: scenarios (regenerate on save)",
+      "type": "shell",
+      "command": "dart run build_runner watch --delete-conflicting-outputs",
+      "isBackground": true,
+      "problemMatcher": [],
+      "presentation": { "reveal": "always", "panel": "dedicated", "clear": true }
+    },
+    {
       // Integration tests on the release-like (AOT) build, headless.
       "label": "jellyfin-flutter: integration tests (profile)",
       "type": "shell",
@@ -71,6 +103,14 @@
       "command": "tool/dev_server.sh",
       "problemMatcher": [],
       "presentation": { "reveal": "silent", "panel": "dedicated", "clear": true }
+    }
+  ],
+  "inputs": [
+    {
+      "id": "scenarioName",
+      "type": "promptString",
+      "description": "Scenarios whose name has (empty: all of the feature)",
+      "default": ""
     }
   ]
 }

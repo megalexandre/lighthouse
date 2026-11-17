@@ -47,6 +47,10 @@ dev_dependencies:
   mocktail: ^1.0.4
   # Fake clock for timers (PlaybackReporter's 10 s progress reports).
   fake_async: ^1.3.3
+  # Behaviour scenarios in Gherkin (test/**/*.feature): build_runner turns
+  # each into a widget test; steps in test/step/. Pinned: a version with a
+  # few weeks of use behind it.
+  bdd_widget_test: 3.0.4
   # Sets up the throwaway test server (JELLYFIN_TEST_URL).
   jellyfin_test_server:
     path: packages/jellyfin_test_server

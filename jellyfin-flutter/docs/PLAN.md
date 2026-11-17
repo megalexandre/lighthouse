@@ -81,6 +81,25 @@ Quatro camadas; toda fase só termina com as quatro verdes no `tool/check.sh`.
    Fluxos: conectar+login; navegar até um filme; tocar, esperar posição > 2 s, pausar, sair, conferir pela API que o
    progresso foi salvo; reabrir e "Retomar" começa no ponto salvo; trocar faixa de áudio/legenda; próximo episódio.
 
+### Cenários de comportamento (Gherkin)
+
+Comportamentos de usuário descritos em `.feature`, em inglês, dentro de `test/`, com o pacote `bdd_widget_test`
+(fixado na 3.0.4). A etapa de geração de código do `check.sh` (`build_runner`) transforma cada `x.feature` num
+`x_test.dart` ao lado, um `testWidgets` por cenário. Esse arquivo é gerado: não se edita, é commitado e fica fora da
+checagem de formatação. Os passos ficam na pasta `step/` da feature, um arquivo por frase. Eles usam o `TestApp`
+(`step/world.dart`), e o gerador só cria o esqueleto de um passo novo, sem sobrescrever os existentes. As features
+ficam em Gherkin padrão (sem `After:`, que outras ferramentas leem como descrição): a limpeza fica nos hooks
+(`addHooks` no `build.yaml`), em `hook/hooks.dart` ao lado da feature. O `Hooks.afterEach` encerra o app no fim de
+cada cenário, mesmo dos que falham, para não sobrar timer, usando o `tester` que o passo "the app is signed in"
+guarda no `world.dart`.
+
+Para rodar: `tool/scenarios.sh` (todas), `tool/scenarios.sh <arquivo> ["parte do nome"]` (uma feature), ou as tasks
+do VS Code "scenarios (all features)", "scenarios (this feature)" (a feature aberta no editor) e "scenarios
+(regenerate on save)". Todas regeneram os testes antes de rodar.
+
+Primeira feature: `test/features/player/up_next.feature`, com o cartão Up Next, Watch now, Hide e o autoplay
+desligado. Os testes de unidade e de tela continuam em Dart puro; o Gherkin fica para os fluxos de usuário.
+
 ### Servidor de teste isolado
 
 - Novo serviço `jellyfin-test` no `docker-compose.yml` (mesma imagem `jellyfin/jellyfin:12.4`), `/config` em **tmpfs**

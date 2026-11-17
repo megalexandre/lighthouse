@@ -17,3 +17,8 @@ targets:
       freezed:
         options:
           make_collections_unmodifiable: false
+      # Hooks (test/.../hooks/hooks.dart) run around every scenario, so the
+      # feature files need no `After:`, which is not standard Gherkin.
+      bdd_widget_test|featureBuilder:
+        options:
+          addHooks: true

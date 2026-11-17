@@ -15,9 +15,14 @@ step "Code generation (freezed, json_serializable)"
 dart run build_runner build
 
 step "Format"
-# Generated files are left as the generators write them.
+# Generated files are left as the generators write them: *.g.dart,
+# *.freezed.dart, and the tests bdd_widget_test makes from a .feature
+# (x_test.dart beside x.feature).
 find lib test integration_test packages -name '*.dart' \
   ! -name '*.g.dart' ! -name '*.freezed.dart' -print0 \
+  | while IFS= read -r -d '' f; do
+      [[ -f "${f%_test.dart}.feature" ]] || printf '%s\0' "$f"
+    done \
   | xargs -0 dart format --output=none --set-exit-if-changed
 
 step "Analyze"
