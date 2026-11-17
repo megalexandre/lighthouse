@@ -166,7 +166,7 @@ bordas, teclado), progresso no servidor.
   pelo próprio paginador, então a virada de página funciona igual. O lugar é contado em caracteres, que não
   mudam com o tamanho: redimensionar a janela repagina e mantém o trecho. Posição no servidor: o 12.4 dá ao
   EPUB "duração" de 10^7 ticks e guarda a **fração lida** nessa escala (a mesma do jellyfin-web).
-  Abrir, descompactar e ler o EPUB acontece num isolate. Falta (L3): sumário, links internos, fonte e temas.
+  Abrir, descompactar e ler o EPUB acontece num isolate.
   No Android, WebView + epub.js continua sendo alternativa, se o paginador não bastar.
 - **Virada de página (feita, página única):** guiada pelo dedo como no Play Livros. A folha (no formato da página,
   sobre um fundo neutro) enrola num cilindro (`page_curl/curl_geometry.dart`, Dart puro e testado) desenhado por um
@@ -175,8 +175,22 @@ bordas, teclado), progresso no servidor.
   meio volta, depois (ou com flick) vira, com ease-out; metade esquerda traz a anterior; teclado e toques nas bordas
   fazem a mesma animação; "reduzir animações" troca sem animar. Quadros de referência em
   `test/features/reader/goldens/` (conferidos a olho ao mudar o shader: `flutter test --update-goldens`).
-  Falta: modo de duas páginas com lombada (paisagem/tablet) e adaptar verso/sombras aos temas da L3.
-- **L3:** sumário, tamanho de fonte, temas (claro/escuro/sépia), marcadores.
+  Falta: modo de duas páginas com lombada (paisagem/tablet).
+- **L3 (feita):** sumário, links internos, fonte, temas e marcadores.
+  - Sumário: no EPUB vem do nav (EPUB 3) ou do NCX (EPUB 2); sem nenhum dos dois, são os capítulos que começam
+    com título. No PDF vem do outline do PDFium; quadrinhos não têm. Os itens e os marcadores são frações do livro
+    (`EpubBook.offsetOf`: caracteres até a âncora), então continuam certos depois de repaginar.
+  - Links internos (EPUB): tocar no link vai até a âncora, e um botão "Back to page N" volta. Links externos são
+    ignorados.
+  - Fonte (EPUB): 8 tamanhos de 14 a 32 px, serifa ou sem serifa. Mudar repagina e mantém o trecho.
+  - Temas claro, sépia e escuro, para todos os formatos:
+    - EPUB: o texto é diagramado em preto e pintado na tinta do tema, então trocar de tema não repagina.
+    - PDF: recolorido por matriz (branco vira papel, preto vira tinta); no tema claro fica intacto.
+    - Quadrinhos e imagens mantêm as cores.
+    - Na virada de página, o brilho da crista diminui no papel escuro.
+  - Preferências e marcadores ficam só neste aparelho, num arquivo JSON em
+    `~/.local/share/<app>/reader/` (`FileKeyValueStore`); marcadores por servidor e livro. O Jellyfin não tem onde
+    guardá-los.
 - PDFium vem de `bblanchon/pdfium-binaries` (versão fixa `chromium/8125`), baixado no build pelo hook do
   `pdfium_dart`, sem conferência de hash.
 

@@ -113,4 +113,101 @@ void main() {
     );
     expect(() => EpubBook.read(Archive()), throwsFormatException);
   });
+
+  group('contents and links', () {
+    test('the fixture novel: its nav document, a line per chapter', () {
+      final zip = ZipDecoder().decodeBytes(
+        File(FakeBookRepository.files['book-epub']!).readAsBytesSync(),
+      );
+      final book = EpubBook.read(zip);
+      expect(book.toc.map((e) => '$e'), [
+        'Chapter One -> OEBPS/chapter1.xhtml',
+        'Chapter Two -> OEBPS/chapter2.xhtml',
+        'Chapter Three -> OEBPS/chapter3.xhtml',
+      ]);
+    });
+
+    test('nested nav lists; the toc nav, not the landmarks', () {
+      final book = EpubBook.read(
+        buildEpub(
+          ['<p>a</p>', '<p>b</p>'],
+          nav:
+              '<nav epub:type="landmarks"><ol><li><a href="text/ch1.xhtml">'
+              'Start</a></li></ol></nav>'
+              '<nav epub:type="toc"><ol>'
+              '<li><a href="text/ch0.xhtml">Part   One</a><ol>'
+              '<li><a href="text/ch1.xhtml#s2">A section</a></li></ol></li>'
+              '<li><span>No link</span></li>'
+              '<li><a href="https://example.com/">Web</a></li>'
+              '</ol></nav>',
+        ),
+      );
+      expect(book.toc.map((e) => '$e'), [
+        'Part One -> OEBPS/text/ch0.xhtml',
+        '  A section -> OEBPS/text/ch1.xhtml#s2',
+      ]);
+    });
+
+    test('an EPUB 2 NCX, when there is no nav document', () {
+      final book = EpubBook.read(
+        buildEpub(
+          ['<p>a</p>', '<p>b</p>'],
+          ncx:
+              '<navPoint id="n1"><navLabel><text>First</text></navLabel>'
+              '<content src="text/ch0.xhtml"/>'
+              '<navPoint id="n2"><navLabel><text>Inner</text></navLabel>'
+              '<content src="text/ch1.xhtml#x"/></navPoint></navPoint>',
+        ),
+      );
+      expect(book.toc.map((e) => '$e'), [
+        'First -> OEBPS/text/ch0.xhtml',
+        '  Inner -> OEBPS/text/ch1.xhtml#x',
+      ]);
+    });
+
+    test('a broken NCX: no contents, the book still reads', () {
+      final book = EpubBook.read(buildEpub(['<p>a</p>'], ncx: '<navPoint>'));
+      expect(book.toc, isEmpty);
+      expect(book.chapters, hasLength(1));
+    });
+
+    test('links keep their target; links out of the book are not kept', () {
+      final [block as TextBlock] = chapterBlocks(
+        '<p>See <a href="notes.xhtml#n1">note 1</a>, <a href="#here">here</a>'
+            ' and <a href="https://example.com">the web</a>.</p>',
+        'OEBPS/text/ch0.xhtml',
+      );
+      expect(block.runs.map((r) => '$r'), [
+        '"See "',
+        'link OEBPS/text/notes.xhtml#n1:"note 1"',
+        '", "',
+        'link OEBPS/text/ch0.xhtml#here:"here"',
+        '" and "',
+        '"the web"',
+        '"."',
+      ]);
+    });
+
+    test('ids and offsets: where a target starts in the book', () {
+      final book = EpubBook.read(
+        buildEpub([
+          '<p>12345</p>',
+          '<p>abc</p><h2 id="two">Two</h2><p>x <span id="mid">y</span></p>'
+              '<img src="missing.png"/><p id="after">z</p>',
+        ]),
+      );
+      final ch1 = book.chapters[1];
+      // Blocks: "abc", "Two", "x y", "z" (the missing image dropped).
+      expect(ch1.anchors, {'two': 1, 'mid': 2, 'after': 3});
+      expect(book.length, 5 + 3 + 3 + 3 + 1);
+      expect(book.offsetOf('OEBPS/text/ch0.xhtml'), 0);
+      expect(book.offsetOf('OEBPS/text/ch1.xhtml'), 5);
+      expect(book.offsetOf('OEBPS/text/ch1.xhtml#two'), 8);
+      expect(book.offsetOf('OEBPS/text/ch1.xhtml#mid'), 11);
+      expect(book.offsetOf('OEBPS/text/ch1.xhtml#after'), 14);
+      // Unknown fragment: its chapter; unknown file: nowhere.
+      expect(book.offsetOf('OEBPS/text/ch1.xhtml#nope'), 5);
+      expect(book.offsetOf('OEBPS/text/other.xhtml'), isNull);
+    });
+  });
 }

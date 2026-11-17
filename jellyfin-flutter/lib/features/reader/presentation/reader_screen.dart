@@ -8,13 +8,17 @@ import 'package:material_ui/material_ui.dart';
 
 import '../../../widgets/error_retry.dart';
 import '../application/reader_controller.dart';
+import '../application/reader_preferences.dart';
+import '../data/book_document.dart';
 import 'page_curl/page_curl_view.dart';
 
 /// Reads a book page by page, as Google Play Books does: pages turn like
 /// paper under the finger (drag on the right half, or the left half to go
 /// back; see page_curl/); a tap on the left / right edge or the arrow keys
 /// turn them too; a tap in the middle shows or hides the bars; the slider
-/// at the bottom jumps anywhere.
+/// at the bottom jumps anywhere. The top bar opens the contents and
+/// bookmarks, bookmarks the page, and sets the theme (and an EPUB's type);
+/// a tap on a link in an EPUB follows it, with a button to come back.
 ///
 /// Keys: ← → PgUp PgDn turn pages, Space the next one, Home / End the
 /// first / last, Esc or Backspace back.
@@ -26,14 +30,25 @@ class ReaderScreen extends ConsumerStatefulWidget {
   static const slider = Key('reader.slider');
   static const pageText = Key('reader.pageText');
   static const chrome = Key('reader.chrome');
+  static const contentsButton = Key('reader.contents');
+  static const bookmarkButton = Key('reader.bookmark');
+  static const displayButton = Key('reader.display');
+  static const linkBack = Key('reader.linkBack');
+  static const contentsTab = Key('reader.contentsTab');
+  static const bookmarksTab = Key('reader.bookmarksTab');
+  static const fontSmaller = Key('reader.fontSmaller');
+  static const fontBigger = Key('reader.fontBigger');
+  static const fontSize = Key('reader.fontSize');
+  static Key themeChoice(ReaderTheme theme) =>
+      Key('reader.theme.${theme.name}');
+  static Key typefaceChoice({required bool sans}) =>
+      Key('reader.typeface.${sans ? 'sans' : 'serif'}');
 
   /// Part of the width, at each side, where a tap turns the page.
   static const edge = 0.25;
 
-  /// The page's paper, the "desk" around it, and the room left around
-  /// the page for the bars.
-  static const paper = Color(0xFFFFFFFF);
-  static const desk = Color(0xFF303134);
+  /// The room left around the page for the bars. (The paper and the desk
+  /// around it are the theme's: [ReaderTheme].)
   static const margin = EdgeInsets.fromLTRB(12, 52, 12, 60);
 
   final String itemId;
@@ -44,6 +59,7 @@ class ReaderScreen extends ConsumerStatefulWidget {
 
 class _ReaderScreenState extends ConsumerState<ReaderScreen> {
   final _curl = GlobalKey<PageCurlViewState>();
+  final _scaffold = GlobalKey<ScaffoldState>();
   bool _chromeVisible = true;
 
   /// The keys go to the book. Asked for when it appears (autofocus alone
@@ -95,6 +111,9 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
     return KeyEventResult.handled;
   }
 
+  ReaderTheme get _theme =>
+      ref.watch(readerPreferencesProvider).value?.theme ?? ReaderTheme.light;
+
   @override
   Widget build(BuildContext context) {
     final provider = readerControllerProvider(widget.itemId);
@@ -105,7 +124,25 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
         if (!didPop) unawaited(_close());
       },
       child: Scaffold(
-        backgroundColor: ReaderScreen.desk,
+        key: _scaffold,
+        backgroundColor: _theme.desk,
+        drawer: switch (session) {
+          AsyncData(value: final session) => _ContentsDrawer(
+            session: session,
+            onGoTo: (fraction) {
+              _scaffold.currentState?.closeDrawer();
+              _controller.goToFraction(fraction);
+            },
+            onRemoveBookmark: (f) => unawaited(_controller.removeBookmark(f)),
+          ),
+          _ => null,
+        },
+        // Horizontal drags turn pages; the drawer opens from its button.
+        drawerEnableOpenDragGesture: false,
+        // The keys go back to the book when the drawer closes.
+        onDrawerChanged: (open) {
+          if (!open) _focus.requestFocus();
+        },
         body: switch (session) {
           AsyncData(value: final session) => _reading(context, session),
           AsyncError(:final error) => _message(
@@ -132,10 +169,34 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
   );
 
   /// Sheet [index] at rest: the page on its paper.
-  Widget _sheet(ReaderSession session, int index) => ColoredBox(
-    color: ReaderScreen.paper,
-    child: Center(child: session.document.buildPage(index)),
-  );
+  Widget _sheet(ReaderSession session, int index, PageColors colors) =>
+      ColoredBox(
+        color: colors.paper,
+        child: Center(child: session.document.buildPage(index, colors)),
+      );
+
+  /// A tap on a link in the page follows it. True when there was one.
+  bool _followLink(Offset global) {
+    final box = _curl.currentContext?.findRenderObject();
+    if (box is! RenderBox || !box.hasSize || box.size.isEmpty) return false;
+    final local = box.globalToLocal(global);
+    if (!(Offset.zero & box.size).contains(local)) return false;
+    return _controller.followLink(
+      Offset(local.dx / box.size.width, local.dy / box.size.height),
+    );
+  }
+
+  Future<void> _showDisplaySettings(ReaderSession session) async {
+    await showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      // The page stays as it is, to see each choice on it.
+      barrierColor: Colors.transparent,
+      constraints: const BoxConstraints(maxWidth: 480),
+      builder: (_) => _DisplaySheet(reflowable: session.document.reflowable),
+    );
+    _focus.requestFocus();
+  }
 
   /// An EPUB's page: the shape of a book's, between 0.55 and 0.72 (wide
   /// enough for comfortable lines on a phone, not a wall of text on a
@@ -184,6 +245,7 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
               });
             }
           }
+          final colors = _theme.pageColors;
           return Stack(
             fit: StackFit.expand,
             children: [
@@ -194,6 +256,10 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
                 child: GestureDetector(
                   behavior: HitTestBehavior.opaque,
                   onTapUp: (details) {
+                    if (session.document.reflowable &&
+                        _followLink(details.globalPosition)) {
+                      return;
+                    }
                     final x = details.localPosition.dx / constraints.maxWidth;
                     if (x < ReaderScreen.edge) {
                       _previous();
@@ -218,16 +284,25 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
                                 key: _curl,
                                 pageCount: session.pageCount,
                                 page: session.page,
-                                paper: ReaderScreen.paper,
-                                layoutVersion: session.document.layoutVersion,
+                                paper: colors.paper,
+                                // New colours: new pictures too.
+                                layoutVersion: Object.hash(
+                                  session.document.layoutVersion,
+                                  colors,
+                                ),
                                 sheetBuilder: (index) => KeyedSubtree(
                                   key: index == session.page
                                       ? ReaderScreen.pages
                                       : null,
-                                  child: _sheet(session, index),
+                                  child: _sheet(session, index, colors),
                                 ),
-                                sheetImage: (index, size, ratio) =>
-                                    sheetImage(session, index, size, ratio),
+                                sheetImage: (index, size, ratio) => sheetImage(
+                                  session,
+                                  index,
+                                  size,
+                                  ratio,
+                                  colors,
+                                ),
                                 onTurned: _controller.goTo,
                               ),
                       ),
@@ -245,9 +320,28 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
                     session: session,
                     onBack: () => unawaited(_close()),
                     onSeek: _controller.goTo,
+                    onContents: () => _scaffold.currentState?.openDrawer(),
+                    onBookmark: () => unawaited(_controller.toggleBookmark()),
+                    onDisplay: () => unawaited(_showDisplaySettings(session)),
                   ),
                 ),
               ),
+              if (session.linkedFrom case final from?)
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  bottom: ReaderScreen.margin.bottom + 8,
+                  child: Center(
+                    child: ActionChip(
+                      key: ReaderScreen.linkBack,
+                      avatar: const Icon(Icons.undo, size: 18),
+                      label: Text(
+                        'Back to page ${session.document.pageAt(from) + 1}',
+                      ),
+                      onPressed: _controller.returnFromLink,
+                    ),
+                  ),
+                ),
             ],
           );
         },
@@ -263,12 +357,14 @@ Future<ui.Image> sheetImage(
   ReaderSession session,
   int index,
   Size size,
-  double pixelRatio,
-) async {
+  double pixelRatio, [
+  PageColors colors = PageColors.plain,
+]) async {
   final area = Offset.zero & size;
   final page = await session.document.pageImage(
     index,
     Size(area.width * pixelRatio, area.height * pixelRatio),
+    colors,
   );
   final natural = Size(page.width.toDouble(), page.height.toDouble());
   final fitted = applyBoxFit(BoxFit.contain, natural, area.size);
@@ -277,7 +373,7 @@ Future<ui.Image> sheetImage(
   final recorder = ui.PictureRecorder();
   Canvas(recorder)
     ..scale(pixelRatio)
-    ..drawColor(ReaderScreen.paper, BlendMode.src)
+    ..drawColor(colors.paper, BlendMode.src)
     ..drawImageRect(
       page,
       Offset.zero & natural,
@@ -296,17 +392,24 @@ Future<ui.Image> sheetImage(
   }
 }
 
-/// The bars over the page: back and title above; the page slider below.
+/// The bars over the page: back, title, contents, bookmark and display
+/// settings above; the page slider below.
 class _Chrome extends StatelessWidget {
   const _Chrome({
     required this.session,
     required this.onBack,
     required this.onSeek,
+    required this.onContents,
+    required this.onBookmark,
+    required this.onDisplay,
   });
 
   final ReaderSession session;
   final VoidCallback onBack;
   final ValueChanged<int> onSeek;
+  final VoidCallback onContents;
+  final VoidCallback onBookmark;
+  final VoidCallback onDisplay;
 
   @override
   Widget build(BuildContext context) {
@@ -337,6 +440,31 @@ class _Chrome extends StatelessWidget {
                       color: Colors.white,
                     ),
                   ),
+                ),
+                IconButton(
+                  key: ReaderScreen.contentsButton,
+                  color: Colors.white,
+                  tooltip: 'Contents and bookmarks',
+                  icon: const Icon(Icons.toc),
+                  onPressed: onContents,
+                ),
+                IconButton(
+                  key: ReaderScreen.bookmarkButton,
+                  color: Colors.white,
+                  tooltip: session.bookmarked
+                      ? 'Remove bookmark'
+                      : 'Bookmark this page',
+                  isSelected: session.bookmarked,
+                  icon: const Icon(Icons.bookmark_border),
+                  selectedIcon: const Icon(Icons.bookmark),
+                  onPressed: onBookmark,
+                ),
+                IconButton(
+                  key: ReaderScreen.displayButton,
+                  color: Colors.white,
+                  tooltip: 'Display',
+                  icon: const Icon(Icons.text_format),
+                  onPressed: onDisplay,
                 ),
               ],
             ),
@@ -376,6 +504,265 @@ class _Chrome extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+/// The book's contents and the user's bookmarks, side by side in tabs.
+class _ContentsDrawer extends StatefulWidget {
+  const _ContentsDrawer({
+    required this.session,
+    required this.onGoTo,
+    required this.onRemoveBookmark,
+  });
+
+  final ReaderSession session;
+
+  /// Go to a fraction of the book.
+  final ValueChanged<double> onGoTo;
+  final ValueChanged<double> onRemoveBookmark;
+
+  @override
+  State<_ContentsDrawer> createState() => _ContentsDrawerState();
+}
+
+class _ContentsDrawerState extends State<_ContentsDrawer> {
+  /// Read once per book.
+  static final _contents = Expando<Future<List<TocEntry>>>();
+
+  Future<List<TocEntry>> get _toc =>
+      _contents[widget.session.document] ??= widget.session.document.contents();
+
+  @override
+  Widget build(BuildContext context) {
+    final session = widget.session;
+    return Drawer(
+      width: (MediaQuery.sizeOf(context).width * 0.85).clamp(0, 360),
+      child: SafeArea(
+        child: DefaultTabController(
+          length: 2,
+          child: Column(
+            children: [
+              const TabBar(
+                tabs: [
+                  Tab(key: ReaderScreen.contentsTab, text: 'Contents'),
+                  Tab(key: ReaderScreen.bookmarksTab, text: 'Bookmarks'),
+                ],
+              ),
+              Expanded(
+                child: FutureBuilder(
+                  future: _toc,
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState != ConnectionState.done) {
+                      return const Center(child: CircularProgressIndicator());
+                    }
+                    final toc = snapshot.data ?? const <TocEntry>[];
+                    return TabBarView(
+                      children: [
+                        _contentsList(context, session, toc),
+                        _bookmarksList(context, session, toc),
+                      ],
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// The entry [fraction] falls under: the last one at or before it.
+  static TocEntry? _entryAt(List<TocEntry> toc, double fraction) =>
+      toc.lastWhere((e) => e.fraction <= fraction + 1e-9, orElse: () => _none);
+  static const _none = TocEntry('', -1);
+
+  Widget _contentsList(
+    BuildContext context,
+    ReaderSession session,
+    List<TocEntry> toc,
+  ) {
+    if (toc.isEmpty) {
+      return const _Empty('This book has no table of contents.');
+    }
+    final document = session.document;
+    final current = _entryAt(toc, document.fractionOf(session.page));
+    return ListView(
+      children: [
+        for (final entry in toc)
+          ListTile(
+            dense: entry.depth > 0,
+            selected: identical(entry, current),
+            contentPadding: EdgeInsets.only(
+              left: 16.0 + 16 * entry.depth.clamp(0, 4),
+              right: 16,
+            ),
+            title: Text(
+              entry.title,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+            trailing: document.pageCount == 0
+                ? null
+                : Text('${document.pageAt(entry.fraction) + 1}'),
+            onTap: () => widget.onGoTo(entry.fraction),
+          ),
+      ],
+    );
+  }
+
+  Widget _bookmarksList(
+    BuildContext context,
+    ReaderSession session,
+    List<TocEntry> toc,
+  ) {
+    if (session.bookmarks.isEmpty) {
+      return const _Empty(
+        'No bookmarks yet. The bookmark button at the top marks the page '
+        'you are on.',
+      );
+    }
+    final document = session.document;
+    return ListView(
+      children: [
+        for (final fraction in session.bookmarks)
+          ListTile(
+            leading: const Icon(Icons.bookmark),
+            title: Text('Page ${document.pageAt(fraction) + 1}'),
+            subtitle: switch (_entryAt(toc, fraction)) {
+              final TocEntry e when e.fraction >= 0 => Text(
+                e.title,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              _ => null,
+            },
+            trailing: IconButton(
+              tooltip: 'Remove bookmark',
+              icon: const Icon(Icons.delete_outline),
+              onPressed: () => widget.onRemoveBookmark(fraction),
+            ),
+            onTap: () => widget.onGoTo(fraction),
+          ),
+      ],
+    );
+  }
+}
+
+class _Empty extends StatelessWidget {
+  const _Empty(this.text);
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) => Center(
+    child: Padding(
+      padding: const EdgeInsets.all(24),
+      child: Text(text, textAlign: TextAlign.center),
+    ),
+  );
+}
+
+/// The theme, for any book; the type size and face, for an EPUB.
+class _DisplaySheet extends ConsumerWidget {
+  const _DisplaySheet({required this.reflowable});
+
+  final bool reflowable;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final prefs =
+        ref.watch(readerPreferencesProvider).value ?? const ReaderPreferences();
+    // From the preferences at the time of the tap, not of this build: two
+    // quick taps on "larger" are two steps.
+    void update(ReaderPreferences Function(ReaderPreferences) change) {
+      final now =
+          ref.read(readerPreferencesProvider).value ??
+          const ReaderPreferences();
+      unawaited(ref.read(readerPreferencesProvider.notifier).set(change(now)));
+    }
+
+    final sizes = ReaderPreferences.fontSizes;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          SegmentedButton<ReaderTheme>(
+            showSelectedIcon: false,
+            segments: [
+              for (final theme in ReaderTheme.values)
+                ButtonSegment(
+                  value: theme,
+                  label: Text(
+                    theme.label,
+                    key: ReaderScreen.themeChoice(theme),
+                  ),
+                ),
+            ],
+            selected: {prefs.theme},
+            onSelectionChanged: (s) =>
+                update((p) => p.copyWith(theme: s.single)),
+          ),
+          if (reflowable) ...[
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                IconButton.outlined(
+                  key: ReaderScreen.fontSmaller,
+                  tooltip: 'Smaller text',
+                  icon: const Icon(Icons.text_decrease),
+                  onPressed: prefs.fontSize > sizes.first
+                      ? () => update((p) => p.resized(-1))
+                      : null,
+                ),
+                Expanded(
+                  child: Text(
+                    '${prefs.fontSize.round()} px',
+                    key: ReaderScreen.fontSize,
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+                IconButton.outlined(
+                  key: ReaderScreen.fontBigger,
+                  tooltip: 'Larger text',
+                  icon: const Icon(Icons.text_increase),
+                  onPressed: prefs.fontSize < sizes.last
+                      ? () => update((p) => p.resized(1))
+                      : null,
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            SegmentedButton<bool>(
+              showSelectedIcon: false,
+              segments: [
+                ButtonSegment(
+                  value: false,
+                  label: Text(
+                    'Serif',
+                    key: ReaderScreen.typefaceChoice(sans: false),
+                    style: const TextStyle(fontFamily: 'serif'),
+                  ),
+                ),
+                ButtonSegment(
+                  value: true,
+                  label: Text(
+                    'Sans',
+                    key: ReaderScreen.typefaceChoice(sans: true),
+                    style: const TextStyle(fontFamily: 'sans-serif'),
+                  ),
+                ),
+              ],
+              selected: {prefs.sansSerif},
+              onSelectionChanged: (s) =>
+                  update((p) => p.copyWith(sansSerif: s.single)),
+            ),
+          ],
+        ],
+      ),
     );
   }
 }

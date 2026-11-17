@@ -10,18 +10,77 @@ import '../../../core/failure.dart';
 import 'book_format.dart';
 import 'epub/epub_book.dart';
 import 'epub/epub_document.dart';
+import 'epub/epub_layout.dart';
 import 'image_size.dart';
+
+/// The colours a page is shown in (the reader's theme): text in [ink] on
+/// [paper]. Pictures (comics, an EPUB's images) keep theirs.
+@immutable
+class PageColors {
+  const PageColors({required this.paper, required this.ink});
+
+  /// Black on white: pages as the file has them.
+  static const plain = PageColors(
+    paper: Color(0xFFFFFFFF),
+    ink: Color(0xFF202124),
+  );
+
+  final Color paper;
+  final Color ink;
+
+  /// For a page drawn black on white (a PDF): white becomes [paper],
+  /// black [ink], and every colour in between in proportion. Null for
+  /// [plain] (nothing to change).
+  ColorFilter? get recolor {
+    if (this == plain) return null;
+    // Out = ink + (paper − ink) × in, per channel (the bias is in 0..255).
+    List<double> row(int channel, double i, double p) => [
+      for (var c = 0; c < 3; c++) c == channel ? p - i : 0,
+      0,
+      i * 255,
+    ];
+    return ColorFilter.matrix([
+      ...row(0, ink.r, paper.r),
+      ...row(1, ink.g, paper.g),
+      ...row(2, ink.b, paper.b),
+      0, 0, 0, 1, 0, //
+    ]);
+  }
+
+  @override
+  bool operator ==(Object other) =>
+      other is PageColors && other.paper == paper && other.ink == ink;
+
+  @override
+  int get hashCode => Object.hash(paper, ink);
+}
+
+/// A line of a book's table of contents: [title], going to [fraction] of
+/// the book (see [BookDocument.pageAt]); [depth] 0 for the top level.
+@immutable
+class TocEntry {
+  const TocEntry(this.title, this.fraction, {this.depth = 0});
+
+  final String title;
+  final double fraction;
+  final int depth;
+
+  @override
+  String toString() => '${'  ' * depth}$title @ $fraction';
+}
 
 /// An open book, page by page.
 abstract interface class BookDocument {
   int get pageCount;
 
-  /// Page [index] (0-based), fitted to the space it gets.
-  Widget buildPage(int index);
+  /// Page [index] (0-based) in [colors], fitted to the space it gets.
+  Widget buildPage(int index, PageColors colors);
 
-  /// Page [index] as an image about [maxSize] pixels (aspect kept), for
-  /// the page-turn animation, which bends pictures, not widgets.
-  Future<ui.Image> pageImage(int index, Size maxSize);
+  /// Page [index] in [colors] as an image about [maxSize] pixels (aspect
+  /// kept), for the page-turn animation, which bends pictures, not
+  /// widgets. Where the page is empty it may be transparent (the paper
+  /// shows through).
+  Future<ui.Image> pageImage(int index, Size maxSize, PageColors colors);
 
   /// Width ÷ height of page [index]: the sheet that turns has its shape.
   double pageAspectRatio(int index);
@@ -31,9 +90,9 @@ abstract interface class BookDocument {
   /// changes. A PDF or a comic has its pages ([FixedPages]).
   bool get reflowable;
 
-  /// Cuts the book into pages of [size] (logical pixels). True when the
-  /// pages changed.
-  bool layout(Size size);
+  /// Cuts the book into pages of [size] (logical pixels), its type set as
+  /// [typography] says. True when the pages changed.
+  bool layout(Size size, EpubTypography typography);
 
   /// Changes whenever the pages do: pictures of the old ones are stale.
   int get layoutVersion;
@@ -45,6 +104,14 @@ abstract interface class BookDocument {
   /// The page at [fraction] of the book.
   int pageAt(double fraction);
 
+  /// The table of contents; empty when the book has none.
+  Future<List<TocEntry>> contents();
+
+  /// Where a link at [at] on page [index] goes, as a fraction of the book
+  /// (see [pageAt]); null when there is no link there. [at] is in the
+  /// page's own unit square: (0, 0) top left, (1, 1) bottom right.
+  double? linkAt(int index, Offset at);
+
   Future<void> dispose();
 }
 
@@ -54,7 +121,7 @@ mixin FixedPages implements BookDocument {
   bool get reflowable => false;
 
   @override
-  bool layout(Size size) => false;
+  bool layout(Size size, EpubTypography typography) => false;
 
   @override
   int get layoutVersion => 0;
@@ -66,6 +133,12 @@ mixin FixedPages implements BookDocument {
   int pageAt(double fraction) => pageCount == 0
       ? 0
       : (fraction * pageCount).round().clamp(0, pageCount - 1);
+
+  @override
+  Future<List<TocEntry>> contents() async => const [];
+
+  @override
+  double? linkAt(int index, Offset at) => null;
 }
 
 /// The book [file] opened for reading. Throws [NotReadable] for a format
@@ -122,12 +195,13 @@ class ComicBookDocument with FixedPages implements BookDocument {
     return size == null || size.height == 0 ? 2 / 3 : size.width / size.height;
   }
 
+  /// Drawings keep their colours, whatever the theme.
   @override
-  Widget buildPage(int index) =>
+  Widget buildPage(int index, PageColors colors) =>
       Image.memory(_pages[index], fit: BoxFit.contain, gaplessPlayback: true);
 
   @override
-  Future<ui.Image> pageImage(int index, Size maxSize) async {
+  Future<ui.Image> pageImage(int index, Size maxSize, PageColors colors) async {
     // The size from the header (ImageDescriptor does not decode), then one
     // decode straight at the size needed, not at full scan resolution.
     final buffer = await ui.ImmutableBuffer.fromUint8List(_pages[index]);
@@ -188,15 +262,23 @@ class PdfBookDocument with FixedPages implements BookDocument {
     return page.height == 0 ? 2 / 3 : page.width / page.height;
   }
 
+  /// The page is drawn black on white, then recoloured (see
+  /// [PageColors.recolor]): in the dark theme a PDF reads light on dark.
   @override
-  Widget buildPage(int index) => PdfPageView(
-    document: _document,
-    pageNumber: index + 1,
-    decoration: const BoxDecoration(color: Colors.white),
-  );
+  Widget buildPage(int index, PageColors colors) {
+    final page = PdfPageView(
+      document: _document,
+      pageNumber: index + 1,
+      decoration: const BoxDecoration(color: Colors.white),
+    );
+    final recolor = colors.recolor;
+    return recolor == null
+        ? page
+        : ColorFiltered(colorFilter: recolor, child: page);
+  }
 
   @override
-  Future<ui.Image> pageImage(int index, Size maxSize) async {
+  Future<ui.Image> pageImage(int index, Size maxSize, PageColors colors) async {
     final page = _document.pages[index];
     final fit = _fit(Size(page.width, page.height), maxSize);
     final rendered = await page.render(
@@ -205,11 +287,46 @@ class PdfBookDocument with FixedPages implements BookDocument {
       backgroundColor: 0xFFFFFFFF,
     );
     if (rendered == null) throw StateError('PDFium could not draw page $index');
+    final ui.Image image;
     try {
-      return await rendered.createImage();
+      image = await rendered.createImage();
     } finally {
       rendered.dispose();
     }
+    final recolor = colors.recolor;
+    if (recolor == null) return image;
+    try {
+      final recorder = ui.PictureRecorder();
+      Canvas(recorder)
+          .drawImage(image, Offset.zero, Paint()..colorFilter = recolor);
+      final picture = recorder.endRecording();
+      try {
+        return await picture.toImage(image.width, image.height);
+      } finally {
+        picture.dispose();
+      }
+    } finally {
+      image.dispose();
+    }
+  }
+
+  /// The PDF's outline (bookmarks), when it has one.
+  @override
+  Future<List<TocEntry>> contents() async {
+    final entries = <TocEntry>[];
+    void walk(List<PdfOutlineNode> nodes, int depth) {
+      for (final node in nodes) {
+        final page = node.dest?.pageNumber;
+        final title = node.title.trim();
+        if (page != null && title.isNotEmpty) {
+          entries.add(TocEntry(title, fractionOf(page - 1), depth: depth));
+        }
+        walk(node.children, depth + 1);
+      }
+    }
+
+    walk(await _document.loadOutline(), 0);
+    return entries;
   }
 
   @override

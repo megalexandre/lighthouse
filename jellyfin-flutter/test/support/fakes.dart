@@ -691,6 +691,9 @@ class FakeBookRepository implements BookRepository {
   /// itemId → read, from setRead.
   final read = <String, bool>{};
 
+  /// More books for a test: item id → path.
+  final extraFiles = <String, String>{};
+
   static const files = {
     'book-comic': 'fixtures/media/books/Test Author/Test Comic/Test Comic.cbz',
     'book-pdf': 'fixtures/media/books/Test Author/Test Book/Test Book.pdf',
@@ -700,7 +703,7 @@ class FakeBookRepository implements BookRepository {
   @override
   Future<File> file(BaseItemDto book) async {
     if (failures['file'] case final Failure f) throw f;
-    return File(files[book.id]!);
+    return File(extraFiles[book.id] ?? files[book.id]!);
   }
 
   @override
@@ -712,6 +715,17 @@ class FakeBookRepository implements BookRepository {
   @override
   Future<void> setRead(String itemId, {required bool read}) async =>
       this.read[itemId] = read;
+
+  /// itemId → bookmarks, as saved.
+  final bookmarksOf = <String, List<double>>{};
+
+  @override
+  Future<List<double>> bookmarks(String itemId) async =>
+      bookmarksOf[itemId] ?? const [];
+
+  @override
+  Future<void> saveBookmarks(String itemId, List<double> bookmarks) async =>
+      bookmarksOf[itemId] = [...bookmarks];
 }
 
 /// Opens a fixture book the way the app does, but reading the file
@@ -736,7 +750,7 @@ class _BlankDocument with FixedPages implements BookDocument {
   final int pageCount;
 
   @override
-  Widget buildPage(int index) => ColoredBox(
+  Widget buildPage(int index, PageColors colors) => ColoredBox(
     color: const Color(0xFFFFFFFF),
     child: Center(child: Text('PDF page ${index + 1}')),
   );
@@ -745,7 +759,7 @@ class _BlankDocument with FixedPages implements BookDocument {
   double pageAspectRatio(int index) => 2 / 3;
 
   @override
-  Future<ui.Image> pageImage(int index, Size maxSize) async {
+  Future<ui.Image> pageImage(int index, Size maxSize, PageColors colors) async {
     final recorder = ui.PictureRecorder();
     Canvas(recorder).drawColor(const Color(0xFFFFFFFF), BlendMode.src);
     return recorder.endRecording().toImageSync(
@@ -770,6 +784,9 @@ class TestApp {
     : store = store ?? MemoryKeyValueStore();
 
   final MemoryKeyValueStore store;
+
+  /// The reader's preferences and bookmarks file store.
+  final readerStore = MemoryKeyValueStore();
   final servers = FakeServerRepository();
   final auth = FakeAuthRepository();
   final library = FakeLibraryRepository();
@@ -802,6 +819,7 @@ class TestApp {
 
   List<Override> get overrides => [
     keyValueStoreProvider.overrideWithValue(store),
+    readerStoreProvider.overrideWithValue(readerStore),
     serverRepositoryProvider.overrideWithValue(servers),
     authRepositoryProvider.overrideWithValue(auth),
     libraryRepositoryProvider.overrideWithValue(library),

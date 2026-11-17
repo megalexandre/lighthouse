@@ -12,10 +12,13 @@ import 'epub_layout.dart';
 /// for a size ([layout]); the reader screen does that for the sheet it
 /// shows, and again when the window changes.
 class EpubBookDocument implements BookDocument {
-  EpubBookDocument(this.book, {this.typography = const EpubTypography()});
+  EpubBookDocument(this.book);
 
   final EpubBook book;
-  final EpubTypography typography;
+
+  /// The type of the current layout.
+  EpubTypography get typography =>
+      _layout?.typography ?? const EpubTypography();
 
   EpubLayout? _layout;
 
@@ -52,8 +55,11 @@ class EpubBookDocument implements BookDocument {
   int get layoutVersion => _version;
 
   @override
-  bool layout(Size size) {
-    if (size.isEmpty || _layout?.size == size) return false;
+  bool layout(Size size, EpubTypography typography) {
+    if (size.isEmpty ||
+        (_layout?.size == size && _layout?.typography == typography)) {
+      return false;
+    }
     _retired?.dispose();
     _retired = _layout;
     _layout = EpubLayout(book, size, typography: typography);
@@ -71,15 +77,53 @@ class EpubBookDocument implements BookDocument {
   int pageAt(double fraction) => _layout?.pageAt(fraction) ?? 0;
 
   @override
-  Widget buildPage(int index) => _EpubPageView(
+  Future<List<TocEntry>> contents() async {
+    final length = book.length;
+    if (length == 0) return const [];
+    final entries = [
+      for (final entry in book.toc)
+        if (book.offsetOf(entry.target) case final offset?)
+          TocEntry(entry.title, offset / length, depth: entry.depth),
+    ];
+    if (entries.isNotEmpty) return entries;
+    // No table of contents: each chapter that opens with a heading.
+    var start = 0;
+    for (final chapter in book.chapters) {
+      if (chapter.blocks.firstOrNull case final TextBlock heading
+          when heading.kind == TextKind.heading) {
+        entries.add(TocEntry(heading.text, start / length));
+      }
+      start += chapter.length;
+    }
+    return entries;
+  }
+
+  @override
+  double? linkAt(int index, Offset at) {
+    final layout = _layout;
+    if (layout == null || index < 0 || index >= layout.pages.length) {
+      return null;
+    }
+    final href = layout.linkAt(
+      index,
+      Offset(at.dx * layout.size.width, at.dy * layout.size.height),
+    );
+    final offset = href == null ? null : book.offsetOf(href);
+    if (offset == null || book.length == 0) return null;
+    return offset / book.length;
+  }
+
+  @override
+  Widget buildPage(int index, PageColors colors) => _EpubPageView(
     key: ValueKey((_version, index)),
     document: this,
     layout: _current,
     index: index,
+    ink: colors.ink,
   );
 
   @override
-  Future<ui.Image> pageImage(int index, Size maxSize) async {
+  Future<ui.Image> pageImage(int index, Size maxSize, PageColors colors) async {
     final layout = _current;
     final images = await _imagesFor(layout.pages[index]);
     try {
@@ -89,7 +133,7 @@ class EpubBookDocument implements BookDocument {
       );
       final recorder = ui.PictureRecorder();
       final canvas = Canvas(recorder)..scale(scale);
-      layout.paint(canvas, index, images);
+      layout.paint(canvas, index, images, ink: colors.ink);
       final picture = recorder.endRecording();
       try {
         return await picture.toImage(
@@ -185,11 +229,13 @@ class _EpubPageView extends StatefulWidget {
     required this.document,
     required this.layout,
     required this.index,
+    required this.ink,
   });
 
   final EpubBookDocument document;
   final EpubLayout layout;
   final int index;
+  final Color ink;
 
   @override
   State<_EpubPageView> createState() => _EpubPageViewState();
@@ -227,17 +273,18 @@ class _EpubPageViewState extends State<_EpubPageView> {
   @override
   Widget build(BuildContext context) => SizedBox.expand(
     child: CustomPaint(
-      painter: _PagePainter(widget.layout, widget.index, _images),
+      painter: _PagePainter(widget.layout, widget.index, _images, widget.ink),
     ),
   );
 }
 
 class _PagePainter extends CustomPainter {
-  _PagePainter(this.layout, this.index, this.images);
+  _PagePainter(this.layout, this.index, this.images, this.ink);
 
   final EpubLayout layout;
   final int index;
   final Map<String, ui.Image> images;
+  final Color ink;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -250,11 +297,14 @@ class _PagePainter extends CustomPainter {
     canvas
       ..save()
       ..scale(scale);
-    layout.paint(canvas, index, images);
+    layout.paint(canvas, index, images, ink: ink);
     canvas.restore();
   }
 
   @override
   bool shouldRepaint(_PagePainter old) =>
-      old.layout != layout || old.index != index || old.images != images;
+      old.layout != layout ||
+      old.index != index ||
+      old.images != images ||
+      old.ink != ink;
 }

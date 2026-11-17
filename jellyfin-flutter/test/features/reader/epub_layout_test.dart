@@ -1,3 +1,5 @@
+import 'dart:ui' as ui;
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:jellyfin_flutter/features/reader/data/epub/epub_book.dart';
 import 'package:jellyfin_flutter/features/reader/data/epub/epub_layout.dart';
@@ -138,5 +140,72 @@ void main() {
     final texts = textPieces(layout).map((p) => p.painter.plainText);
     expect(texts, ['1. first', '2. second']);
     expect(layout.length, 'firstsecond'.length);
+  });
+
+  test('the layout counts the book as the book does', () {
+    final layout = EpubLayout(book, const Size(400, 600));
+    addTearDown(layout.dispose);
+    expect(layout.length, book.length);
+  });
+
+  test('a link: found under its text, nothing beside it', () {
+    final layout = EpubLayout(
+      EpubBook.read(
+        buildEpub([
+          '<p>Before the link, <a href="#end">go to the end</a>, and after.</p>'
+              '<p id="end">The end.</p>',
+        ]),
+      ),
+      const Size(400, 600),
+    );
+    addTearDown(layout.dispose);
+    final piece = layout.pages.first.pieces.first as TextPiece;
+    final [link] = piece.links;
+    expect(
+      piece.painter.plainText.substring(link.start, link.end),
+      'go to the end',
+    );
+    final box = piece.painter
+        .getBoxesForSelection(
+          TextSelection(baseOffset: link.start, extentOffset: link.end),
+        )
+        .first
+        .toRect();
+    final origin = Offset(layout.margins.left, layout.margins.top) + piece.at;
+    expect(layout.linkAt(0, origin + box.center), 'OEBPS/text/ch0.xhtml#end');
+    expect(layout.linkAt(0, origin + const Offset(1, 1)), isNull);
+    expect(layout.linkAt(0, Offset(200, layout.size.height - 2)), isNull);
+  });
+
+  test('drawn in the ink asked for: the text, not black', () async {
+    final layout = EpubLayout(
+      EpubBook.read(buildEpub(['<h1>INK</h1><p>${'mmmm ' * 30}</p>'])),
+      const Size(200, 300),
+    );
+    addTearDown(layout.dispose);
+    final recorder = ui.PictureRecorder();
+    layout.paint(Canvas(recorder), 0, const {}, ink: const Color(0xFFFF0000));
+    final image = await recorder.endRecording().toImage(200, 300);
+    final bytes = (await image.toByteData())!;
+    image.dispose();
+    var red = 0;
+    var other = 0;
+    for (var i = 0; i < bytes.lengthInBytes; i += 4) {
+      final (r, g, b, a) = (
+        bytes.getUint8(i),
+        bytes.getUint8(i + 1),
+        bytes.getUint8(i + 2),
+        bytes.getUint8(i + 3),
+      );
+      if (a == 0) continue;
+      // Premultiplied: a red pixel, faint or not, has no green or blue.
+      if (g == 0 && b == 0 && r > 0) {
+        red++;
+      } else {
+        other++;
+      }
+    }
+    expect(red, greaterThan(100));
+    expect(other, 0);
   });
 }

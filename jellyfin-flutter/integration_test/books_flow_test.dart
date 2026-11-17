@@ -4,6 +4,7 @@
 import 'dart:convert';
 
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:jellyfin_flutter/api/client_info.dart';
@@ -13,6 +14,8 @@ import 'package:jellyfin_flutter/features/auth/data/session_store.dart';
 import 'package:jellyfin_flutter/features/home/presentation/home_screen.dart';
 import 'package:jellyfin_flutter/features/item/presentation/item_screen.dart';
 import 'package:jellyfin_flutter/features/library/presentation/library_screen.dart';
+import 'package:jellyfin_flutter/features/reader/application/reader_controller.dart';
+import 'package:jellyfin_flutter/features/reader/application/reader_preferences.dart';
 import 'package:jellyfin_flutter/features/reader/presentation/reader_screen.dart';
 import 'package:jellyfin_flutter/features/server/data/server_repository.dart';
 import 'package:jellyfin_test_server/jellyfin_test_server.dart';
@@ -122,6 +125,51 @@ void main() {
     await waitFor(tester, find.byKey(ItemScreen.readButton));
   });
 
+  testWidgets('a PDF in the dark theme: PDFium draws it light on dark', (
+    tester,
+  ) async {
+    final readerStore = MemoryKeyValueStore()
+      ..values['preferences'] = '{"theme":"dark"}';
+    await launch(tester, store, readerStore: readerStore);
+    await openBook(tester, Fixtures.testBook);
+    await tapOn(tester, find.byKey(ItemScreen.readButton));
+    await waitFor(tester, find.byKey(ReaderScreen.pageText));
+    expect(
+      find.ancestor(
+        of: find.byType(PdfPageView),
+        matching: find.byType(ColorFiltered),
+      ),
+      findsWidgets,
+    );
+
+    // The picture the page turn bends: the page's white is the dark paper.
+    final session = ProviderScope.containerOf(
+      tester.element(find.byType(ReaderScreen)),
+    ).read(readerControllerProvider(_bookId(tester))).value!;
+    final image = await tester.runAsync(
+      () => sheetImage(
+        session,
+        0,
+        const Size(200, 300),
+        1,
+        ReaderTheme.dark.pageColors,
+      ),
+    );
+    final bytes = (await tester.runAsync(image!.toByteData))!;
+    final paper = ReaderTheme.dark.colors.paper;
+    // A corner: page margin, no text.
+    expect(
+      [bytes.getUint8(0), bytes.getUint8(1), bytes.getUint8(2)],
+      [
+        for (final c in [paper.r, paper.g, paper.b])
+          closeTo((c * 255).round(), 2),
+      ],
+    );
+    image.dispose();
+    await tapOn(tester, find.byKey(ReaderScreen.backButton));
+    await waitFor(tester, find.byKey(ItemScreen.readButton));
+  });
+
   testWidgets('an EPUB: laid out in pages, turned; the server keeps the '
       'fraction read on its 10^7 scale', (tester) async {
     await launch(tester, store);
@@ -154,3 +202,7 @@ void main() {
     expect(data['PlayedPercentage'] as num, closeTo(position / 100000, 0.01));
   });
 }
+
+/// The id of the book the reader shows.
+String _bookId(WidgetTester tester) =>
+    tester.widget<ReaderScreen>(find.byType(ReaderScreen)).itemId;

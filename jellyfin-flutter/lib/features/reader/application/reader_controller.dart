@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'dart:io';
-import 'dart:ui' show Size;
+import 'dart:ui' show Offset, Size;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -12,7 +12,9 @@ import '../../library/application/library_providers.dart';
 import '../../library/data/library_repository.dart';
 import '../data/book_document.dart';
 import '../data/book_repository.dart';
+import '../data/epub/epub_layout.dart';
 import '../data/reading_position.dart';
+import 'reader_preferences.dart';
 
 /// Opens a book file (tests swap in their own documents).
 final bookOpenerProvider = Provider<Future<BookDocument> Function(File file)>(
@@ -26,14 +28,39 @@ class ReaderSession {
     required this.item,
     required this.document,
     required this.page,
+    this.bookmarks = const [],
+    this.linkedFrom,
   });
 
   final BaseItemDto item;
   final BookDocument document;
   final int page;
 
+  /// The user's bookmarks, as fractions of the book (see
+  /// [BookRepository.bookmarks]).
+  final List<double> bookmarks;
+
+  /// Where the reader was when they followed a link (a fraction of the
+  /// book), until they go back there.
+  final double? linkedFrom;
+
   int get pageCount => document.pageCount;
   bool get onLastPage => page == pageCount - 1;
+
+  /// Whether a bookmark falls on the page shown.
+  bool get bookmarked => bookmarks.any((f) => document.pageAt(f) == page);
+
+  ReaderSession copyWith({
+    int? page,
+    List<double>? bookmarks,
+    double? Function()? linkedFrom,
+  }) => ReaderSession(
+    item: item,
+    document: document,
+    page: page ?? this.page,
+    bookmarks: bookmarks ?? this.bookmarks,
+    linkedFrom: linkedFrom == null ? this.linkedFrom : linkedFrom(),
+  );
 }
 
 final readerControllerProvider = AsyncNotifierProvider.autoDispose
@@ -69,6 +96,29 @@ class ReaderController extends AsyncNotifier<ReaderSession> {
       await document.dispose();
       throw const NotReadable('a book closed while opening');
     }
+    try {
+      _typography = (await ref.read(readerPreferencesProvider.future))
+          .typography;
+    } on Object catch (e) {
+      log.warning('reader', 'preferences not read', e);
+    }
+    // A new size or typeface: the pages are cut again.
+    ref.listen(readerPreferencesProvider, (_, next) {
+      final typography = next.value?.typography;
+      if (typography == null || typography == _typography) return;
+      _typography = typography;
+      _relayout();
+    });
+    var bookmarks = const <double>[];
+    try {
+      bookmarks = await _books.bookmarks(itemId);
+    } on Object catch (e) {
+      log.warning('reader', 'bookmarks not read', e);
+    }
+    if (!ref.mounted) {
+      await document.dispose();
+      throw const NotReadable('a book closed while opening');
+    }
     final data = item.userData;
     final fraction = (data?.played ?? false)
         ? 0.0
@@ -91,35 +141,112 @@ class ReaderController extends AsyncNotifier<ReaderSession> {
       item: item,
       document: document,
       page: start,
+      bookmarks: bookmarks,
     );
   }
 
   /// Where a reflowable book opens, until its first layout.
   double? _openAt;
 
+  /// The sheet size and type a reflowable book is laid out for.
+  Size? _size;
+  EpubTypography _typography = const EpubTypography();
+
   /// Lays a reflowable book (an EPUB) out in pages of [size], the sheet
   /// the screen shows, keeping the reader where they were: on the page
   /// that holds the first word they could see.
   void layout(Size size) {
+    _size = size;
+    _relayout();
+  }
+
+  void _relayout() {
     final session = _session;
-    if (session == null) return;
+    final size = _size;
+    if (session == null || size == null) return;
     final document = session.document;
     final fraction =
         _openAt ??
         (document.pageCount > 0 ? document.fractionOf(session.page) : 0.0);
-    if (!document.layout(size)) return;
+    if (!document.layout(size, _typography)) return;
     _openAt = null;
     log.debug(
       'reader',
       '${document.pageCount} pages of ${size.width.round()} × '
-          '${size.height.round()}',
+          '${size.height.round()}, ${_typography.fontSize} px type',
     );
-    _session = ReaderSession(
-      item: session.item,
-      document: document,
-      page: document.pageAt(fraction),
-    );
-    state = AsyncData(_session!);
+    _set(session.copyWith(page: document.pageAt(fraction)));
+  }
+
+  void _set(ReaderSession session) {
+    _session = session;
+    state = AsyncData(session);
+  }
+
+  /// Shows the page at [fraction] of the book (a line of the contents, a
+  /// bookmark).
+  void goToFraction(double fraction) {
+    final session = _session;
+    if (session == null) return;
+    goTo(session.document.pageAt(fraction));
+  }
+
+  /// Follows the link at [at] on the page shown ([at] in the page's unit
+  /// square), if there is one there; remembers where it was followed from
+  /// ([ReaderSession.linkedFrom]). True when there was one.
+  bool followLink(Offset at) {
+    final session = _session;
+    if (session == null) return false;
+    final target = session.document.linkAt(session.page, at);
+    if (target == null) return false;
+    final from = session.document.fractionOf(session.page);
+    _set(session.copyWith(linkedFrom: () => from));
+    goToFraction(target);
+    return true;
+  }
+
+  /// Back to where the last link was followed from.
+  void returnFromLink() {
+    final from = _session?.linkedFrom;
+    if (from == null) return;
+    _set(_session!.copyWith(linkedFrom: () => null));
+    goToFraction(from);
+  }
+
+  /// Adds a bookmark on the page shown, or removes those on it. Kept on
+  /// this device (see [BookRepository.bookmarks]).
+  Future<void> toggleBookmark() async {
+    final session = _session;
+    if (session == null || session.pageCount == 0) return;
+    final document = session.document;
+    final bookmarks = session.bookmarked
+        ? [
+            for (final f in session.bookmarks)
+              if (document.pageAt(f) != session.page) f,
+          ]
+        : ([...session.bookmarks, document.fractionOf(session.page)]..sort());
+    _set(session.copyWith(bookmarks: bookmarks));
+    await _saveBookmarks(bookmarks);
+  }
+
+  /// Removes the bookmark at [fraction].
+  Future<void> removeBookmark(double fraction) async {
+    final session = _session;
+    if (session == null) return;
+    final bookmarks = [
+      for (final f in session.bookmarks)
+        if (f != fraction) f,
+    ];
+    _set(session.copyWith(bookmarks: bookmarks));
+    await _saveBookmarks(bookmarks);
+  }
+
+  Future<void> _saveBookmarks(List<double> bookmarks) async {
+    try {
+      await _books.saveBookmarks(itemId, bookmarks);
+    } on Failure catch (e) {
+      log.warning('reader', 'could not save the bookmarks', e);
+    }
   }
 
   /// Shows [page] (0-based, clamped to the book).
@@ -128,12 +255,17 @@ class ReaderController extends AsyncNotifier<ReaderSession> {
     if (session == null) return;
     final target = page.clamp(0, session.pageCount - 1);
     if (target == session.page) return;
-    _session = ReaderSession(
-      item: session.item,
-      document: session.document,
-      page: target,
+    final linkedFrom = session.linkedFrom;
+    _set(
+      session.copyWith(
+        page: target,
+        // Back on the page the link was followed from: done with it.
+        linkedFrom:
+            linkedFrom != null && session.document.pageAt(linkedFrom) == target
+            ? () => null
+            : null,
+      ),
     );
-    state = AsyncData(_session!);
     _unsaved = (
       position: positionForFraction(
         session.document.fractionOf(target),

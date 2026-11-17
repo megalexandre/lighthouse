@@ -15,13 +15,47 @@ import 'package:xml/xml.dart';
 /// monospace inside text. Publisher CSS is left out (text-align: center
 /// excepted): the reader sets the type.
 class EpubBook {
-  const EpubBook({this.title, required this.chapters, required this.images});
+  EpubBook({
+    this.title,
+    required this.chapters,
+    required this.images,
+    this.toc = const [],
+  });
 
   final String? title;
   final List<EpubChapter> chapters;
 
   /// Encoded images (PNG, JPEG...), by their path in the zip.
   final Map<String, Uint8List> images;
+
+  /// The table of contents, as the book gives it (its nav document, or
+  /// the EPUB 2 NCX); empty when it has none.
+  final List<EpubTocEntry> toc;
+
+  /// Characters in the whole book, as [offsetOf] counts them.
+  late final int length = chapters.fold(0, (sum, c) => sum + c.length);
+
+  /// Where [target] ("path/in/zip.xhtml#fragment", the fragment optional)
+  /// starts, in characters from the start of the book (see
+  /// [EpubBlock.length]); null when it is not in a chapter shown. A
+  /// fragment not found means the start of its chapter.
+  int? offsetOf(String target) {
+    final hash = target.indexOf('#');
+    final path = hash < 0 ? target : target.substring(0, hash);
+    final fragment = hash < 0 ? null : target.substring(hash + 1);
+    var start = 0;
+    for (final chapter in chapters) {
+      if (chapter.path == path) {
+        final block = chapter.anchors[fragment] ?? 0;
+        for (var i = 0; i < block && i < chapter.blocks.length; i++) {
+          start += chapter.blocks[i].length;
+        }
+        return start;
+      }
+      start += chapter.length;
+    }
+    return null;
+  }
 
   /// Reads the EPUB in [zip]. Throws [FormatException] when it is not one
   /// (no container, no package, no readable chapter).
@@ -40,13 +74,14 @@ class EpubBook {
     final opf = XmlDocument.parse(opfText);
     final base = _directory(opfPath);
 
-    final manifest = <String, ({String path, String type})>{
+    final manifest = <String, ({String path, String type, String props})>{
       for (final item in opf.findAllElements('item', namespaceUri: '*'))
         if (item.getAttribute('id') case final id?)
           if (item.getAttribute('href') case final href?)
             id: (
               path: _resolve(base, href),
               type: item.getAttribute('media-type') ?? '',
+              props: item.getAttribute('properties') ?? '',
             ),
     };
     final title = opf
@@ -63,35 +98,105 @@ class EpubBook {
       if (item == null || !item.type.contains('html')) continue;
       final source = _text(zip, item.path);
       if (source == null) continue;
-      final blocks = chapterBlocks(source, _directory(item.path));
-      for (final block in blocks) {
+      final read = readChapter(source, item.path);
+      for (final block in read.blocks) {
         if (block is ImageBlock && !images.containsKey(block.path)) {
           final bytes = zip.findFile(block.path)?.content;
           if (bytes != null) images[block.path] = bytes;
         }
       }
-      final shown = [
-        for (final b in blocks)
-          if (b is! ImageBlock || images.containsKey(b.path)) b,
-      ];
+      // Images missing from the zip are left out; anchors move with the
+      // blocks after them.
+      final shown = <EpubBlock>[];
+      final newIndex = <int>[];
+      for (final b in read.blocks) {
+        newIndex.add(shown.length);
+        if (b is! ImageBlock || images.containsKey(b.path)) shown.add(b);
+      }
+      newIndex.add(shown.length);
       if (shown.isNotEmpty) {
-        chapters.add(EpubChapter(path: item.path, blocks: shown));
+        chapters.add(
+          EpubChapter(
+            path: item.path,
+            blocks: shown,
+            anchors: {
+              for (final MapEntry(:key, :value) in read.anchors.entries)
+                key: newIndex[value],
+            },
+          ),
+        );
       }
     }
     if (chapters.isEmpty) throw const FormatException('no readable chapter');
-    return EpubBook(title: title, chapters: chapters, images: images);
+
+    List<EpubTocEntry> toc = const [];
+    try {
+      final nav = manifest.values
+          .where((i) => i.props.split(' ').contains('nav'))
+          .firstOrNull;
+      if (nav != null) {
+        if (_text(zip, nav.path) case final source?) {
+          toc = navToc(source, nav.path);
+        }
+      }
+      if (toc.isEmpty) {
+        final spineToc = opf
+            .findAllElements('spine', namespaceUri: '*')
+            .firstOrNull
+            ?.getAttribute('toc');
+        final ncx =
+            manifest[spineToc] ??
+            manifest.values
+                .where((i) => i.type == 'application/x-dtbncx+xml')
+                .firstOrNull;
+        if (ncx != null) {
+          if (_text(zip, ncx.path) case final source?) {
+            toc = ncxToc(source, ncx.path);
+          }
+        }
+      }
+    } on FormatException {
+      toc = const []; // A broken table of contents: the book still reads.
+    }
+    return EpubBook(title: title, chapters: chapters, images: images, toc: toc);
   }
 }
 
 class EpubChapter {
-  const EpubChapter({required this.path, required this.blocks});
+  const EpubChapter({
+    required this.path,
+    required this.blocks,
+    this.anchors = const {},
+  });
 
   final String path;
   final List<EpubBlock> blocks;
+
+  /// Element ids (link targets) by the index of the block they start at.
+  final Map<String, int> anchors;
+
+  int get length => blocks.fold(0, (sum, b) => sum + b.length);
+}
+
+/// One line of the table of contents: [target] is "path/in/zip#fragment"
+/// (the fragment optional), [depth] 0 for the top level.
+class EpubTocEntry {
+  const EpubTocEntry(this.title, this.target, {this.depth = 0});
+
+  final String title;
+  final String target;
+  final int depth;
+
+  @override
+  String toString() => '${'  ' * depth}$title -> $target';
 }
 
 sealed class EpubBlock {
   const EpubBlock();
+
+  /// The characters it counts for where a place in the book is told (see
+  /// [EpubBook.offsetOf]): its text, 1 for an image, 0 for a rule.
+  int get length;
 }
 
 enum TextKind { paragraph, heading, quote, listItem, preformatted }
@@ -121,6 +226,9 @@ final class TextBlock extends EpubBlock {
   final String? marker;
 
   String get text => runs.map((r) => r.text).join();
+
+  @override
+  int get length => text.length;
 }
 
 /// Text in one style.
@@ -130,6 +238,7 @@ final class TextRun {
     this.bold = false,
     this.italic = false,
     this.mono = false,
+    this.href,
   });
 
   final String text;
@@ -137,9 +246,18 @@ final class TextRun {
   final bool italic;
   final bool mono;
 
+  /// Where the text links to, inside the book ("path/in/zip#fragment");
+  /// links out of it (web pages) are not kept.
+  final String? href;
+
   @override
-  String toString() =>
-      [if (bold) 'b', if (italic) 'i', if (mono) 'm', '"$text"'].join(':');
+  String toString() => [
+    if (bold) 'b',
+    if (italic) 'i',
+    if (mono) 'm',
+    if (href != null) 'link $href',
+    '"$text"',
+  ].join(':');
 }
 
 /// An image on its own line ([path]: its path in the zip).
@@ -147,23 +265,130 @@ final class ImageBlock extends EpubBlock {
   const ImageBlock(this.path);
 
   final String path;
+
+  @override
+  int get length => 1;
 }
 
 /// A horizontal rule (a scene break).
 final class RuleBlock extends EpubBlock {
   const RuleBlock();
+
+  @override
+  int get length => 0;
 }
 
-/// The blocks of a chapter's (X)HTML [source], whose own folder in the zip
-/// is [base] (image paths are relative to it). Parsed as a browser would:
-/// unclosed tags and stray markup do not stop it.
-List<EpubBlock> chapterBlocks(String source, String base) {
+/// The blocks of a chapter's (X)HTML [source], at [path] in the zip (image
+/// paths and links are relative to its folder). Parsed as a browser
+/// would: unclosed tags and stray markup do not stop it.
+List<EpubBlock> chapterBlocks(String source, String path) =>
+    readChapter(source, path).blocks;
+
+/// The chapter at [path], [source] its (X)HTML: its blocks, and where its
+/// ids are.
+EpubChapter readChapter(String source, String path) {
   final body = html.parse(source).body;
-  if (body == null) return const [];
-  final builder = _BlockBuilder(base);
+  if (body == null) return EpubChapter(path: path, blocks: const []);
+  final builder = _BlockBuilder(path);
   builder.walk(body, const _Style());
   builder.flush(const _Style());
-  return builder.blocks;
+  return EpubChapter(
+    path: path,
+    blocks: builder.blocks,
+    anchors: builder.anchors,
+  );
+}
+
+/// The table of contents in an EPUB 3 nav document ([source], at [path]):
+/// its `<nav epub:type="toc">` (or its first nav), list in list.
+List<EpubTocEntry> navToc(String source, String path) {
+  final document = html.parse(source);
+  final navs = document.getElementsByTagName('nav');
+  final nav =
+      navs
+          .where((n) => (n.attributes['epub:type'] ?? '').contains('toc'))
+          .firstOrNull ??
+      navs.firstOrNull;
+  final list = nav?.children.where((e) => e.localName == 'ol').firstOrNull;
+  if (list == null) return const [];
+  final base = _directory(path);
+  final entries = <EpubTocEntry>[];
+  void walk(dom.Element ol, int depth) {
+    for (final li in ol.children.where((e) => e.localName == 'li')) {
+      final label = li.children
+          .where((e) => e.localName == 'a' || e.localName == 'span')
+          .firstOrNull;
+      final title = _collapse(label?.text ?? '');
+      final href = label?.attributes['href'];
+      if (title.isNotEmpty && href != null && !_external(href)) {
+        entries.add(
+          EpubTocEntry(title, _target(base, path, href), depth: depth),
+        );
+      }
+      for (final inner in li.children.where((e) => e.localName == 'ol')) {
+        walk(inner, depth + 1);
+      }
+    }
+  }
+
+  walk(list, 0);
+  return entries;
+}
+
+/// The table of contents in an EPUB 2 NCX ([source], at [path]).
+List<EpubTocEntry> ncxToc(String source, String path) {
+  final XmlDocument document;
+  try {
+    document = XmlDocument.parse(source);
+  } on XmlException catch (e) {
+    throw FormatException('NCX: ${e.message}');
+  }
+  final map = document.findAllElements('navMap', namespaceUri: '*').firstOrNull;
+  if (map == null) return const [];
+  final base = _directory(path);
+  final entries = <EpubTocEntry>[];
+  void walk(XmlElement parent, int depth) {
+    for (final point in parent.childElements.where(
+      (e) => e.localName == 'navPoint',
+    )) {
+      final title = _collapse(
+        point
+                .findElements('navLabel', namespaceUri: '*')
+                .firstOrNull
+                ?.innerText ??
+            '',
+      );
+      final src = point
+          .findElements('content', namespaceUri: '*')
+          .firstOrNull
+          ?.getAttribute('src');
+      if (title.isNotEmpty && src != null && !_external(src)) {
+        entries.add(
+          EpubTocEntry(title, _target(base, path, src), depth: depth),
+        );
+      }
+      walk(point, depth + 1);
+    }
+  }
+
+  walk(map, 0);
+  return entries;
+}
+
+String _collapse(String text) => text.replaceAll(RegExp(r'\s+'), ' ').trim();
+
+/// A link out of the book (a web page, an e-mail address).
+bool _external(String href) =>
+    RegExp(r'^[a-zA-Z][a-zA-Z0-9+.-]*:').hasMatch(href);
+
+/// [href], found in the file at [path] (folder [base]), as a target in the
+/// zip: "path#fragment" (fragment only when there is one).
+String _target(String base, String path, String href) {
+  final hash = href.indexOf('#');
+  final file = hash < 0 ? href : href.substring(0, hash);
+  final fragment = hash < 0 ? '' : href.substring(hash + 1);
+  final resolved = file.isEmpty ? path : _resolve(base, file);
+  return fragment.isEmpty ? resolved : '$resolved#$fragment';
 }
 
 /// The inherited style while walking the tree.
@@ -178,6 +403,7 @@ class _Style {
     this.level = 0,
     this.indent = 0,
     this.marker,
+    this.href,
   });
 
   final bool bold;
@@ -189,6 +415,7 @@ class _Style {
   final int level;
   final int indent;
   final String? marker;
+  final String? href;
 
   _Style copyWith({
     bool? bold,
@@ -200,6 +427,7 @@ class _Style {
     int? level,
     int? indent,
     String? Function()? marker,
+    String? href,
   }) => _Style(
     bold: bold ?? this.bold,
     italic: italic ?? this.italic,
@@ -210,6 +438,7 @@ class _Style {
     level: level ?? this.level,
     indent: indent ?? this.indent,
     marker: marker == null ? this.marker : marker(),
+    href: href ?? this.href,
   );
 }
 
@@ -223,10 +452,13 @@ const _blockTags = {
 };
 
 class _BlockBuilder {
-  _BlockBuilder(this.base);
+  _BlockBuilder(this.path) : base = _directory(path);
 
+  /// The chapter's path, and its folder.
+  final String path;
   final String base;
   final blocks = <EpubBlock>[];
+  final anchors = <String, int>{};
   final _runs = <TextRun>[];
 
   /// The block style of the text gathered in [_runs].
@@ -266,7 +498,14 @@ class _BlockBuilder {
         return;
     }
 
+    final id = e.attributes['id'] ?? (tag == 'a' ? e.attributes['name'] : null);
+
     var inner = style;
+    if (tag == 'a') {
+      if (e.attributes['href'] case final href? when !_external(href)) {
+        inner = inner.copyWith(href: _target(base, path, href));
+      }
+    }
     final css = (e.attributes['style'] ?? '').replaceAll(' ', '').toLowerCase();
     final classes = (e.attributes['class'] ?? '').toLowerCase();
     if (tag == 'center' ||
@@ -303,10 +542,13 @@ class _BlockBuilder {
     }
 
     if (!_blockTags.contains(tag)) {
+      // Inside a paragraph: it starts with the paragraph (the next block).
+      if (id != null) anchors.putIfAbsent(id, () => blocks.length);
       walk(e, inner);
       return;
     }
     flush(style);
+    if (id != null) anchors.putIfAbsent(id, () => blocks.length);
     if (tag == 'ul' || tag == 'ol') {
       var number = int.tryParse(e.attributes['start'] ?? '') ?? 1;
       for (final child in e.nodes) {
@@ -340,7 +582,13 @@ class _BlockBuilder {
     if (text.isEmpty) return;
     _blockStyle ??= style;
     _runs.add(
-      TextRun(text, bold: style.bold, italic: style.italic, mono: style.mono),
+      TextRun(
+        text,
+        bold: style.bold,
+        italic: style.italic,
+        mono: style.mono,
+        href: style.href,
+      ),
     );
   }
 
@@ -382,7 +630,7 @@ class _BlockBuilder {
   }
 
   TextRun _withText(TextRun r, String text) =>
-      TextRun(text, bold: r.bold, italic: r.italic, mono: r.mono);
+      TextRun(text, bold: r.bold, italic: r.italic, mono: r.mono, href: r.href);
 }
 
 String? _text(Archive zip, String path) {

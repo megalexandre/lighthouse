@@ -1,4 +1,7 @@
+import 'dart:io';
+
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:jellyfin_flutter/api/models/user_item_data_dto.dart';
 import 'package:jellyfin_flutter/core/failure.dart';
@@ -6,11 +9,14 @@ import 'package:jellyfin_flutter/features/home/presentation/home_screen.dart';
 import 'package:jellyfin_flutter/features/item/presentation/item_screen.dart';
 import 'package:jellyfin_flutter/features/library/presentation/item_card.dart';
 import 'package:jellyfin_flutter/features/reader/application/reader_controller.dart';
+import 'package:jellyfin_flutter/features/reader/application/reader_preferences.dart';
+import 'package:jellyfin_flutter/features/reader/data/epub/epub_document.dart';
 import 'package:jellyfin_flutter/features/reader/presentation/reader_screen.dart';
 import 'package:jellyfin_flutter/router.dart';
 import 'package:jellyfin_flutter/widgets/error_retry.dart';
 import 'package:material_ui/material_ui.dart';
 
+import '../../support/epub.dart';
 import '../../support/fakes.dart';
 
 void main() {
@@ -256,5 +262,180 @@ void main() {
       ),
       findsOneWidget,
     );
+  });
+
+  group('contents, bookmarks, display', () {
+    final novel = TestItems.testNovel;
+
+    Color desk(WidgetTester tester) => tester
+        .widget<Scaffold>(
+          find.descendant(
+            of: find.byType(ReaderScreen),
+            matching: find.byType(Scaffold),
+          ),
+        )
+        .backgroundColor!;
+
+    testWidgets('the contents list the chapters; one jumps there', (
+      tester,
+    ) async {
+      await app.open(tester, Routes.read(novel.id));
+      await tester.tap(find.byKey(ReaderScreen.contentsButton));
+      await tester.pumpAndSettle();
+      expect(find.text('Chapter One'), findsOneWidget);
+      expect(find.text('Chapter Two'), findsOneWidget);
+      await tester.tap(find.text('Chapter Three'));
+      await tester.pumpAndSettle();
+      expect(find.byType(Drawer), findsNothing);
+      expect(pageText(tester), 'Page 3 of 3');
+      // The keys are the book's again.
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowLeft);
+      await tester.pumpAndSettle();
+      expect(pageText(tester), 'Page 2 of 3');
+    });
+
+    testWidgets('a book without contents says so', (tester) async {
+      await openComic(tester);
+      await tester.tap(find.byKey(ReaderScreen.contentsButton));
+      await tester.pumpAndSettle();
+      expect(find.text('This book has no table of contents.'), findsOneWidget);
+    });
+
+    testWidgets('bookmark a page: kept, listed, and removed', (tester) async {
+      await app.open(tester, Routes.read(novel.id));
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(ReaderScreen.bookmarkButton));
+      await tester.pumpAndSettle();
+      expect(find.byTooltip('Remove bookmark'), findsOneWidget);
+      final [saved] = app.books.bookmarksOf[novel.id]!;
+
+      // Elsewhere, the button is off; the list goes back there.
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+      await tester.pumpAndSettle();
+      expect(find.byTooltip('Bookmark this page'), findsOneWidget);
+      await tester.tap(find.byKey(ReaderScreen.contentsButton));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(ReaderScreen.bookmarksTab));
+      await tester.pumpAndSettle();
+      expect(find.text('Page 2'), findsOneWidget);
+      expect(find.text('Chapter Two'), findsOneWidget); // Its chapter.
+      await tester.tap(find.text('Page 2'));
+      await tester.pumpAndSettle();
+      expect(pageText(tester), 'Page 2 of 3');
+
+      // Opened again: still there; the button takes it off.
+      await tester.tap(find.byKey(ReaderScreen.backButton));
+      await tester.pumpAndSettle();
+      await app.open(tester, Routes.read(novel.id));
+      await tester.tap(find.byKey(ReaderScreen.contentsButton));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(ReaderScreen.bookmarksTab));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip('Remove bookmark'));
+      await tester.pumpAndSettle();
+      expect(app.books.bookmarksOf[novel.id], isEmpty);
+      expect(find.textContaining('No bookmarks yet'), findsOneWidget);
+      expect(saved, greaterThan(0));
+    });
+
+    testWidgets('themes: the desk and paper change, and are remembered', (
+      tester,
+    ) async {
+      await app.open(tester, Routes.read(novel.id));
+      expect(desk(tester), ReaderTheme.light.desk);
+      await tester.tap(find.byKey(ReaderScreen.displayButton));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(ReaderScreen.themeChoice(ReaderTheme.dark)));
+      await tester.pumpAndSettle();
+      expect(desk(tester), ReaderTheme.dark.desk);
+      expect(
+        find.descendant(
+          of: find.byKey(ReaderScreen.pages),
+          matching: find.byWidgetPredicate(
+            (w) => w is ColoredBox && w.color == ReaderTheme.dark.colors.paper,
+          ),
+        ),
+        findsOneWidget,
+      );
+      expect(app.readerStore.values['preferences'], contains('"dark"'));
+    });
+
+    testWidgets('stored preferences apply from the start', (tester) async {
+      app.readerStore.values['preferences'] =
+          '{"theme":"sepia","fontSize":24,"sansSerif":true}';
+      await app.open(tester, Routes.read(novel.id));
+      expect(desk(tester), ReaderTheme.sepia.desk);
+      final document =
+          ProviderScope.containerOf(tester.element(find.byType(ReaderScreen)))
+                  .read(readerControllerProvider(novel.id))
+                  .value!
+                  .document
+              as EpubBookDocument;
+      expect(document.typography.fontSize, 24);
+      expect(document.typography.fontFamily, 'sans-serif');
+    });
+
+    testWidgets('bigger type: laid out again, same place', (tester) async {
+      await app.open(tester, Routes.read(novel.id));
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(ReaderScreen.displayButton));
+      await tester.pumpAndSettle();
+      expect(find.text('18 px'), findsOneWidget);
+      await tester.tap(find.byKey(ReaderScreen.fontBigger));
+      await tester.tap(find.byKey(ReaderScreen.fontBigger));
+      await tester.pumpAndSettle();
+      expect(find.text('22 px'), findsOneWidget);
+      final document =
+          ProviderScope.containerOf(tester.element(find.byType(ReaderScreen)))
+                  .read(readerControllerProvider(novel.id))
+                  .value!
+                  .document
+              as EpubBookDocument;
+      expect(document.typography.fontSize, 22);
+      expect(pageText(tester), 'Page 2 of 3');
+    });
+
+    testWidgets('a PDF or a comic: the theme, no type settings', (
+      tester,
+    ) async {
+      await openComic(tester);
+      await tester.tap(find.byKey(ReaderScreen.displayButton));
+      await tester.pumpAndSettle();
+      expect(
+        find.byKey(ReaderScreen.themeChoice(ReaderTheme.sepia)),
+        findsOneWidget,
+      );
+      expect(find.byKey(ReaderScreen.fontBigger), findsNothing);
+    });
+
+    testWidgets('a link: followed, then back to where it was', (tester) async {
+      final dir = Directory.systemTemp.createTempSync('jf-links-');
+      addTearDown(() => dir.deleteSync(recursive: true));
+      final file = File('${dir.path}/links.epub')
+        ..writeAsBytesSync(
+          epubBytes([
+            '<p><a href="ch2.xhtml#note">${'see the note ' * 12}</a></p>',
+            '<p>${'filler ' * 30}</p>',
+            '<p>${'more ' * 30}</p><p id="note">The note.</p>',
+          ]),
+        );
+      final book = novel.copyWith(id: 'book-links', name: 'Links');
+      app.library.books = [book];
+      app.books.extraFiles[book.id] = file.path;
+      await app.open(tester, Routes.read(book.id));
+      expect(pageText(tester), 'Page 1 of 3');
+
+      final page = tester.getRect(find.byKey(ReaderScreen.pages));
+      await tester.tapAt(page.topLeft + Offset(page.width * 0.5, 70));
+      await tester.pumpAndSettle();
+      expect(pageText(tester), 'Page 3 of 3');
+      expect(find.text('Back to page 1'), findsOneWidget);
+      await tester.tap(find.byKey(ReaderScreen.linkBack));
+      await tester.pumpAndSettle();
+      expect(pageText(tester), 'Page 1 of 3');
+      expect(find.byKey(ReaderScreen.linkBack), findsNothing);
+    });
   });
 }

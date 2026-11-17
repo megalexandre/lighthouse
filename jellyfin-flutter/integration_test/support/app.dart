@@ -5,6 +5,7 @@ import 'package:jellyfin_flutter/app.dart';
 import 'package:jellyfin_flutter/core/storage.dart';
 import 'package:jellyfin_flutter/core/window.dart';
 import 'package:jellyfin_flutter/features/player/data/player_engine.dart';
+import 'package:jellyfin_flutter/features/reader/data/book_repository.dart';
 import 'package:material_ui/material_ui.dart';
 
 /// Stands in for the window: Xvfb has no window manager to go full
@@ -17,10 +18,15 @@ class TestWindow implements AppWindow {
 final window = TestWindow();
 
 /// Starts the app (or restarts it: new providers, same [store]). Only the
-/// keyring is swapped for [store], so tests never touch the desktop's
-/// keyring (and CI has none), and mpv runs without sound or hardware
-/// decoding (CI has neither).
-Future<void> launch(WidgetTester tester, MemoryKeyValueStore store) {
+/// keyring is swapped for [store] (and the reader's files for
+/// [readerStore]), so tests never touch the desktop's keyring (and CI has
+/// none) or data, and mpv runs without sound or hardware decoding (CI has
+/// neither).
+Future<void> launch(
+  WidgetTester tester,
+  MemoryKeyValueStore store, {
+  MemoryKeyValueStore? readerStore,
+}) {
   _simulateTextInput(tester);
   return tester.pumpWidget(
     ProviderScope(
@@ -28,6 +34,9 @@ Future<void> launch(WidgetTester tester, MemoryKeyValueStore store) {
       retry: noAutomaticRetry,
       overrides: [
         keyValueStoreProvider.overrideWithValue(store),
+        readerStoreProvider.overrideWithValue(
+          readerStore ?? MemoryKeyValueStore(),
+        ),
         playerOptionsProvider.overrideWithValue(
           const PlayerOptions(hardwareDecoding: false, audio: false),
         ),

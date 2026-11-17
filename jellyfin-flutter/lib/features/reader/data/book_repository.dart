@@ -10,6 +10,8 @@ import '../../../api/client_info.dart';
 import '../../../api/models/base_item_dto.dart';
 import '../../../api/playback.dart';
 import '../../../core/failure.dart';
+import '../../../core/log.dart';
+import '../../../core/storage.dart';
 import '../../auth/application/auth_controller.dart';
 import '../../auth/data/session.dart';
 import '../../auth/data/session_client.dart';
@@ -26,7 +28,23 @@ abstract interface class BookRepository {
 
   /// Marks the book read or not.
   Future<void> setRead(String itemId, {required bool read});
+
+  /// The user's bookmarks in the book, each a fraction of it (from 0 to
+  /// 1, as [BookDocument.fractionOf] tells a page's place), in order.
+  /// Kept on this device: the server has no place for them.
+  Future<List<double>> bookmarks(String itemId);
+
+  Future<void> saveBookmarks(String itemId, List<double> bookmarks);
 }
+
+/// The reader's own files (preferences, bookmarks): small, not secret, in
+/// the app's data directory.
+final readerStoreProvider = Provider<KeyValueStore>(
+  (_) => FileKeyValueStore(
+    () async =>
+        Directory('${(await getApplicationSupportDirectory()).path}/reader'),
+  ),
+);
 
 /// Where downloaded books are kept: the app's cache directory.
 final bookCacheDirectoryProvider = FutureProvider<Directory>(
@@ -48,6 +66,7 @@ final bookRepositoryProvider = Provider<BookRepository>((ref) {
     session,
     () => client,
     () => cache,
+    ref.read(readerStoreProvider),
     onUnauthorized: auth.sessionExpired,
     onReachability: connection.report,
   );
@@ -57,7 +76,8 @@ class JellyfinBookRepository implements BookRepository {
   JellyfinBookRepository(
     Session session,
     Future<ClientInfo> Function() client,
-    this._cache, {
+    this._cache,
+    this._store, {
     required void Function() onUnauthorized,
     void Function({required bool reachable})? onReachability,
     HttpClientAdapter? adapter,
@@ -71,6 +91,7 @@ class JellyfinBookRepository implements BookRepository {
 
   final SessionClient _client;
   final Future<Directory> Function() _cache;
+  final KeyValueStore _store;
 
   @override
   Future<File> file(BaseItemDto book) async {
@@ -102,6 +123,31 @@ class JellyfinBookRepository implements BookRepository {
         ? api.markPlayed(_client.userId, itemId)
         : api.markUnplayed(_client.userId, itemId),
   );
+
+  /// One file per server and book (named as in [bookCacheFile]).
+  String _bookmarksKey(String itemId) =>
+      'bookmarks-${base64Url.encode(utf8.encode('${_client.session.server.id}\n$itemId'))}';
+
+  @override
+  Future<List<double>> bookmarks(String itemId) async {
+    final raw = await _store.read(_bookmarksKey(itemId));
+    if (raw == null) return const [];
+    try {
+      return [
+        for (final value in jsonDecode(raw) as List<dynamic>)
+          if (value is num && value >= 0 && value <= 1) value.toDouble(),
+      ]..sort();
+    } on Object catch (e) {
+      log.warning('reader', 'bookmarks of $itemId unreadable', e);
+      return const [];
+    }
+  }
+
+  @override
+  Future<void> saveBookmarks(String itemId, List<double> bookmarks) =>
+      bookmarks.isEmpty
+      ? _store.delete(_bookmarksKey(itemId))
+      : _store.write(_bookmarksKey(itemId), jsonEncode(bookmarks));
 }
 
 /// Where [itemId] of [serverId] is kept in [dir]: one file per server and
@@ -134,5 +180,13 @@ class SignedOutBookRepository implements BookRepository {
 
   @override
   Future<void> setRead(String itemId, {required bool read}) =>
+      Future.error(const Unauthorized());
+
+  @override
+  Future<List<double>> bookmarks(String itemId) =>
+      Future.error(const Unauthorized());
+
+  @override
+  Future<void> saveBookmarks(String itemId, List<double> bookmarks) =>
       Future.error(const Unauthorized());
 }

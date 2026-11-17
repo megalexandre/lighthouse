@@ -46,7 +46,9 @@ vec3 backOfSheet(vec2 src, float theta) {
   float light = 0.72 + 0.28 * facing;
   // A soft highlight on the crest of the curve.
   float crest = exp(-pow((theta - 0.68 * PI) / 0.09, 2.0));
-  return ink * light + vec3(0.18 * crest * uShadow);
+  // On dark paper (the dark theme) a full-strength glint would glare.
+  float sheen = 0.18 * max(uPaper.r, max(uPaper.g, uPaper.b));
+  return ink * light + vec3(sheen * crest * uShadow);
 }
 
 void main() {

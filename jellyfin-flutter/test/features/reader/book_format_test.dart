@@ -7,6 +7,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:jellyfin_flutter/core/failure.dart';
 import 'package:jellyfin_flutter/features/reader/data/book_document.dart';
 import 'package:jellyfin_flutter/features/reader/data/book_format.dart';
+import 'package:jellyfin_flutter/features/reader/data/epub/epub_layout.dart';
 import 'package:jellyfin_flutter/features/reader/data/reading_position.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -97,7 +98,11 @@ void main() {
       scan.dispose();
       final doc = ComicBookDocument([png.buffer.asUint8List()]);
 
-      final page = await doc.pageImage(0, const Size(400, 400));
+      final page = await doc.pageImage(
+        0,
+        const Size(400, 400),
+        PageColors.plain,
+      );
       expect((page.width, page.height), (267, 400));
       page.dispose();
       expect(doc.pageAspectRatio(0), closeTo(2 / 3, 1e-9));
@@ -109,9 +114,15 @@ void main() {
     addTearDown(doc.dispose);
     expect(doc.reflowable, isTrue);
     expect(doc.pageCount, 0);
-    expect(doc.layout(const Size(400, 600)), isTrue);
+    const type = EpubTypography();
+    expect(doc.layout(const Size(400, 600), type), isTrue);
     expect(doc.pageCount, 3); // A chapter a page.
-    expect(doc.layout(const Size(400, 600)), isFalse);
+    expect(doc.layout(const Size(400, 600), type), isFalse);
+    // Other type: cut again.
+    expect(
+      doc.layout(const Size(400, 600), const EpubTypography(fontSize: 30)),
+      isTrue,
+    );
   });
 
   test('a broken EPUB says so', () async {

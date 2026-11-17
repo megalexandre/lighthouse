@@ -58,14 +58,17 @@ final class ServerError extends Failure {
       : 'The server answered with error $statusCode.';
 }
 
-/// The system keyring refused to store or read the session.
+/// The system keyring refused to store or read the session (or, [what]
+/// says, another store refused something else).
 final class StorageFailure extends Failure {
-  const StorageFailure(this.detail);
+  const StorageFailure(
+    this.detail, {
+    this.what = 'the login in the system keyring',
+  });
   final String detail;
+  final String what;
   @override
-  String get message =>
-      'Could not save the login in the system keyring '
-      '($detail).';
+  String get message => 'Could not save $what ($detail).';
 }
 
 /// The server offers no way for this client to play the item.

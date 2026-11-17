@@ -5,14 +5,28 @@ import 'package:archive/archive.dart';
 
 /// A small EPUB 3 in memory: [chapters] are the bodies of its XHTML files
 /// (in reading order), [files] anything else (images), by path under
-/// OEBPS/.
+/// OEBPS/. [nav]: the body of an EPUB 3 nav document (OEBPS/nav.xhtml);
+/// [ncx]: the navMap of an EPUB 2 NCX (OEBPS/toc.ncx).
 Archive buildEpub(
   List<String> chapters, {
   Map<String, List<int>> files = const {},
   String title = 'A Book',
+  String? nav,
+  String? ncx,
 }) {
   final manifest = StringBuffer();
   final spine = StringBuffer();
+  if (nav != null) {
+    manifest.write(
+      '<item id="nav" href="nav.xhtml" media-type="application/xhtml+xml" '
+      'properties="nav"/>',
+    );
+  }
+  if (ncx != null) {
+    manifest.write(
+      '<item id="ncx" href="toc.ncx" media-type="application/x-dtbncx+xml"/>',
+    );
+  }
   for (var i = 0; i < chapters.length; i++) {
     manifest.write(
       '<item id="c$i" href="text/ch$i.xhtml" '
@@ -39,9 +53,31 @@ Archive buildEpub(
             'version="3.0"><metadata '
             'xmlns:dc="http://purl.org/dc/elements/1.1/">'
             '<dc:title>$title</dc:title></metadata>'
-            '<manifest>$manifest</manifest><spine>$spine</spine></package>',
+            '<manifest>$manifest</manifest>'
+            '<spine${ncx != null ? ' toc="ncx"' : ''}>$spine</spine></package>',
       ),
     );
+  if (nav != null) {
+    zip.add(
+      ArchiveFile.string(
+        'OEBPS/nav.xhtml',
+        '<?xml version="1.0" encoding="utf-8"?>'
+            '<html xmlns="http://www.w3.org/1999/xhtml" '
+            'xmlns:epub="http://www.idpf.org/2007/ops"><head><title>toc'
+            '</title></head><body>$nav</body></html>',
+      ),
+    );
+  }
+  if (ncx != null) {
+    zip.add(
+      ArchiveFile.string(
+        'OEBPS/toc.ncx',
+        '<?xml version="1.0" encoding="utf-8"?>'
+            '<ncx xmlns="http://www.daisy.org/z3986/2005/ncx/" version="2005-1">'
+            '<navMap>$ncx</navMap></ncx>',
+      ),
+    );
+  }
   for (var i = 0; i < chapters.length; i++) {
     zip.add(
       ArchiveFile.string(

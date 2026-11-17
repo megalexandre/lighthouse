@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -72,4 +74,61 @@ class MemoryKeyValueStore implements KeyValueStore {
 
   @override
   Future<void> delete(String key) async => values.remove(key);
+}
+
+/// A store of one file per key in a directory: for what is not secret and
+/// may grow (the reader's preferences and bookmarks), which the keyring is
+/// not meant for. Keys are the app's own: letters, digits and `-_=.`.
+class FileKeyValueStore implements KeyValueStore {
+  FileKeyValueStore(this._directory);
+
+  final Future<Directory> Function() _directory;
+
+  static final _validKey = RegExp(r'^[A-Za-z0-9_=-][A-Za-z0-9_=.-]*$');
+
+  Future<File> _file(String key) async {
+    if (!_validKey.hasMatch(key)) throw ArgumentError.value(key, 'key');
+    final dir = await _directory();
+    return File('${dir.path}${Platform.pathSeparator}$key.json');
+  }
+
+  /// A file that cannot be read means "nothing stored".
+  @override
+  Future<String?> read(String key) async {
+    final file = await _file(key);
+    try {
+      return await file.readAsString();
+    } on PathNotFoundException {
+      return null;
+    } on FileSystemException catch (e) {
+      log.warning('storage', 'read of "$key" failed', e.message);
+      return null;
+    }
+  }
+
+  /// Written beside, then renamed over: a crash never leaves half a file.
+  @override
+  Future<void> write(String key, String value) async {
+    final file = await _file(key);
+    final part = File('${file.path}.part');
+    try {
+      await file.parent.create(recursive: true);
+      await part.writeAsString(value, flush: true);
+      await part.rename(file.path);
+    } on FileSystemException catch (e) {
+      throw StorageFailure(e.message, what: 'to disk');
+    }
+  }
+
+  @override
+  Future<void> delete(String key) async {
+    final file = await _file(key);
+    try {
+      await file.delete();
+    } on PathNotFoundException {
+      // Already gone.
+    } on FileSystemException catch (e) {
+      log.warning('storage', 'delete of "$key" failed', e.message);
+    }
+  }
 }

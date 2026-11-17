@@ -9,6 +9,7 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:jellyfin_flutter/api/client_info.dart';
 import 'package:jellyfin_flutter/api/models/base_item_dto.dart';
+import 'package:jellyfin_flutter/core/storage.dart';
 import 'package:jellyfin_flutter/features/auth/data/auth_repository.dart';
 import 'package:jellyfin_flutter/features/library/data/library_repository.dart';
 import 'package:jellyfin_flutter/features/reader/data/book_format.dart';
@@ -42,6 +43,7 @@ void main() {
       session,
       () async => client,
       () async => cache,
+      MemoryKeyValueStore(),
       onUnauthorized: () {},
     );
   });
