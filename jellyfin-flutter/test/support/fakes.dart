@@ -297,6 +297,15 @@ class FakeLibraryRepository implements LibraryRepository {
   Future<List<BaseItemDto>> latest(String viewId) =>
       _answer('latest', () => _childrenOf(viewId).take(homeRowLimit).toList());
 
+  /// The carousel: [featuredItems], else the movies and the show.
+  List<BaseItemDto>? featuredItems;
+
+  @override
+  Future<List<BaseItemDto>> featured() => _answer(
+    'featured',
+    () => featuredItems ?? [...movies, TestItems.testShow],
+  );
+
   @override
   Future<List<BaseItemDto>> resume() => _answer('resume', () => resumeItems);
 
@@ -344,6 +353,9 @@ class FakeLibraryRepository implements LibraryRepository {
   /// No images: widget tests make no HTTP requests.
   @override
   Uri? imageUrl(BaseItemDto item, {required int maxWidth}) => null;
+
+  @override
+  Uri? backdropUrl(BaseItemDto item, {required int maxWidth}) => null;
 }
 
 /// Plans every item for direct play from a fake URL, and records the
@@ -830,8 +842,14 @@ class FakeAppWindow implements AppWindow {
 
 /// The app with fake server/auth repositories and an in-memory keyring.
 class TestApp {
-  TestApp({MemoryKeyValueStore? store})
-    : store = store ?? MemoryKeyValueStore();
+  /// [theme]: the built-in theme the app opens with. Lanterna by default:
+  /// the screens' tests use its plain layout (an app bar, the libraries
+  /// row); Prime, the app's default, has the floating top bar and the
+  /// carousel, tested on their own (test/features/home/prime_layout_test).
+  TestApp({MemoryKeyValueStore? store, String theme = 'builtin:lanterna.json'})
+    : store = store ?? MemoryKeyValueStore() {
+    appFiles.values['appearance'] = '{"theme":"$theme"}';
+  }
 
   final MemoryKeyValueStore store;
 

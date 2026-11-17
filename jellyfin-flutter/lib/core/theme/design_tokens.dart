@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'dart:ui';
 
+import 'package:flutter/foundation.dart' show immutable;
+
 /// A design system's tokens, as Claude Design exports them
 /// (`project/tokens.json`): the app's theme file. See docs/THEMES.md.
 ///
@@ -18,6 +20,7 @@ class DesignTokens {
     required this.spacing,
     required this.radius,
     required this.shadows,
+    required this.components,
     required this.warnings,
   });
 
@@ -63,6 +66,10 @@ class DesignTokens {
   final Map<String, double> spacing;
   final Map<String, double> radius;
   final Map<String, List<TokenShadow>> shadows;
+
+  /// Which form of a component the theme picks, where the app has more than
+  /// one (see [ThemeComponents]).
+  final ThemeComponents components;
 
   /// What could not be read and what was missing, for the person who
   /// wrote the file.
@@ -166,6 +173,7 @@ class _Reader {
     final spacing = _lengths('spacing', DesignTokens.requiredSpacing);
     final radius = _lengths('radius', DesignTokens.requiredRadius);
     final shadows = _shadows();
+    final components = _components();
     return DesignTokens._(
       name: name,
       modes: modes,
@@ -175,6 +183,7 @@ class _Reader {
       spacing: spacing,
       radius: radius,
       shadows: shadows,
+      components: components,
       warnings: warnings,
     );
   }
@@ -199,6 +208,45 @@ class _Reader {
       value is Map<String, dynamic> ? value : const {};
 
   // --- Colours --------------------------------------------------------------
+
+  // --- Components -----------------------------------------------------------
+
+  /// The `components` section: each a choice among the forms the app has;
+  /// one not given (or not known) is the plain form.
+  ThemeComponents _components() {
+    final raw = _map(json['components']);
+    T pick<T extends Enum>(String key, List<T> values, T plain) {
+      final value = raw[key];
+      if (value == null) return plain;
+      final found = values.where((v) => v.name == value).firstOrNull;
+      if (found == null) {
+        warnings.add(
+          'components.$key: "$value" is not one of '
+          '${values.map((v) => v.name).join(', ')}',
+        );
+        return plain;
+      }
+      return found;
+    }
+
+    bool flag(String key) {
+      final value = raw[key];
+      if (value == null || value is bool) return value == true;
+      warnings.add('components.$key: "$value" is not true or false');
+      return false;
+    }
+
+    for (final key in raw.keys) {
+      if (!ThemeComponents.keys.contains(key)) {
+        warnings.add('components.$key: not something the app has');
+      }
+    }
+    return ThemeComponents(
+      topBar: pick('topBar', TopBarStyle.values, TopBarStyle.standard),
+      homeHero: pick('homeHero', HomeHeroStyle.values, HomeHeroStyle.none),
+      rowArrows: flag('rowArrows'),
+    );
+  }
 
   List<String> _modes() {
     final ids = [
@@ -529,4 +577,42 @@ extension<T extends Object> on T? {
     final self = this;
     return self == null ? null : f(self);
   }
+}
+
+/// The top of the browsing screens.
+enum TopBarStyle {
+  /// A plain app bar: the screen's title and its buttons.
+  standard,
+
+  /// The libraries as tabs, search, a profile menu; see-through over the
+  /// home carousel, then a floating bar once the page scrolls.
+  floating,
+}
+
+/// What opens the home page.
+enum HomeHeroStyle {
+  /// The rows straight away.
+  none,
+
+  /// A carousel of what was added lately, full width.
+  carousel,
+}
+
+/// The forms of components a theme picks (its `components` section):
+/// `{"topBar": "floating", "homeHero": "carousel", "rowArrows": true}`.
+@immutable
+class ThemeComponents {
+  const ThemeComponents({
+    this.topBar = TopBarStyle.standard,
+    this.homeHero = HomeHeroStyle.none,
+    this.rowArrows = false,
+  });
+
+  static const keys = {'topBar', 'homeHero', 'rowArrows'};
+
+  final TopBarStyle topBar;
+  final HomeHeroStyle homeHero;
+
+  /// Arrows at the ends of the rows, to page through them.
+  final bool rowArrows;
 }

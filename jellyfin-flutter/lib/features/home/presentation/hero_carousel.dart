@@ -1,0 +1,501 @@
+import 'dart:async';
+import 'dart:math' as math;
+
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import 'package:material_ui/material_ui.dart';
+
+import '../../../api/models/base_item_dto.dart';
+import '../../../core/theme/app_tokens.dart';
+import '../../../core/ticks.dart';
+import '../../../router.dart';
+import '../../../widgets/focus_ring.dart';
+import '../../library/data/library_repository.dart';
+
+/// The home page's opening carousel (the theme's `homeHero: carousel`):
+/// what was added lately, full width, one at a time.
+///
+/// Each slide: the item's backdrop under gradients that keep the text
+/// readable, its kind, its name in large capitals, the facts, two lines of
+/// overview, a white Play button and a round "More info" one. The slides
+/// change every [interval] with a cross-fade (none with reduced motion),
+/// and hold still while the pointer is on the carousel; arrows and dots
+/// move through them by hand.
+class HeroCarousel extends ConsumerStatefulWidget {
+  const HeroCarousel({super.key, required this.items});
+
+  final List<BaseItemDto> items;
+
+  static const interval = Duration(seconds: 8);
+  static const fade = Duration(milliseconds: 700);
+
+  static const playButton = Key('hero.play');
+  static const infoButton = Key('hero.info');
+  static const nextButton = Key('hero.next');
+  static const previousButton = Key('hero.previous');
+  static Key dot(int index) => Key('hero.dot.$index');
+
+  /// Its height in a window [size]: 16:9 of the width, at least 560 and at
+  /// most 86 % of the height (a phone: 640).
+  static double heightFor(Size size) => size.width < 760
+      ? 640
+      : math.max(560.0, math.min(size.width * 9 / 16, size.height * 0.86));
+
+  @override
+  ConsumerState<HeroCarousel> createState() => _HeroCarouselState();
+}
+
+class _HeroCarouselState extends ConsumerState<HeroCarousel> {
+  int _index = 0;
+  Timer? _timer;
+  bool _held = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _restart();
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  void _restart() {
+    _timer?.cancel();
+    if (widget.items.length < 2) return;
+    _timer = Timer.periodic(HeroCarousel.interval, (_) {
+      if (!_held && mounted) _go(_index + 1);
+    });
+  }
+
+  void _go(int index, {bool byHand = false}) {
+    final count = widget.items.length;
+    setState(() => _index = (index % count + count) % count);
+    if (byHand) _restart();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final items = widget.items;
+    final item = items[_index % items.length];
+    final size = MediaQuery.sizeOf(context);
+    final still = MediaQuery.disableAnimationsOf(context);
+    final narrow = size.width < 760;
+    return MouseRegion(
+      onEnter: (_) => _held = true,
+      onExit: (_) => _held = false,
+      child: SizedBox(
+        height: HeroCarousel.heightFor(size),
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            AnimatedSwitcher(
+              duration: still ? Duration.zero : HeroCarousel.fade,
+              child: _Slide(
+                key: ValueKey(item.id),
+                item: item,
+                narrow: narrow,
+                still: still,
+              ),
+            ),
+            if (items.length > 1 && !narrow) ...[
+              _Arrow(
+                buttonKey: HeroCarousel.previousButton,
+                forward: false,
+                onTap: () => _go(_index - 1, byHand: true),
+              ),
+              _Arrow(
+                buttonKey: HeroCarousel.nextButton,
+                forward: true,
+                onTap: () => _go(_index + 1, byHand: true),
+              ),
+            ],
+            if (items.length > 1)
+              Positioned(
+                left: 0,
+                right: 0,
+                bottom: narrow ? 48 : HeroCarousel.heightFor(size) * 0.15 - 40,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    for (var i = 0; i < items.length; i++)
+                      _Dot(
+                        key: HeroCarousel.dot(i),
+                        on: i == _index,
+                        onTap: () => _go(i, byHand: true),
+                      ),
+                  ],
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _Slide extends ConsumerStatefulWidget {
+  const _Slide({
+    super.key,
+    required this.item,
+    required this.narrow,
+    required this.still,
+  });
+
+  final BaseItemDto item;
+  final bool narrow;
+  final bool still;
+
+  @override
+  ConsumerState<_Slide> createState() => _SlideState();
+}
+
+class _SlideState extends ConsumerState<_Slide> {
+  /// The picture settles from a slight zoom while the slide shows.
+  bool _settled = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) setState(() => _settled = true);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final item = widget.item;
+    final tokens = context.tokens;
+    final theme = Theme.of(context);
+    final size = MediaQuery.sizeOf(context);
+    final pixels = (size.width * MediaQuery.devicePixelRatioOf(context))
+        .round();
+    final url = ref
+        .watch(libraryRepositoryProvider)
+        .backdropUrl(item, maxWidth: pixels);
+    const night = Color(0xFF00050D);
+    final ground = theme.scaffoldBackgroundColor;
+    final left = widget.narrow ? tokens.space(4) : 72.0;
+    final movie = item.type != BaseItemKind.series;
+    final facts = [
+      ?item.productionYear?.toString(),
+      if (item.runTimeTicks case final int t when t > 0 && movie)
+        formatRuntime(ticksToDuration(t)),
+      ?item.officialRating,
+    ].join(' · ');
+    final titleSize = widget.narrow
+        ? 30.0
+        : (size.width * 0.042).clamp(36.0, 68.0);
+
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        // The picture zooms out from 1.04: clipped to the slide (a Stack
+        // does not clip what a transform pushes out).
+        ColoredBox(
+          color: night,
+          child: url == null
+              ? null
+              : ClipRect(
+                  child: AnimatedScale(
+                    scale: _settled || widget.still ? 1 : 1.04,
+                    duration: widget.still
+                        ? Duration.zero
+                        : const Duration(seconds: 9),
+                    child: Image.network(
+                      url.toString(),
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, _, _) => const SizedBox.shrink(),
+                    ),
+                  ),
+                ),
+        ),
+        // Dark on the left for the text, the page's colour at the bottom,
+        // a little shade at the top for the bar over it.
+        DecoratedBox(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                night.withValues(alpha: 0.95),
+                night.withValues(alpha: 0.75),
+                night.withValues(alpha: 0.2),
+                night.withValues(alpha: 0),
+              ],
+              stops: const [0, 0.28, 0.55, 0.7],
+            ),
+          ),
+        ),
+        DecoratedBox(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.bottomCenter,
+              end: Alignment.topCenter,
+              colors: [ground, ground.withValues(alpha: 0)],
+              stops: const [0, 0.26],
+            ),
+          ),
+        ),
+        DecoratedBox(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                night.withValues(alpha: 0.5),
+                night.withValues(alpha: 0),
+              ],
+              stops: const [0, 0.18],
+            ),
+          ),
+        ),
+        Positioned(
+          left: left,
+          right: widget.narrow ? left : null,
+          bottom: widget.narrow ? 96 : HeroCarousel.heightFor(size) * 0.15,
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              maxWidth: widget.narrow
+                  ? double.infinity
+                  : math.min(700, size.width * 0.48),
+            ),
+            child: DefaultTextStyle.merge(
+              style: const TextStyle(color: Colors.white),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    movie ? 'MOVIE' : 'SERIES',
+                    style: tokens.overline.copyWith(
+                      color: theme.colorScheme.inversePrimary,
+                      letterSpacing: 2,
+                    ),
+                  ),
+                  SizedBox(height: tokens.space(3)),
+                  Text(
+                    item.name.toUpperCase(),
+                    maxLines: 3,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.displayLarge?.copyWith(
+                      color: Colors.white,
+                      fontSize: titleSize,
+                      height: 1.08,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: titleSize * (widget.narrow ? 0.08 : 0.14),
+                      shadows: const [
+                        Shadow(blurRadius: 16, color: Color(0x59000000)),
+                      ],
+                    ),
+                  ),
+                  SizedBox(height: tokens.space(4)),
+                  if (facts.isNotEmpty)
+                    Text(
+                      facts,
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: Colors.white.withValues(alpha: 0.72),
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  if (item.overview case final String overview
+                      when overview.isNotEmpty) ...[
+                    SizedBox(height: tokens.space(3)),
+                    Text(
+                      overview,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.bodyLarge?.copyWith(
+                        color: Colors.white,
+                        fontSize: widget.narrow ? 16 : 20,
+                        height: widget.narrow ? 23 / 16 : 29 / 20,
+                      ),
+                    ),
+                  ],
+                  SizedBox(height: tokens.space(6)),
+                  Row(
+                    children: [
+                      _WhiteButton(
+                        key: HeroCarousel.playButton,
+                        label: movie ? 'Play' : 'Episodes',
+                        icon: movie ? Icons.play_arrow : Icons.list,
+                        big: !widget.narrow,
+                        onPressed: () => context.push(
+                          movie ? Routes.play(item.id) : Routes.item(item.id),
+                        ),
+                      ),
+                      SizedBox(width: tokens.space(4)),
+                      _RoundButton(
+                        key: HeroCarousel.infoButton,
+                        tooltip: 'More info',
+                        icon: Icons.info_outline,
+                        big: !widget.narrow,
+                        onPressed: () => context.push(Routes.item(item.id)),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// The hero's main button: white, dark text (the variation's "Assistir").
+class _WhiteButton extends StatelessWidget {
+  const _WhiteButton({
+    super.key,
+    required this.label,
+    required this.icon,
+    required this.big,
+    required this.onPressed,
+  });
+
+  final String label;
+  final IconData icon;
+  final bool big;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final radius = BorderRadius.circular(context.tokens.radiusMd);
+    return FocusRing(
+      borderRadius: radius,
+      color: Colors.white,
+      child: TextButton.icon(
+        onPressed: onPressed,
+        icon: Icon(icon, size: big ? 32 : 26),
+        label: Text(label),
+        style: ButtonStyle(
+          fixedSize: WidgetStatePropertyAll(Size.fromHeight(big ? 60 : 52)),
+          padding: const WidgetStatePropertyAll(
+            EdgeInsets.fromLTRB(20, 0, 28, 0),
+          ),
+          shape: WidgetStatePropertyAll(
+            RoundedRectangleBorder(borderRadius: radius),
+          ),
+          backgroundColor: WidgetStateProperty.resolveWith(
+            (s) => s.contains(WidgetState.hovered)
+                ? const Color(0xFFE8EEF3)
+                : Colors.white,
+          ),
+          foregroundColor: const WidgetStatePropertyAll(Color(0xFF00050D)),
+          iconColor: const WidgetStatePropertyAll(Color(0xFF00050D)),
+          overlayColor: const WidgetStatePropertyAll(Colors.transparent),
+          textStyle: WidgetStatePropertyAll(
+            Theme.of(context).textTheme.labelLarge?.copyWith(
+              fontSize: big ? 20 : 17,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _RoundButton extends StatelessWidget {
+  const _RoundButton({
+    super.key,
+    required this.tooltip,
+    required this.icon,
+    required this.big,
+    required this.onPressed,
+  });
+
+  final String tooltip;
+  final IconData icon;
+  final bool big;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final size = big ? 60.0 : 52.0;
+    return FocusRing(
+      borderRadius: BorderRadius.circular(size),
+      color: Colors.white,
+      child: IconButton(
+        tooltip: tooltip,
+        onPressed: onPressed,
+        iconSize: big ? 30 : 26,
+        icon: Icon(icon),
+        style: ButtonStyle(
+          fixedSize: WidgetStatePropertyAll(Size.square(size)),
+          foregroundColor: const WidgetStatePropertyAll(Colors.white),
+          backgroundColor: WidgetStateProperty.resolveWith(
+            (s) => Colors.white.withValues(
+              alpha: s.contains(WidgetState.hovered) ? 0.34 : 0.22,
+            ),
+          ),
+          overlayColor: const WidgetStatePropertyAll(Colors.transparent),
+        ),
+      ),
+    );
+  }
+}
+
+class _Arrow extends StatelessWidget {
+  const _Arrow({
+    required this.buttonKey,
+    required this.forward,
+    required this.onTap,
+  });
+
+  /// On the button itself (the arrow's area is the carousel's height).
+  final Key buttonKey;
+  final bool forward;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) => Align(
+    alignment: forward ? Alignment.centerRight : Alignment.centerLeft,
+    child: Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 8),
+      child: IconButton(
+        key: buttonKey,
+        tooltip: forward ? 'Next' : 'Previous',
+        onPressed: onTap,
+        iconSize: 44,
+        color: Colors.white,
+        icon: Icon(forward ? Icons.chevron_right : Icons.chevron_left),
+        style: const ButtonStyle(
+          fixedSize: WidgetStatePropertyAll(Size(56, 96)),
+          overlayColor: WidgetStatePropertyAll(Colors.transparent),
+        ),
+      ),
+    ),
+  );
+}
+
+class _Dot extends StatelessWidget {
+  const _Dot({super.key, required this.on, required this.onTap});
+
+  final bool on;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) => Semantics(
+    button: true,
+    selected: on,
+    label: 'Slide',
+    child: GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 8),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 250),
+          width: on ? 18 : 6,
+          height: 6,
+          decoration: BoxDecoration(
+            color: on ? Colors.white : Colors.white.withValues(alpha: 0.45),
+            borderRadius: BorderRadius.circular(3),
+          ),
+        ),
+      ),
+    ),
+  );
+}

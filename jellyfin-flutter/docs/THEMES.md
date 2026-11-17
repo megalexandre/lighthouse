@@ -4,8 +4,23 @@ O visual do app vem de um **design system**: o `tokens.json` que o Claude Design
 define cores (modo escuro e claro), fontes, escala de texto, espaçamentos, raios e sombras. Trocar o arquivo muda o
 visual inteiro; a estrutura das telas continua a mesma.
 
-O tema embutido é o **Lanterna** ([design system](https://claude.ai/artifact/32DMqAFN7kh6VuAugFs2zT)), em
-`assets/themes/lanterna.json`.
+Temas embutidos (`assets/themes/`):
+
+- **Prime**, `prime.json`: o **padrão** (o que aparece até o usuário escolher outro, ou quando o escolhido some ou não
+  pode ser lido). É a "Lanterna — variação streaming" (azul-noite, acento `#1a98ff`, Inter). A variação é uma
+  página, não um design system, então os tokens foram tirados das variáveis CSS dela. O que ela muda além das cores
+  é forma e comportamento de componente, e um tema por tokens não carrega isso:
+  - top bar fixa, transparente sobre o carrossel, que flutua com blur ao rolar, com abas, busca que se abre e menu
+    de perfil;
+  - carrossel no topo da home;
+  - card que expande no hover, com imagem, botões e sinopse;
+  - setas nas fileiras;
+  - botão primário branco;
+  - controles do player no centro.
+- **Lanterna** ([design system](https://claude.ai/artifact/32DMqAFN7kh6VuAugFs2zT)), `lanterna.json`: a **base**.
+  Está completo, e é dele que qualquer tema (o Prime também) herda os tokens que faltarem. Não pode sair do app.
+
+No código, `ThemeCatalog.defaultId` é o padrão e `ThemeCatalog.baseId` é a base.
 
 ## Modificar o tema
 
@@ -63,6 +78,27 @@ O tema escolhido e o modo (escuro, claro ou do sistema) ficam salvos neste apare
 - **Tokens ausentes ou ilegíveis.**
   - O app usa o valor do Lanterna e lista o problema em **Settings → N theme issues**, e também no log.
   - Um arquivo que não é JSON aparece ali como "not used".
+
+## Componentes que o tema escolhe (`components`)
+
+Além dos tokens, o tema pode escolher a forma de alguns componentes, entre as que o app já tem. Cada uma é
+programada uma vez, e qualquer tema pode usar:
+
+```json
+"components": { "topBar": "floating", "homeHero": "carousel", "rowArrows": true }
+```
+
+| Chave | Valores | O que muda |
+| --- | --- | --- |
+| `topBar` | `standard` (padrão), `floating` | `floating`: uma marca, as bibliotecas como abas, uma busca que se abre num campo e um menu de perfil (tema claro/escuro, Settings, Sign out). É transparente sobre o carrossel e vira uma barra flutuante, com blur, ao rolar. É sempre escura. Na home, a fileira "My media" sai, porque as abas fazem esse papel. Uma biblioteca aberta pela aba mantém a barra, com a aba dela ativa |
+| `homeHero` | `none` (padrão), `carousel` | `carousel`: os filmes e séries adicionados por último (até 6), em tela cheia, com a imagem de fundo (ou o pôster), título grande, sinopse, Play branco e "More info". Troca a cada 8 s, com fade, pausa no hover e tem setas e pontos. Com "reduzir animações", troca sem fade e sem zoom |
+| `rowArrows` | `false` (padrão), `true` | Setas nas laterais das fileiras da home, só onde há mais para ver, avançando uma página por clique. Somem em janela estreita (abaixo de 760 px) |
+
+Uma chave ou um valor desconhecido vira aviso em Settings, e vale o padrão. O Prime liga as três; o Lanterna não tem a
+seção, então fica com os padrões.
+
+Os testes das telas usam o layout do Lanterna (`TestApp` e o `launch` da integração abrem nele). O layout do Prime tem
+testes próprios em `test/features/home/prime_layout_test.dart`.
 
 ## Que token pinta o quê
 

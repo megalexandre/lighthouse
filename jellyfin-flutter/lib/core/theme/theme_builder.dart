@@ -233,6 +233,7 @@ ThemeData buildTheme(DesignTokens tokens, Brightness brightness) {
         shadows: {for (final name in tokens.shadows.keys) name: shadows(name)},
         timecode: style('timecode'),
         overline: style('overline'),
+        components: tokens.components,
       ),
     ],
   );

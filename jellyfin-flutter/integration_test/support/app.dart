@@ -28,6 +28,7 @@ Future<void> launch(
   WidgetTester tester,
   MemoryKeyValueStore store, {
   MemoryKeyValueStore? readerStore,
+  String theme = 'builtin:lanterna.json',
 }) async {
   _simulateTextInput(tester);
   final themes = await loadBuiltInThemes(rootBundle);
@@ -42,7 +43,11 @@ Future<void> launch(
         ),
         // The app's own files (the appearance) and themes folder: kept
         // off the desktop's.
-        appFilesStoreProvider.overrideWithValue(MemoryKeyValueStore()),
+        // Lanterna's plain layout for the flows (Prime's is tested in
+        // test/features/home/prime_layout_test.dart); [theme] to change.
+        appFilesStoreProvider.overrideWithValue(
+          MemoryKeyValueStore()..values['appearance'] = '{"theme":"$theme"}',
+        ),
         builtInThemesProvider.overrideWithValue(themes),
         userThemeSourceProvider.overrideWithValue(const NoUserThemes()),
         playerOptionsProvider.overrideWithValue(

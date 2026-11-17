@@ -1,5 +1,7 @@
 import 'package:material_ui/material_ui.dart';
 
+import 'design_tokens.dart';
+
 /// What a theme gives beyond Material's [ColorScheme] and [TextTheme]:
 /// the player's fixed colours (`osd-*`), status colours, spacing, radii,
 /// shadows and the timecode style. Widgets read it with [context.tokens].
@@ -24,6 +26,7 @@ class AppTokens extends ThemeExtension<AppTokens> {
     required this.shadows,
     required this.timecode,
     required this.overline,
+    this.components = const ThemeComponents(),
   });
 
   /// The deepest background: behind the video, letterbox.
@@ -57,6 +60,10 @@ class AppTokens extends ThemeExtension<AppTokens> {
 
   /// Short capitals: "UP NEXT", badges.
   final TextStyle overline;
+
+  /// The forms of components the theme picks (top bar, home carousel, row
+  /// arrows).
+  final ThemeComponents components;
 
   /// `space-<step>` (4 px steps), e.g. `space(4)` = 16.
   double space(int step) => spacing['space-$step'] ?? step * 4.0;

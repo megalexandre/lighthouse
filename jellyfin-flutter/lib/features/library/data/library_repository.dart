@@ -31,6 +31,10 @@ abstract interface class LibraryRepository {
   /// Recently added to the library [viewId].
   Future<List<BaseItemDto>> latest(String viewId);
 
+  /// What the home carousel shows: the movies and series added last,
+  /// across the libraries, with their overview.
+  Future<List<BaseItemDto>> featured();
+
   /// Continue watching.
   Future<List<BaseItemDto>> resume();
 
@@ -56,7 +60,14 @@ abstract interface class LibraryRepository {
   /// The image to show for [item] at about [maxWidth] pixels, or null when
   /// it has none.
   Uri? imageUrl(BaseItemDto item, {required int maxWidth});
+
+  /// A wide picture of [item] (its backdrop), or its own image when it has
+  /// no backdrop; null when it has neither.
+  Uri? backdropUrl(BaseItemDto item, {required int maxWidth});
 }
+
+/// How many items the home carousel shows.
+const featuredLimit = 6;
 
 /// What search looks for, in the order results are shown.
 const searchKinds = [
@@ -160,6 +171,19 @@ class JellyfinLibraryRepository implements LibraryRepository {
       _call((api) => api.latest(_user, parentId: viewId, limit: homeRowLimit));
 
   @override
+  Future<List<BaseItemDto>> featured() => _call(
+    (api) async => (await api.items(
+      userId: _user,
+      recursive: true,
+      includeItemTypes: const [BaseItemKind.movie, BaseItemKind.series],
+      sortBy: const [ItemSort.dateCreated],
+      descending: true,
+      limit: featuredLimit,
+      fields: const ['Overview'],
+    )).items,
+  );
+
+  @override
   Future<List<BaseItemDto>> resume() => _call(
     (api) async => (await api.resume(_user, limit: homeRowLimit)).items,
   );
@@ -240,6 +264,19 @@ class JellyfinLibraryRepository implements LibraryRepository {
       maxWidth: maxWidth,
     );
   }
+
+  @override
+  Uri? backdropUrl(BaseItemDto item, {required int maxWidth}) =>
+      switch (item.backdropImageTags) {
+        [final tag, ...] => itemImageUrl(
+          session.server.url,
+          item.id,
+          ImageType.backdrop,
+          tag: tag,
+          maxWidth: maxWidth,
+        ),
+        _ => imageUrl(item, maxWidth: maxWidth),
+      };
 }
 
 /// What the app browses with while nobody is signed in: every call fails
@@ -264,6 +301,9 @@ class SignedOutLibraryRepository implements LibraryRepository {
 
   @override
   Future<List<BaseItemDto>> latest(String viewId) => _fail();
+
+  @override
+  Future<List<BaseItemDto>> featured() => _fail();
 
   @override
   Future<List<BaseItemDto>> resume() => _fail();
@@ -292,4 +332,7 @@ class SignedOutLibraryRepository implements LibraryRepository {
 
   @override
   Uri? imageUrl(BaseItemDto item, {required int maxWidth}) => null;
+
+  @override
+  Uri? backdropUrl(BaseItemDto item, {required int maxWidth}) => null;
 }

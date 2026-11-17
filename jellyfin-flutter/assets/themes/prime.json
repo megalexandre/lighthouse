@@ -1,0 +1,102 @@
+{
+  "name": "Prime",
+  "version": 1,
+  "meta": {
+    "source": "Lanterna — variação streaming (Claude Design, artifact 0ae108fe-a7b8-4e5a-ad6b-837693c31d86, version 1794911624-dbfb): its CSS variables, as tokens"
+  },
+  "components": {
+    "topBar": "floating",
+    "homeHero": "carousel",
+    "rowArrows": true
+  },
+  "color": {
+    "themes": [
+      { "id": "dark", "name": "Escuro" },
+      { "id": "light", "name": "Claro" }
+    ],
+    "tokens": [
+      { "name": "bg-000", "value": { "dark": "#00050d", "light": "#e4e9ee" }, "usage": "Fundo mais profundo: barra de navegação, atrás do vídeo." },
+      { "name": "bg-100", "value": { "dark": "#0f171e", "light": "#f7f9fb" }, "usage": "Fundo das páginas (azul-noite)." },
+      { "name": "bg-200", "value": { "dark": "#1b2530", "light": "#eef1f4" }, "usage": "Cards, campos, painéis." },
+      { "name": "bg-300", "value": { "dark": "#252e39", "light": "#dfe4ea" }, "usage": "Hover, aba ativa, botão secundário." },
+      { "name": "line", "value": { "dark": "#33404c", "light": "#c9d1d9" }, "usage": "Divisores e bordas." },
+      { "name": "ink", "value": { "dark": "#ffffff", "light": "#0f171e" }, "usage": "Texto principal." },
+      { "name": "ink-muted", "value": { "dark": "#9aabb6", "light": "#556270" }, "usage": "Metadados." },
+      { "name": "accent", "value": { "dark": "#1a98ff", "light": "#0f79d0" }, "usage": "Ação: reproduzir, progresso, seleção, foco." },
+      { "name": "accent-hover", "value": { "dark": "#4aaeff", "light": "#0b65ae" }, "usage": "Hover de accent." },
+      { "name": "accent-ink", "value": { "dark": "#00050d", "light": "#ffffff" }, "usage": "Texto e ícones sobre accent." },
+      { "name": "accent-2", "value": { "dark": "#f2c94c", "light": "#9a6b00" }, "usage": "Acento secundário: favoritos, Minha lista." },
+      { "name": "success", "value": { "dark": "#3fb950", "light": "#1a7f37" }, "usage": "Estado: concluído." },
+      { "name": "warning", "value": { "dark": "#d29922", "light": "#9a6700" }, "usage": "Estado: atenção." },
+      { "name": "danger", "value": { "dark": "#f85149", "light": "#cf222e" }, "usage": "Estado: erro." },
+      { "name": "osd-surface", "value": "rgba(20, 22, 26, 0.94)", "usage": "Menus e painéis sobre o vídeo." },
+      { "name": "osd-hover", "value": "rgba(255, 255, 255, 0.12)", "usage": "Hover sobre o vídeo." },
+      { "name": "osd-scrim", "value": "rgba(0, 0, 0, 0.72)", "usage": "Degradê atrás dos controles." },
+      { "name": "osd-ink", "value": "#ffffff", "usage": "Ícones e texto sobre o vídeo." },
+      { "name": "osd-ink-muted", "value": "rgba(255, 255, 255, 0.72)", "usage": "Texto secundário sobre o vídeo." },
+      { "name": "osd-track", "value": "rgba(255, 255, 255, 0.24)", "usage": "Trilho da barra de progresso." },
+      { "name": "osd-buffer", "value": "rgba(255, 255, 255, 0.48)", "usage": "Trecho carregado." },
+      { "name": "osd-accent", "value": "#1a98ff", "usage": "Progresso e item ativo no player." },
+      { "name": "osd-accent-ink", "value": "#00050d", "usage": "Sobre osd-accent." }
+    ]
+  },
+  "type": {
+    "fonts": [],
+    "families": {
+      "sans": "\"Inter\", system-ui, -apple-system, \"Segoe UI\", Roboto, sans-serif",
+      "mono": "\"Noto Sans Mono\", ui-monospace, Menlo, monospace"
+    },
+    "groups": [
+      {
+        "name": "Display",
+        "family": "sans",
+        "styles": [
+          { "name": "hero-title", "fontSize": "52px", "lineHeight": "56px", "fontWeight": 800, "letterSpacing": "-0.03em", "usage": "Título da página de detalhe." },
+          { "name": "section-title", "fontSize": "22px", "lineHeight": "28px", "fontWeight": 700, "usage": "Títulos de prateleira." }
+        ]
+      },
+      {
+        "name": "Texto",
+        "family": "sans",
+        "styles": [
+          { "name": "title", "fontSize": "16px", "lineHeight": "22px", "fontWeight": 600, "usage": "Nome de card, título no player, itens de menu." },
+          { "name": "body", "fontSize": "15px", "lineHeight": "22px", "fontWeight": 400, "usage": "Texto corrido." },
+          { "name": "caption", "fontSize": "12px", "lineHeight": "16px", "fontWeight": 400, "usage": "Metadados." },
+          { "name": "overline", "fontSize": "11px", "lineHeight": "14px", "fontWeight": 700, "letterSpacing": "0.08em", "usage": "Rótulos em caixa alta." }
+        ]
+      },
+      {
+        "name": "Tempo",
+        "family": "mono",
+        "styles": [
+          { "name": "timecode", "fontSize": "14px", "lineHeight": "16px", "fontWeight": 500, "usage": "Tempo no player." }
+        ]
+      }
+    ]
+  },
+  "spacing": {
+    "tokens": [
+      { "name": "space-1", "value": "4px" },
+      { "name": "space-2", "value": "8px" },
+      { "name": "space-3", "value": "12px" },
+      { "name": "space-4", "value": "16px" },
+      { "name": "space-6", "value": "24px" },
+      { "name": "space-8", "value": "32px" },
+      { "name": "space-12", "value": "48px" }
+    ]
+  },
+  "radius": {
+    "tokens": [
+      { "name": "radius-sm", "value": "4px" },
+      { "name": "radius-md", "value": "8px" },
+      { "name": "radius-lg", "value": "12px" },
+      { "name": "radius-pill", "value": "999px" }
+    ]
+  },
+  "shadow": {
+    "tokens": [
+      { "name": "shadow-poster", "value": "0 12px 28px rgba(0, 0, 0, 0.55)", "usage": "Card em hover/foco." },
+      { "name": "shadow-menu", "value": "0 8px 24px rgba(0, 0, 0, 0.50)", "usage": "Menus sobre o vídeo." }
+    ]
+  }
+}

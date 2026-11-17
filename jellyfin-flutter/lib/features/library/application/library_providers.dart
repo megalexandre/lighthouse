@@ -13,6 +13,11 @@ final userViewsProvider = FutureProvider.autoDispose<List<BaseItemDto>>(
   (ref) => ref.watch(libraryRepositoryProvider).views(),
 );
 
+/// The home carousel's items.
+final featuredProvider = FutureProvider.autoDispose<List<BaseItemDto>>(
+  (ref) => ref.watch(libraryRepositoryProvider).featured(),
+);
+
 final resumeProvider = FutureProvider.autoDispose<List<BaseItemDto>>(
   (ref) => ref.watch(libraryRepositoryProvider).resume(),
 );

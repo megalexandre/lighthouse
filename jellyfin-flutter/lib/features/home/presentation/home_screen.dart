@@ -4,30 +4,65 @@ import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../../../api/models/base_item_dto.dart';
+import '../../../core/theme/app_tokens.dart';
+import '../../../core/theme/design_tokens.dart';
 import '../../../router.dart';
 import '../../../widgets/error_retry.dart';
+import '../../../widgets/row_arrows.dart';
 import '../../auth/application/auth_controller.dart';
 import '../../auth/data/session.dart';
 import '../../library/application/library_providers.dart';
 import '../../library/presentation/item_card.dart';
+import 'floating_top_bar.dart';
+import 'hero_carousel.dart';
 
 /// Signed-in landing page: the user's libraries, then Continue watching,
 /// Next up and what was added lately to each library. A row with nothing
 /// in it is left out; a row that fails says so without hiding the others.
-class HomeScreen extends ConsumerWidget {
+///
+/// The theme picks its top (`components`): a plain app bar, or the
+/// floating top bar with the libraries as tabs (then the libraries row is
+/// left out); and maybe a carousel of what was added lately above the rows.
+class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
 
   static const signOutButton = Key('home.signOut');
   static const searchButton = Key('home.search');
   static const settingsButton = Key('home.settings');
   static const viewsRow = Key('home.views');
+  static const hero = Key('home.hero');
   static const resumeRow = Key('home.resume');
   static const nextUpRow = Key('home.nextUp');
   static const resumeBooksRow = Key('home.resumeBooks');
   static Key latestRow(String viewId) => Key('home.latest.$viewId');
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends ConsumerState<HomeScreen> {
+  final _scroll = ScrollController();
+
+  /// The page scrolled: the floating top bar turns solid.
+  bool _scrolled = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _scroll.addListener(() {
+      final scrolled = _scroll.offset > 8;
+      if (scrolled != _scrolled) setState(() => _scrolled = scrolled);
+    });
+  }
+
+  @override
+  void dispose() {
+    _scroll.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final session = ref.watch(authControllerProvider).value?.session;
     final views = ref.watch(userViewsProvider);
 
@@ -41,10 +76,111 @@ class HomeScreen extends ConsumerWidget {
       },
       child: Focus(
         autofocus: true,
-        child: _scaffold(context, ref, session, views, openSearch),
+        child: context.tokens.components.topBar == TopBarStyle.floating
+            ? _floating(context, views)
+            : _scaffold(context, ref, session, views, openSearch),
       ),
     );
   }
+
+  /// The page under the floating top bar: the carousel (when the theme
+  /// has one) runs under the bar, the rows follow.
+  Widget _floating(BuildContext context, AsyncValue<List<BaseItemDto>> views) {
+    final hero = context.tokens.components.homeHero == HomeHeroStyle.carousel
+        ? ref.watch(featuredProvider).value
+        : null;
+    final withHero = hero != null && hero.isNotEmpty;
+    return Scaffold(
+      body: Stack(
+        children: [
+          switch (views) {
+            AsyncData(value: final views) => RefreshIndicator(
+              edgeOffset: FloatingTopBar.height,
+              onRefresh: () async => _refresh(),
+              child: ListView(
+                controller: _scroll,
+                padding: EdgeInsets.only(
+                  top: withHero ? 0 : FloatingTopBar.height + 16,
+                  bottom: 16,
+                ),
+                children: [
+                  if (withHero) HeroCarousel(key: HomeScreen.hero, items: hero),
+                  // The libraries are the bar's tabs: no row for them.
+                  if (views.isEmpty) _noLibraries,
+                  ..._rows(views),
+                ],
+              ),
+            ),
+            AsyncError(:final error) => Center(
+              child: ErrorRetry(
+                error: error,
+                onRetry: () => ref.invalidate(userViewsProvider),
+              ),
+            ),
+            _ => const Center(child: CircularProgressIndicator()),
+          },
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            child: FloatingTopBar(solid: _scrolled || !withHero),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _refresh() => ref
+    ..invalidate(userViewsProvider)
+    ..invalidate(featuredProvider)
+    ..invalidate(resumeProvider)
+    ..invalidate(resumeBooksProvider)
+    ..invalidate(nextUpProvider)
+    ..invalidate(latestProvider);
+
+  static const _noLibraries = Padding(
+    padding: EdgeInsets.all(24),
+    child: Text(
+      'No libraries yet. Add one on the server, or ask its '
+      'administrator for access.',
+    ),
+  );
+
+  /// Continue watching, Next up, Continue reading, then each library's
+  /// latest.
+  List<Widget> _rows(List<BaseItemDto> views) => [
+    ItemRow(
+      key: HomeScreen.resumeRow,
+      title: 'Continue watching',
+      items: ref.watch(resumeProvider),
+      onRetry: () => ref.invalidate(resumeProvider),
+      cardWidth: 240,
+      aspectRatio: 16 / 9,
+    ),
+    ItemRow(
+      key: HomeScreen.nextUpRow,
+      title: 'Next up',
+      items: ref.watch(nextUpProvider),
+      onRetry: () => ref.invalidate(nextUpProvider),
+      cardWidth: 240,
+      aspectRatio: 16 / 9,
+    ),
+    ItemRow(
+      key: HomeScreen.resumeBooksRow,
+      title: 'Continue reading',
+      items: ref.watch(resumeBooksProvider),
+      onRetry: () => ref.invalidate(resumeBooksProvider),
+      aspectRatio: 2 / 3,
+    ),
+    for (final view in views)
+      ItemRow(
+        key: HomeScreen.latestRow(view.id),
+        title: 'Latest in ${view.name}',
+        items: ref.watch(latestProvider(view.id)),
+        onRetry: () => ref.invalidate(latestProvider(view.id)),
+        aspectRatio: view.collectionType == 'music' ? 1 : 2 / 3,
+      ),
+  ];
 
   Widget _scaffold(
     BuildContext context,
@@ -58,7 +194,7 @@ class HomeScreen extends ConsumerWidget {
         title: Text(session?.server.name ?? 'Jellyfin'),
         actions: [
           IconButton(
-            key: searchButton,
+            key: HomeScreen.searchButton,
             tooltip: 'Search (Ctrl+F)',
             icon: const Icon(Icons.search),
             onPressed: openSearch,
@@ -69,13 +205,13 @@ class HomeScreen extends ConsumerWidget {
               child: Center(child: Text(session.userName)),
             ),
           IconButton(
-            key: settingsButton,
+            key: HomeScreen.settingsButton,
             tooltip: 'Settings',
             icon: const Icon(Icons.settings_outlined),
             onPressed: () => context.push(Routes.settings),
           ),
           IconButton(
-            key: signOutButton,
+            key: HomeScreen.signOutButton,
             tooltip: 'Sign out',
             icon: const Icon(Icons.logout),
             onPressed: () => ref.read(authControllerProvider.notifier).logout(),
@@ -84,63 +220,20 @@ class HomeScreen extends ConsumerWidget {
       ),
       body: switch (views) {
         AsyncData(value: final views) => RefreshIndicator(
-          onRefresh: () async {
-            ref
-              ..invalidate(userViewsProvider)
-              ..invalidate(resumeProvider)
-              ..invalidate(resumeBooksProvider)
-              ..invalidate(nextUpProvider)
-              ..invalidate(latestProvider);
-          },
+          onRefresh: () async => _refresh(),
           child: ListView(
             padding: const EdgeInsets.symmetric(vertical: 16),
             children: [
               if (views.isEmpty)
-                const Padding(
-                  padding: EdgeInsets.all(24),
-                  child: Text(
-                    'No libraries yet. Add one on the server, or ask its '
-                    'administrator for access.',
-                  ),
-                )
+                _noLibraries
               else
                 ItemRow(
-                  key: viewsRow,
+                  key: HomeScreen.viewsRow,
                   title: 'My media',
                   items: AsyncData(views),
                   cardWidth: 240,
                 ),
-              ItemRow(
-                key: resumeRow,
-                title: 'Continue watching',
-                items: ref.watch(resumeProvider),
-                onRetry: () => ref.invalidate(resumeProvider),
-                cardWidth: 240,
-                aspectRatio: 16 / 9,
-              ),
-              ItemRow(
-                key: nextUpRow,
-                title: 'Next up',
-                items: ref.watch(nextUpProvider),
-                onRetry: () => ref.invalidate(nextUpProvider),
-                cardWidth: 240,
-                aspectRatio: 16 / 9,
-              ),
-              ItemRow(
-                key: resumeBooksRow,
-                title: 'Continue reading',
-                items: ref.watch(resumeBooksProvider),
-                onRetry: () => ref.invalidate(resumeBooksProvider),
-                aspectRatio: 2 / 3,
-              ),
-              for (final view in views)
-                ItemRow(
-                  key: latestRow(view.id),
-                  title: 'Latest in ${view.name}',
-                  items: ref.watch(latestProvider(view.id)),
-                  onRetry: () => ref.invalidate(latestProvider(view.id)),
-                  aspectRatio: view.collectionType == 'music' ? 1 : 2 / 3,
-                ),
+              ..._rows(views),
             ],
           ),
         ),
@@ -188,16 +281,24 @@ class ItemRow extends StatelessWidget {
         body = SizedBox(
           height:
               ItemCard.heightFor(cardWidth, aspect) + 2 * ItemCard.hoverRoom,
-          child: ListView.separated(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(
-              horizontal: 24,
-              vertical: ItemCard.hoverRoom,
+          // Arrows at the ends, when the theme has them.
+          child: RowArrows(
+            inset: ItemCard.hoverRoom,
+            builder: (controller) => ListView.separated(
+              controller: controller,
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(
+                horizontal: 24,
+                vertical: ItemCard.hoverRoom,
+              ),
+              itemCount: items.length,
+              separatorBuilder: (_, _) => const SizedBox(width: 16),
+              itemBuilder: (_, i) => ItemCard(
+                item: items[i],
+                width: cardWidth,
+                aspectRatio: aspect,
+              ),
             ),
-            itemCount: items.length,
-            separatorBuilder: (_, _) => const SizedBox(width: 16),
-            itemBuilder: (_, i) =>
-                ItemCard(item: items[i], width: cardWidth, aspectRatio: aspect),
           ),
         );
       case AsyncError(:final error):

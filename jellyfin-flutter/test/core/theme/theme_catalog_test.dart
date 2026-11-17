@@ -77,6 +77,7 @@ void main() {
       final catalog = await settled();
       expect(catalog.entries.map((e) => e.id), [
         'builtin:lanterna.json',
+        'builtin:prime.json',
         'user:broken.json',
         'user:mine.json',
       ]);
@@ -99,18 +100,21 @@ void main() {
       );
     });
 
-    test('the chosen theme, or Lanterna when it is gone or broken', () async {
-      await settled();
-      final appearance = container.read(appearanceProvider.notifier);
-      await appearance.set(
-        const Appearance(themeId: 'user:mine.json', mode: ThemeMode.light),
-      );
-      var theme = container.read(appThemeProvider);
-      expect(theme.entry.name, 'Mine');
-      expect(theme.mode, ThemeMode.light);
-      await appearance.set(const Appearance(themeId: 'user:broken.json'));
-      theme = container.read(appThemeProvider);
-      expect(theme.entry.id, ThemeCatalog.defaultId);
-    });
+    test(
+      'the chosen theme, or the default (Prime) when it is gone or broken',
+      () async {
+        await settled();
+        final appearance = container.read(appearanceProvider.notifier);
+        await appearance.set(
+          const Appearance(themeId: 'user:mine.json', mode: ThemeMode.light),
+        );
+        var theme = container.read(appThemeProvider);
+        expect(theme.entry.name, 'Mine');
+        expect(theme.mode, ThemeMode.light);
+        await appearance.set(const Appearance(themeId: 'user:broken.json'));
+        theme = container.read(appThemeProvider);
+        expect(theme.entry.id, ThemeCatalog.defaultId);
+      },
+    );
   });
 }

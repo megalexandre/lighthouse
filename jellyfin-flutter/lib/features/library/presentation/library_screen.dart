@@ -2,12 +2,19 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../../../core/failure.dart';
+import '../../../core/theme/app_tokens.dart';
+import '../../../core/theme/design_tokens.dart';
 import '../../../widgets/error_retry.dart';
+import '../../home/presentation/floating_top_bar.dart';
 import '../application/library_providers.dart';
 import 'item_card.dart';
 
 /// A library or folder as a grid. Pages load as the end of the grid comes
 /// near the viewport.
+///
+/// With the floating top bar (the theme's `components.topBar`), a library
+/// opened from its tab keeps that bar, its tab on; a folder inside one has
+/// the plain app bar with Back.
 class LibraryScreen extends ConsumerWidget {
   const LibraryScreen({super.key, required this.parentId});
 
@@ -19,25 +26,49 @@ class LibraryScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final provider = libraryControllerProvider(parentId);
     final page = ref.watch(provider);
+    final isTab =
+        context.tokens.components.topBar == TopBarStyle.floating &&
+        (ref.watch(userViewsProvider).value ?? const []).any(
+          (v) => v.id == parentId,
+        );
 
+    final body = switch (page) {
+      AsyncData(value: final page) when page.items.isEmpty => const Center(
+        child: Text('Nothing here yet.', key: emptyText),
+      ),
+      AsyncData(value: final page) => _Grid(
+        page: page,
+        loadMore: () => ref.read(provider.notifier).loadMore(),
+      ),
+      AsyncError(:final error) => Center(
+        child: ErrorRetry(
+          error: error,
+          onRetry: () => ref.invalidate(provider),
+        ),
+      ),
+      _ => const Center(child: CircularProgressIndicator()),
+    };
+    if (!isTab) {
+      return Scaffold(
+        appBar: AppBar(title: Text(page.value?.parent.name ?? '')),
+        body: body,
+      );
+    }
     return Scaffold(
-      appBar: AppBar(title: Text(page.value?.parent.name ?? '')),
-      body: switch (page) {
-        AsyncData(value: final page) when page.items.isEmpty => const Center(
-          child: Text('Nothing here yet.', key: emptyText),
-        ),
-        AsyncData(value: final page) => _Grid(
-          page: page,
-          loadMore: () => ref.read(provider.notifier).loadMore(),
-        ),
-        AsyncError(:final error) => Center(
-          child: ErrorRetry(
-            error: error,
-            onRetry: () => ref.invalidate(provider),
+      body: Stack(
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(top: FloatingTopBar.height),
+            child: body,
           ),
-        ),
-        _ => const Center(child: CircularProgressIndicator()),
-      },
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            child: FloatingTopBar(solid: true, activeView: parentId),
+          ),
+        ],
+      ),
     );
   }
 }

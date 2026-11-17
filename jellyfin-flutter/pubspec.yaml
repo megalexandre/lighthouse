@@ -58,7 +58,7 @@ flutter:
   # Built-in themes: design-system tokens.json files (docs/THEMES.md).
   assets:
     - assets/themes/
-  # The faces the Lanterna theme names (assets/fonts/README.md).
+  # The faces the built-in themes name (assets/fonts/README.md).
   fonts:
     - family: Noto Sans
       fonts:
@@ -72,6 +72,17 @@ flutter:
       fonts:
         - asset: assets/fonts/NotoSansMono-Medium.ttf
           weight: 500
+    # The Prime theme's face.
+    - family: Inter
+      fonts:
+        - asset: assets/fonts/Inter-Regular.ttf
+          weight: 400
+        - asset: assets/fonts/Inter-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/Inter-Bold.ttf
+          weight: 700
+        - asset: assets/fonts/Inter-ExtraBold.ttf
+          weight: 800
 
 # media_kit_video with a patch for video on Wayland: see third_party/README.md.
 dependency_overrides:

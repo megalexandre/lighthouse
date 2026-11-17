@@ -26,6 +26,10 @@ abstract final class Routes {
   static String item(String id) => '/item/$id';
 
   static const search = '/search';
+
+  /// The search screen, already searching for [term].
+  static String searchFor(String term) =>
+      Uri(path: search, queryParameters: {'q': term}).toString();
   static const settings = '/settings';
 
   /// Reads a book.
@@ -84,7 +88,12 @@ final routerProvider = Provider<GoRouter>((ref) {
             builder: (_, state) =>
                 ItemScreen(itemId: state.pathParameters['id']!),
           ),
-          GoRoute(path: 'search', builder: (_, _) => const SearchScreen()),
+          GoRoute(
+            path: 'search',
+            builder: (_, state) => SearchScreen(
+              initialQuery: state.uri.queryParameters['q'] ?? '',
+            ),
+          ),
           GoRoute(path: 'settings', builder: (_, _) => const SettingsScreen()),
           GoRoute(
             path: 'read/:id',

@@ -49,10 +49,21 @@ class ThemeCatalog {
   /// Where the user's themes go (null until known).
   final String? userDirectory;
 
-  /// The built-in default, and what fills in any theme's gaps.
-  static const defaultId = 'builtin:lanterna.json';
+  /// The base theme: complete by itself, it fills in any other theme's
+  /// gaps.
+  static const baseId = 'builtin:lanterna.json';
 
-  ThemeEntry get fallback => entries.firstWhere((e) => e.id == defaultId);
+  /// The theme shown until the user picks one (or when theirs is gone or
+  /// broken): Prime.
+  static const defaultId = 'builtin:prime.json';
+
+  ThemeEntry get base => entries.firstWhere((e) => e.id == baseId);
+
+  /// The default theme, or the base when the default cannot be read.
+  ThemeEntry get fallback => switch (byId(defaultId)) {
+    final ThemeEntry e when e.tokens != null => e,
+    _ => base,
+  };
 
   ThemeEntry? byId(String id) => entries.where((e) => e.id == id).firstOrNull;
 }
@@ -193,7 +204,7 @@ class ThemeCatalogController extends Notifier<ThemeCatalog> {
   }
 
   static List<ThemeEntry> _readBuiltIn(List<ThemeFile> files) {
-    final defaults = files.where((f) => f.id == ThemeCatalog.defaultId);
+    final defaults = files.where((f) => f.id == ThemeCatalog.baseId);
     if (defaults.isEmpty) {
       throw StateError('The built-in Lanterna theme is missing');
     }
@@ -206,7 +217,7 @@ class ThemeCatalogController extends Notifier<ThemeCatalog> {
         tokens: lanterna,
       ),
       for (final file in files)
-        if (file.id != ThemeCatalog.defaultId) _entry(file, lanterna),
+        if (file.id != ThemeCatalog.baseId) _entry(file, lanterna),
     ];
   }
 

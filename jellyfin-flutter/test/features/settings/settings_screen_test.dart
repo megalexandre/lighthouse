@@ -150,18 +150,30 @@ void main() {
     Color accent(String mode) =>
         DesignTokens.parse(lanterna).color('accent', mode);
 
-    testWidgets('Lanterna in dark by default; light picked: applied and '
+    /// Prime's accent: the default theme.
+    Color primeAccent(String mode) => DesignTokens.parse(
+      File('assets/themes/prime.json').readAsStringSync(),
+      fallback: DesignTokens.parse(lanterna),
+    ).color('accent', mode);
+
+    testWidgets('Prime in dark by default; light picked: applied and '
         'kept', (tester) async {
+      app.appFiles.values.remove('appearance'); // Nothing chosen yet.
       await app.open(tester, Routes.settings);
-      expect(shownTheme(tester).colorScheme.primary, accent('dark'));
+      expect(shownTheme(tester).colorScheme.primary, primeAccent('dark'));
       await tester.ensureVisible(
         find.byKey(SettingsScreen.modeChoice(ThemeMode.light)),
       );
       await tester.tap(find.byKey(SettingsScreen.modeChoice(ThemeMode.light)));
       await tester.pumpAndSettle();
       expect(shownTheme(tester).brightness, Brightness.light);
-      expect(shownTheme(tester).colorScheme.primary, accent('light'));
+      expect(shownTheme(tester).colorScheme.primary, primeAccent('light'));
       expect(app.appFiles.values['appearance'], contains('"light"'));
+
+      // Lanterna is still there to pick.
+      await choose(tester, SettingsScreen.themeField, 'Lanterna');
+      expect(shownTheme(tester).colorScheme.primary, accent('light'));
+      expect(app.appFiles.values['appearance'], contains('lanterna'));
     });
 
     testWidgets('a theme from the user\'s folder: listed, picked; one '

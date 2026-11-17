@@ -17,7 +17,10 @@ final searchResultsProvider = FutureProvider.autoDispose
 /// Search across the libraries. Asks the server once typing pauses, and
 /// shows the results as rows by kind (Movies, Shows, Episodes...).
 class SearchScreen extends ConsumerStatefulWidget {
-  const SearchScreen({super.key});
+  const SearchScreen({super.key, this.initialQuery = ''});
+
+  /// Searched for at once (the floating top bar's search field).
+  final String initialQuery;
 
   static const field = Key('search.field');
   static const noResults = Key('search.none');
@@ -31,12 +34,14 @@ class SearchScreen extends ConsumerStatefulWidget {
 }
 
 class _SearchScreenState extends ConsumerState<SearchScreen> {
-  String _term = '';
+  late String _term = widget.initialQuery.trim();
+  late final _text = TextEditingController(text: widget.initialQuery);
   Timer? _debounce;
 
   @override
   void dispose() {
     _debounce?.cancel();
+    _text.dispose();
     super.dispose();
   }
 
@@ -53,6 +58,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
       appBar: AppBar(
         title: TextField(
           key: SearchScreen.field,
+          controller: _text,
           autofocus: true,
           decoration: const InputDecoration(
             hintText: 'Search movies, shows, music',

@@ -7,6 +7,7 @@ abstract final class ItemSort {
   static const name = 'SortName';
   static const index = 'IndexNumber';
   static const parentIndex = 'ParentIndexNumber';
+  static const dateCreated = 'DateCreated';
 }
 
 extension ItemsApi on JellyfinApi {
