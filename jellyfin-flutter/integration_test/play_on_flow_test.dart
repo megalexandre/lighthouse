@@ -62,7 +62,10 @@ void main() {
     await tapOn(tester, card);
   }
 
-  Finder playing(String name) => onScreen(PlayerScreen, find.text(name));
+  /// The item playing: its name in the player's title (an episode shows
+  /// "S1:E1 · Name" under the series).
+  Finder playing(String name) =>
+      onScreen(PlayerScreen, find.textContaining(name));
 
   testWidgets('S01E01 to its end: S01E02 starts, S01E01 is watched', (
     tester,
