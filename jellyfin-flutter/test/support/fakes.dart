@@ -848,7 +848,7 @@ class TestApp {
   /// carousel, tested on their own (test/features/home/prime_layout_test).
   TestApp({MemoryKeyValueStore? store, String theme = 'builtin:lanterna.json'})
     : store = store ?? MemoryKeyValueStore() {
-    appFiles.values['appearance'] = '{"theme":"$theme"}';
+    appFiles.values['appearance'] = '{"chosenTheme":"$theme"}';
   }
 
   final MemoryKeyValueStore store;

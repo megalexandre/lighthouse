@@ -1,6 +1,7 @@
 // The Prime theme's components (assets/themes/prime.json, `components`):
 // the floating top bar with the libraries as tabs, the home carousel and
 // the rows' arrows. The other screens' tests use Lanterna's plain layout.
+import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:jellyfin_flutter/api/models/base_item_dto.dart';
@@ -9,6 +10,8 @@ import 'package:jellyfin_flutter/features/home/presentation/floating_top_bar.dar
 import 'package:jellyfin_flutter/features/home/presentation/hero_carousel.dart';
 import 'package:jellyfin_flutter/features/home/presentation/home_screen.dart';
 import 'package:jellyfin_flutter/features/item/presentation/item_screen.dart';
+import 'package:jellyfin_flutter/features/library/presentation/card_popover.dart';
+import 'package:jellyfin_flutter/features/library/presentation/item_card.dart';
 import 'package:jellyfin_flutter/features/library/presentation/library_screen.dart';
 import 'package:jellyfin_flutter/features/player/presentation/player_screen.dart';
 import 'package:jellyfin_flutter/features/search/presentation/search_screen.dart';
@@ -179,5 +182,97 @@ void main() {
     expect(find.byKey(HomeScreen.hero), findsNothing);
     expect(find.byKey(HomeScreen.viewsRow), findsOneWidget);
     expect(find.byKey(RowArrows.nextKey), findsNothing);
+  });
+
+  group('a card under the mouse opens its panel', () {
+    final movie = TestItems.testMovie;
+    Finder card() => find.byKey(ItemCard.keyFor(movie.id));
+
+    Future<TestGesture> restOn(WidgetTester tester, Finder target) async {
+      final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
+      addTearDown(mouse.removePointer);
+      await mouse.addPointer(location: Offset.zero);
+      await mouse.moveTo(tester.getCenter(target));
+      await tester.pump();
+      return mouse;
+    }
+
+    Future<void> openMovies(WidgetTester tester) async {
+      await app.open(tester, Routes.library(TestItems.moviesView.id));
+    }
+
+    testWidgets('after a moment: the panel with the whole item; the card '
+        'itself does not grow', (tester) async {
+      app.library.movies = [
+        movie.copyWith(overview: 'A movie made for tests.'),
+      ];
+      await openMovies(tester);
+      final mouse = await restOn(tester, card());
+      await tester.pump(ItemCard.expandDelay ~/ 2);
+      expect(find.byKey(CardPopover.panel), findsNothing); // Not yet.
+      await tester.pump(ItemCard.expandDelay);
+      await tester.pumpAndSettle();
+      expect(find.byKey(CardPopover.panel), findsOneWidget);
+      expect(
+        find.descendant(
+          of: find.byKey(CardPopover.panel),
+          matching: find.text('A movie made for tests.'),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        tester
+            .widget<AnimatedScale>(
+              find.descendant(of: card(), matching: find.byType(AnimatedScale)),
+            )
+            .scale,
+        1,
+      );
+
+      // Off it: closed.
+      await mouse.moveTo(const Offset(1500, 1100));
+      await tester.pump(const Duration(milliseconds: 150));
+      await tester.pumpAndSettle();
+      expect(find.byKey(CardPopover.panel), findsNothing);
+    });
+
+    testWidgets('Play plays; details opens; watched marks it', (tester) async {
+      await openMovies(tester);
+      final mouse = await restOn(tester, card());
+      await tester.pump(ItemCard.expandDelay);
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(CardPopover.watchedButton));
+      await tester.pumpAndSettle();
+      expect(app.playback.played, {movie.id: true});
+
+      await tester.tap(find.byKey(CardPopover.infoButton));
+      await tester.pumpAndSettle();
+      expect(find.byType(ItemScreen), findsOneWidget);
+      expect(find.byKey(CardPopover.panel), findsNothing);
+      await tester.pageBack();
+      await tester.pumpAndSettle();
+
+      // The mouse comes back onto the card.
+      await mouse.moveTo(const Offset(1500, 1100));
+      await tester.pump();
+      await mouse.moveTo(tester.getCenter(card()));
+      await tester.pump(ItemCard.expandDelay);
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(CardPopover.playButton));
+      await tester.pumpAndSettle();
+      expect(find.byType(PlayerScreen), findsOneWidget);
+      await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+      await tester.pumpAndSettle();
+    });
+
+    testWidgets('Lanterna: the card lifts, no panel', (tester) async {
+      app = TestApp();
+      await openMovies(tester);
+      await restOn(tester, card());
+      await tester.pump(ItemCard.expandDelay * 2);
+      await tester.pumpAndSettle();
+      expect(find.byKey(CardPopover.panel), findsNothing);
+      expect(find.byKey(ItemCard.playKeyFor(movie.id)), findsOneWidget);
+    });
   });
 }

@@ -1,3 +1,6 @@
+import 'dart:async';
+
+import 'package:flutter/gestures.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
@@ -5,8 +8,10 @@ import 'package:material_ui/material_ui.dart';
 import '../../../api/models/base_item_dto.dart';
 import '../../../api/models/user_item_data_dto.dart';
 import '../../../core/theme/app_tokens.dart';
+import '../../../core/theme/design_tokens.dart';
 import '../../../router.dart';
 import '../data/library_repository.dart';
+import 'card_popover.dart';
 
 /// Shape of an item's picture: posters for movies and series, squares for
 /// music, wide for episodes and libraries.
@@ -113,6 +118,13 @@ class ItemCard extends StatefulWidget {
   /// Defaults to [cardAspectRatio] of the item's kind.
   final double? aspectRatio;
 
+  /// How long the mouse rests on a card before its panel opens (the
+  /// theme's `cardHover: expand`).
+  static const expandDelay = Duration(milliseconds: 450);
+
+  /// Narrower windows keep the plain hover (no room for the panel).
+  static const expandMinWidth = 800.0;
+
   /// Total height of a card [width] wide.
   static double heightFor(double width, double aspectRatio) =>
       width / aspectRatio + textHeight;
@@ -124,6 +136,85 @@ class ItemCard extends StatefulWidget {
 class _ItemCardState extends State<ItemCard> {
   bool _hovered = false;
   bool _focused = false;
+
+  // The expanding panel (CardPopover), when the theme has it.
+  final _pictureKey = GlobalKey();
+  final _popover = OverlayPortalController();
+  Timer? _openTimer;
+  Timer? _closeTimer;
+  Rect? _origin;
+  final _scrolls = <ScrollPosition>[];
+
+  @override
+  void dispose() {
+    _openTimer?.cancel();
+    _closeTimer?.cancel();
+    _stopWatchingScrolls();
+    super.dispose();
+  }
+
+  /// Whether this card opens the panel under the mouse.
+  bool _expands(BuildContext context) =>
+      context.tokens.components.cardHover == CardHoverStyle.expand &&
+      MediaQuery.sizeOf(context).width >= ItemCard.expandMinWidth &&
+      switch (item.type) {
+        BaseItemKind.movie ||
+        BaseItemKind.episode ||
+        BaseItemKind.series ||
+        BaseItemKind.video ||
+        BaseItemKind.book => true,
+        _ => false,
+      };
+
+  void _mouseEnter(PointerEnterEvent event) {
+    if (event.kind != PointerDeviceKind.mouse || !_expands(context)) return;
+    _closeTimer?.cancel();
+    if (_popover.isShowing) return;
+    _openTimer?.cancel();
+    _openTimer = Timer(ItemCard.expandDelay, _open);
+  }
+
+  void _mouseExit(PointerExitEvent _) {
+    _openTimer?.cancel();
+    if (_popover.isShowing) _closeSoon();
+  }
+
+  void _open() {
+    if (!mounted) return;
+    final box = _pictureKey.currentContext?.findRenderObject();
+    if (box is! RenderBox || !box.attached) return;
+    _origin = box.localToGlobal(Offset.zero) & box.size;
+    // Scrolling (the row or the page) closes it: it would float off its
+    // card.
+    for (
+      var scrollable = Scrollable.maybeOf(context);
+      scrollable != null;
+      scrollable = Scrollable.maybeOf(scrollable.context)
+    ) {
+      _scrolls.add(scrollable.position..addListener(_close));
+    }
+    setState(_popover.show);
+  }
+
+  /// Leaving the card for the panel over it is not leaving.
+  void _closeSoon() {
+    _closeTimer?.cancel();
+    _closeTimer = Timer(const Duration(milliseconds: 100), _close);
+  }
+
+  void _close() {
+    _openTimer?.cancel();
+    _closeTimer?.cancel();
+    _stopWatchingScrolls();
+    if (mounted && _popover.isShowing) setState(_popover.hide);
+  }
+
+  void _stopWatchingScrolls() {
+    for (final p in _scrolls) {
+      p.removeListener(_close);
+    }
+    _scrolls.clear();
+  }
 
   BaseItemDto get item => widget.item;
   double get _aspect => widget.aspectRatio ?? cardAspectRatio(item.type);
@@ -158,7 +249,9 @@ class _ItemCardState extends State<ItemCard> {
     );
     final playRoute = _playRoute;
 
+    final expands = _expands(context);
     final picture = AnimatedContainer(
+      key: _pictureKey,
       duration: const Duration(milliseconds: 150),
       decoration: BoxDecoration(
         borderRadius: radius,
@@ -234,7 +327,7 @@ class _ItemCardState extends State<ItemCard> {
       ),
     );
 
-    return SizedBox(
+    final card = SizedBox(
       key: ItemCard.keyFor(item.id),
       width: widget.width,
       child: AnimatedScale(
@@ -246,7 +339,9 @@ class _ItemCardState extends State<ItemCard> {
           // The lift is the hover and focus feedback; no grey wash.
           hoverColor: Colors.transparent,
           focusColor: Colors.transparent,
-          onHover: (h) => setState(() => _hovered = h),
+          // With the panel, the mouse opens it instead of lifting the
+          // card (the keyboard still lifts it).
+          onHover: (h) => setState(() => _hovered = h && !expands),
           onFocusChange: (f) => setState(() => _focused = f),
           onTap: () => openItem(context, item),
           child: Column(
@@ -281,6 +376,18 @@ class _ItemCardState extends State<ItemCard> {
           ),
         ),
       ),
+    );
+    if (!expands) return card;
+    return OverlayPortal(
+      controller: _popover,
+      overlayChildBuilder: (_) => CardPopover(
+        item: item,
+        origin: _origin ?? Rect.zero,
+        onEnter: () => _closeTimer?.cancel(),
+        onExit: _closeSoon,
+        onDone: _close,
+      ),
+      child: MouseRegion(onEnter: _mouseEnter, onExit: _mouseExit, child: card),
     );
   }
 }

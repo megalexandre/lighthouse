@@ -176,6 +176,23 @@ void main() {
       expect(app.appFiles.values['appearance'], contains('lanterna'));
     });
 
+    testWidgets('a file from before (the default of the time stored with a '
+        'mode change) follows today\'s default, mode kept; a mode change '
+        'does not fix the theme', (tester) async {
+      app.appFiles.values['appearance'] =
+          '{"theme":"builtin:lanterna.json","mode":"light"}';
+      await app.open(tester, Routes.settings);
+      expect(shownTheme(tester).colorScheme.primary, primeAccent('light'));
+
+      await tester.ensureVisible(
+        find.byKey(SettingsScreen.modeChoice(ThemeMode.dark)),
+      );
+      await tester.tap(find.byKey(SettingsScreen.modeChoice(ThemeMode.dark)));
+      await tester.pumpAndSettle();
+      expect(app.appFiles.values['appearance'], isNot(contains('Theme')));
+      expect(app.appFiles.values['appearance'], contains('"dark"'));
+    });
+
     testWidgets('a theme from the user\'s folder: listed, picked; one '
         'that cannot be read is reported', (tester) async {
       app.userThemes.files
@@ -200,7 +217,7 @@ void main() {
       tester,
     ) async {
       app.userThemes.files['mine.json'] = lanterna;
-      app.appFiles.values['appearance'] = '{"theme":"user:mine.json"}';
+      app.appFiles.values['appearance'] = '{"chosenTheme":"user:mine.json"}';
       await app.open(tester, Routes.settings);
       expect(shownTheme(tester).colorScheme.primary, accent('dark'));
       app.userThemes.files['mine.json'] = lanterna.replaceAll(

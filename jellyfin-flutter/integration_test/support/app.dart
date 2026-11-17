@@ -46,7 +46,8 @@ Future<void> launch(
         // Lanterna's plain layout for the flows (Prime's is tested in
         // test/features/home/prime_layout_test.dart); [theme] to change.
         appFilesStoreProvider.overrideWithValue(
-          MemoryKeyValueStore()..values['appearance'] = '{"theme":"$theme"}',
+          MemoryKeyValueStore()
+            ..values['appearance'] = '{"chosenTheme":"$theme"}',
         ),
         builtInThemesProvider.overrideWithValue(themes),
         userThemeSourceProvider.overrideWithValue(const NoUserThemes()),

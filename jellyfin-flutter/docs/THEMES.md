@@ -85,7 +85,7 @@ Além dos tokens, o tema pode escolher a forma de alguns componentes, entre as q
 programada uma vez, e qualquer tema pode usar:
 
 ```json
-"components": { "topBar": "floating", "homeHero": "carousel", "rowArrows": true }
+"components": { "topBar": "floating", "homeHero": "carousel", "rowArrows": true, "cardHover": "expand" }
 ```
 
 | Chave | Valores | O que muda |
@@ -93,8 +93,9 @@ programada uma vez, e qualquer tema pode usar:
 | `topBar` | `standard` (padrão), `floating` | `floating`: uma marca, as bibliotecas como abas, uma busca que se abre num campo e um menu de perfil (tema claro/escuro, Settings, Sign out). É transparente sobre o carrossel e vira uma barra flutuante, com blur, ao rolar. É sempre escura. Na home, a fileira "My media" sai, porque as abas fazem esse papel. Uma biblioteca aberta pela aba mantém a barra, com a aba dela ativa |
 | `homeHero` | `none` (padrão), `carousel` | `carousel`: os filmes e séries adicionados por último (até 6), em tela cheia, com a imagem de fundo (ou o pôster), título grande, sinopse, Play branco e "More info". Troca a cada 8 s, com fade, pausa no hover e tem setas e pontos. Com "reduzir animações", troca sem fade e sem zoom |
 | `rowArrows` | `false` (padrão), `true` | Setas nas laterais das fileiras da home, só onde há mais para ver, avançando uma página por clique. Somem em janela estreita (abaixo de 760 px) |
+| `cardHover` | `lift` (padrão), `expand` | `expand`: com o mouse parado 450 ms sobre um filme, episódio, série ou livro, abre por cima um painel maior (1,55× o card, entre 380 e 520 px) que cresce a partir do card. Mostra a imagem larga com o progresso, o título, Play/Resume branco, marcar como assistido, detalhes, a classificação, o ano e a duração, e a sinopse (o item completo é buscado ao abrir). Fecha quando o mouse sai ou a página rola, e fica abaixo da top bar. Só com mouse e em janelas de 800 px ou mais; com teclado, o card continua crescendo com o anel |
 
-Uma chave ou um valor desconhecido vira aviso em Settings, e vale o padrão. O Prime liga as três; o Lanterna não tem a
+Uma chave ou um valor desconhecido vira aviso em Settings, e vale o padrão. O Prime liga todas; o Lanterna não tem a
 seção, então fica com os padrões.
 
 Os testes das telas usam o layout do Lanterna (`TestApp` e o `launch` da integração abrem nele). O layout do Prime tem

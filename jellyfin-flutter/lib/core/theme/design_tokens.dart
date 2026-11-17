@@ -245,6 +245,7 @@ class _Reader {
       topBar: pick('topBar', TopBarStyle.values, TopBarStyle.standard),
       homeHero: pick('homeHero', HomeHeroStyle.values, HomeHeroStyle.none),
       rowArrows: flag('rowArrows'),
+      cardHover: pick('cardHover', CardHoverStyle.values, CardHoverStyle.lift),
     );
   }
 
@@ -598,6 +599,16 @@ enum HomeHeroStyle {
   carousel,
 }
 
+/// What a card does under the mouse.
+enum CardHoverStyle {
+  /// It grows a little, with a ring and a play button on its picture.
+  lift,
+
+  /// After a moment a larger panel opens over it: a wide picture, the
+  /// title, Play, watched and details buttons, the facts, the overview.
+  expand,
+}
+
 /// The forms of components a theme picks (its `components` section):
 /// `{"topBar": "floating", "homeHero": "carousel", "rowArrows": true}`.
 @immutable
@@ -606,13 +617,15 @@ class ThemeComponents {
     this.topBar = TopBarStyle.standard,
     this.homeHero = HomeHeroStyle.none,
     this.rowArrows = false,
+    this.cardHover = CardHoverStyle.lift,
   });
 
-  static const keys = {'topBar', 'homeHero', 'rowArrows'};
+  static const keys = {'topBar', 'homeHero', 'rowArrows', 'cardHover'};
 
   final TopBarStyle topBar;
   final HomeHeroStyle homeHero;
 
   /// Arrows at the ends of the rows, to page through them.
   final bool rowArrows;
+  final CardHoverStyle cardHover;
 }

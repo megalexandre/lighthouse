@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../api/models/base_item_dto.dart';
 import '../../../core/failure.dart';
+import '../../../core/log.dart';
 import '../data/library_repository.dart';
 
 // One provider per thing a screen shows. They all watch the repository,
@@ -13,10 +14,18 @@ final userViewsProvider = FutureProvider.autoDispose<List<BaseItemDto>>(
   (ref) => ref.watch(libraryRepositoryProvider).views(),
 );
 
-/// The home carousel's items.
-final featuredProvider = FutureProvider.autoDispose<List<BaseItemDto>>(
-  (ref) => ref.watch(libraryRepositoryProvider).featured(),
-);
+/// The home carousel's items. A failure leaves the carousel out (the rows
+/// still show); it goes to the log.
+final featuredProvider = FutureProvider.autoDispose<List<BaseItemDto>>((
+  ref,
+) async {
+  try {
+    return await ref.watch(libraryRepositoryProvider).featured();
+  } on Failure catch (e) {
+    log.warning('home', 'carousel items not loaded', e);
+    rethrow;
+  }
+});
 
 final resumeProvider = FutureProvider.autoDispose<List<BaseItemDto>>(
   (ref) => ref.watch(libraryRepositoryProvider).resume(),

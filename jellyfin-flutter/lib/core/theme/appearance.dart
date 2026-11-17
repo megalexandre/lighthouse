@@ -11,27 +11,34 @@ import '../storage.dart';
 import 'theme_builder.dart';
 import 'theme_catalog.dart';
 
-/// The theme the user picked and in which mode (dark by default: the
-/// Lanterna library is dark first).
+/// The theme the user picked, if they picked one, and in which mode (dark
+/// by default).
+///
+/// [themeId] null means "the app's default" (ThemeCatalog.defaultId): a
+/// new default reaches everyone who never chose a theme. Only a choice in
+/// the theme list sets it; changing the mode does not.
 @immutable
 class Appearance {
-  const Appearance({
-    this.themeId = ThemeCatalog.defaultId,
-    this.mode = ThemeMode.dark,
-  });
+  const Appearance({this.themeId, this.mode = ThemeMode.dark});
 
-  final String themeId;
+  final String? themeId;
   final ThemeMode mode;
+
+  /// The theme to show.
+  String get theme => themeId ?? ThemeCatalog.defaultId;
 
   Appearance copyWith({String? themeId, ThemeMode? mode}) =>
       Appearance(themeId: themeId ?? this.themeId, mode: mode ?? this.mode);
 
-  Map<String, String> toJson() => {'theme': themeId, 'mode': mode.name};
+  /// The choice is stored as `chosenTheme`. Files written before (with a
+  /// `theme` key) stored the default of the time alongside a mode change:
+  /// that key is not read, so they follow today's default.
+  Map<String, String> toJson() => {'chosenTheme': ?themeId, 'mode': mode.name};
 
   factory Appearance.fromJson(Map<String, dynamic> json) => Appearance(
-    themeId: switch (json['theme']) {
+    themeId: switch (json['chosenTheme']) {
       final String id when id.isNotEmpty => id,
-      _ => ThemeCatalog.defaultId,
+      _ => null,
     },
     mode: ThemeMode.values.asNameMap()[json['mode']] ?? ThemeMode.dark,
   );
@@ -112,7 +119,7 @@ class AppTheme {
 final appThemeProvider = Provider<AppTheme>((ref) {
   final catalog = ref.watch(themeCatalogProvider);
   final appearance = ref.watch(appearanceProvider);
-  final chosen = catalog.byId(appearance.themeId);
+  final chosen = catalog.byId(appearance.theme);
   final entry = chosen?.tokens != null ? chosen! : catalog.fallback;
   final tokens = entry.tokens!;
   return AppTheme(
