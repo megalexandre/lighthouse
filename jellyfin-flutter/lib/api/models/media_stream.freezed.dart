@@ -18,7 +18,8 @@ mixin _$MediaStream {
  int get index;@JsonKey(unknownEnumValue: MediaStreamType.unknown) MediaStreamType get type; String? get codec; String? get language; String? get title;/// Ready-made label, e.g. "English - AAC - Mono - Default".
  String? get displayTitle; bool get isExternal; bool get isDefault; bool get isForced;@JsonKey(unknownEnumValue: SubtitleDeliveryMethod.unknown) SubtitleDeliveryMethod? get deliveryMethod;/// Server-relative URL of an external subtitle. It carries an access
 /// token: never log it.
- String? get deliveryUrl; int? get channels;
+ String? get deliveryUrl; int? get channels;/// Video: its size, and SDR / HDR10 / HDR10Plus / HLG / DOVI...
+ int? get width; int? get height; String? get videoRangeType;
 /// Create a copy of MediaStream
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -31,16 +32,16 @@ $MediaStreamCopyWith<MediaStream> get copyWith => _$MediaStreamCopyWithImpl<Medi
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is MediaStream&&(identical(other.index, index) || other.index == index)&&(identical(other.type, type) || other.type == type)&&(identical(other.codec, codec) || other.codec == codec)&&(identical(other.language, language) || other.language == language)&&(identical(other.title, title) || other.title == title)&&(identical(other.displayTitle, displayTitle) || other.displayTitle == displayTitle)&&(identical(other.isExternal, isExternal) || other.isExternal == isExternal)&&(identical(other.isDefault, isDefault) || other.isDefault == isDefault)&&(identical(other.isForced, isForced) || other.isForced == isForced)&&(identical(other.deliveryMethod, deliveryMethod) || other.deliveryMethod == deliveryMethod)&&(identical(other.deliveryUrl, deliveryUrl) || other.deliveryUrl == deliveryUrl)&&(identical(other.channels, channels) || other.channels == channels));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is MediaStream&&(identical(other.index, index) || other.index == index)&&(identical(other.type, type) || other.type == type)&&(identical(other.codec, codec) || other.codec == codec)&&(identical(other.language, language) || other.language == language)&&(identical(other.title, title) || other.title == title)&&(identical(other.displayTitle, displayTitle) || other.displayTitle == displayTitle)&&(identical(other.isExternal, isExternal) || other.isExternal == isExternal)&&(identical(other.isDefault, isDefault) || other.isDefault == isDefault)&&(identical(other.isForced, isForced) || other.isForced == isForced)&&(identical(other.deliveryMethod, deliveryMethod) || other.deliveryMethod == deliveryMethod)&&(identical(other.deliveryUrl, deliveryUrl) || other.deliveryUrl == deliveryUrl)&&(identical(other.channels, channels) || other.channels == channels)&&(identical(other.width, width) || other.width == width)&&(identical(other.height, height) || other.height == height)&&(identical(other.videoRangeType, videoRangeType) || other.videoRangeType == videoRangeType));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,index,type,codec,language,title,displayTitle,isExternal,isDefault,isForced,deliveryMethod,deliveryUrl,channels);
+int get hashCode => Object.hash(runtimeType,index,type,codec,language,title,displayTitle,isExternal,isDefault,isForced,deliveryMethod,deliveryUrl,channels,width,height,videoRangeType);
 
 @override
 String toString() {
-  return 'MediaStream(index: $index, type: $type, codec: $codec, language: $language, title: $title, displayTitle: $displayTitle, isExternal: $isExternal, isDefault: $isDefault, isForced: $isForced, deliveryMethod: $deliveryMethod, deliveryUrl: $deliveryUrl, channels: $channels)';
+  return 'MediaStream(index: $index, type: $type, codec: $codec, language: $language, title: $title, displayTitle: $displayTitle, isExternal: $isExternal, isDefault: $isDefault, isForced: $isForced, deliveryMethod: $deliveryMethod, deliveryUrl: $deliveryUrl, channels: $channels, width: $width, height: $height, videoRangeType: $videoRangeType)';
 }
 
 
@@ -51,7 +52,7 @@ abstract mixin class $MediaStreamCopyWith<$Res>  {
   factory $MediaStreamCopyWith(MediaStream value, $Res Function(MediaStream) _then) = _$MediaStreamCopyWithImpl;
 @useResult
 $Res call({
- int index,@JsonKey(unknownEnumValue: MediaStreamType.unknown) MediaStreamType type, String? codec, String? language, String? title, String? displayTitle, bool isExternal, bool isDefault, bool isForced,@JsonKey(unknownEnumValue: SubtitleDeliveryMethod.unknown) SubtitleDeliveryMethod? deliveryMethod, String? deliveryUrl, int? channels
+ int index,@JsonKey(unknownEnumValue: MediaStreamType.unknown) MediaStreamType type, String? codec, String? language, String? title, String? displayTitle, bool isExternal, bool isDefault, bool isForced,@JsonKey(unknownEnumValue: SubtitleDeliveryMethod.unknown) SubtitleDeliveryMethod? deliveryMethod, String? deliveryUrl, int? channels, int? width, int? height, String? videoRangeType
 });
 
 
@@ -68,7 +69,7 @@ class _$MediaStreamCopyWithImpl<$Res>
 
 /// Create a copy of MediaStream
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? index = null,Object? type = null,Object? codec = freezed,Object? language = freezed,Object? title = freezed,Object? displayTitle = freezed,Object? isExternal = null,Object? isDefault = null,Object? isForced = null,Object? deliveryMethod = freezed,Object? deliveryUrl = freezed,Object? channels = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? index = null,Object? type = null,Object? codec = freezed,Object? language = freezed,Object? title = freezed,Object? displayTitle = freezed,Object? isExternal = null,Object? isDefault = null,Object? isForced = null,Object? deliveryMethod = freezed,Object? deliveryUrl = freezed,Object? channels = freezed,Object? width = freezed,Object? height = freezed,Object? videoRangeType = freezed,}) {
   return _then(_self.copyWith(
 index: null == index ? _self.index : index // ignore: cast_nullable_to_non_nullable
 as int,type: null == type ? _self.type : type // ignore: cast_nullable_to_non_nullable
@@ -82,7 +83,10 @@ as bool,isForced: null == isForced ? _self.isForced : isForced // ignore: cast_n
 as bool,deliveryMethod: freezed == deliveryMethod ? _self.deliveryMethod : deliveryMethod // ignore: cast_nullable_to_non_nullable
 as SubtitleDeliveryMethod?,deliveryUrl: freezed == deliveryUrl ? _self.deliveryUrl : deliveryUrl // ignore: cast_nullable_to_non_nullable
 as String?,channels: freezed == channels ? _self.channels : channels // ignore: cast_nullable_to_non_nullable
-as int?,
+as int?,width: freezed == width ? _self.width : width // ignore: cast_nullable_to_non_nullable
+as int?,height: freezed == height ? _self.height : height // ignore: cast_nullable_to_non_nullable
+as int?,videoRangeType: freezed == videoRangeType ? _self.videoRangeType : videoRangeType // ignore: cast_nullable_to_non_nullable
+as String?,
   ));
 }
 
@@ -167,10 +171,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( int index, @JsonKey(unknownEnumValue: MediaStreamType.unknown)  MediaStreamType type,  String? codec,  String? language,  String? title,  String? displayTitle,  bool isExternal,  bool isDefault,  bool isForced, @JsonKey(unknownEnumValue: SubtitleDeliveryMethod.unknown)  SubtitleDeliveryMethod? deliveryMethod,  String? deliveryUrl,  int? channels)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( int index, @JsonKey(unknownEnumValue: MediaStreamType.unknown)  MediaStreamType type,  String? codec,  String? language,  String? title,  String? displayTitle,  bool isExternal,  bool isDefault,  bool isForced, @JsonKey(unknownEnumValue: SubtitleDeliveryMethod.unknown)  SubtitleDeliveryMethod? deliveryMethod,  String? deliveryUrl,  int? channels,  int? width,  int? height,  String? videoRangeType)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _MediaStream() when $default != null:
-return $default(_that.index,_that.type,_that.codec,_that.language,_that.title,_that.displayTitle,_that.isExternal,_that.isDefault,_that.isForced,_that.deliveryMethod,_that.deliveryUrl,_that.channels);case _:
+return $default(_that.index,_that.type,_that.codec,_that.language,_that.title,_that.displayTitle,_that.isExternal,_that.isDefault,_that.isForced,_that.deliveryMethod,_that.deliveryUrl,_that.channels,_that.width,_that.height,_that.videoRangeType);case _:
   return orElse();
 
 }
@@ -188,10 +192,10 @@ return $default(_that.index,_that.type,_that.codec,_that.language,_that.title,_t
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( int index, @JsonKey(unknownEnumValue: MediaStreamType.unknown)  MediaStreamType type,  String? codec,  String? language,  String? title,  String? displayTitle,  bool isExternal,  bool isDefault,  bool isForced, @JsonKey(unknownEnumValue: SubtitleDeliveryMethod.unknown)  SubtitleDeliveryMethod? deliveryMethod,  String? deliveryUrl,  int? channels)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( int index, @JsonKey(unknownEnumValue: MediaStreamType.unknown)  MediaStreamType type,  String? codec,  String? language,  String? title,  String? displayTitle,  bool isExternal,  bool isDefault,  bool isForced, @JsonKey(unknownEnumValue: SubtitleDeliveryMethod.unknown)  SubtitleDeliveryMethod? deliveryMethod,  String? deliveryUrl,  int? channels,  int? width,  int? height,  String? videoRangeType)  $default,) {final _that = this;
 switch (_that) {
 case _MediaStream():
-return $default(_that.index,_that.type,_that.codec,_that.language,_that.title,_that.displayTitle,_that.isExternal,_that.isDefault,_that.isForced,_that.deliveryMethod,_that.deliveryUrl,_that.channels);case _:
+return $default(_that.index,_that.type,_that.codec,_that.language,_that.title,_that.displayTitle,_that.isExternal,_that.isDefault,_that.isForced,_that.deliveryMethod,_that.deliveryUrl,_that.channels,_that.width,_that.height,_that.videoRangeType);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -208,10 +212,10 @@ return $default(_that.index,_that.type,_that.codec,_that.language,_that.title,_t
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( int index, @JsonKey(unknownEnumValue: MediaStreamType.unknown)  MediaStreamType type,  String? codec,  String? language,  String? title,  String? displayTitle,  bool isExternal,  bool isDefault,  bool isForced, @JsonKey(unknownEnumValue: SubtitleDeliveryMethod.unknown)  SubtitleDeliveryMethod? deliveryMethod,  String? deliveryUrl,  int? channels)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( int index, @JsonKey(unknownEnumValue: MediaStreamType.unknown)  MediaStreamType type,  String? codec,  String? language,  String? title,  String? displayTitle,  bool isExternal,  bool isDefault,  bool isForced, @JsonKey(unknownEnumValue: SubtitleDeliveryMethod.unknown)  SubtitleDeliveryMethod? deliveryMethod,  String? deliveryUrl,  int? channels,  int? width,  int? height,  String? videoRangeType)?  $default,) {final _that = this;
 switch (_that) {
 case _MediaStream() when $default != null:
-return $default(_that.index,_that.type,_that.codec,_that.language,_that.title,_that.displayTitle,_that.isExternal,_that.isDefault,_that.isForced,_that.deliveryMethod,_that.deliveryUrl,_that.channels);case _:
+return $default(_that.index,_that.type,_that.codec,_that.language,_that.title,_that.displayTitle,_that.isExternal,_that.isDefault,_that.isForced,_that.deliveryMethod,_that.deliveryUrl,_that.channels,_that.width,_that.height,_that.videoRangeType);case _:
   return null;
 
 }
@@ -223,7 +227,7 @@ return $default(_that.index,_that.type,_that.codec,_that.language,_that.title,_t
 @JsonSerializable()
 
 class _MediaStream implements MediaStream {
-  const _MediaStream({required this.index, @JsonKey(unknownEnumValue: MediaStreamType.unknown) required this.type, this.codec, this.language, this.title, this.displayTitle, this.isExternal = false, this.isDefault = false, this.isForced = false, @JsonKey(unknownEnumValue: SubtitleDeliveryMethod.unknown) this.deliveryMethod, this.deliveryUrl, this.channels});
+  const _MediaStream({required this.index, @JsonKey(unknownEnumValue: MediaStreamType.unknown) required this.type, this.codec, this.language, this.title, this.displayTitle, this.isExternal = false, this.isDefault = false, this.isForced = false, @JsonKey(unknownEnumValue: SubtitleDeliveryMethod.unknown) this.deliveryMethod, this.deliveryUrl, this.channels, this.width, this.height, this.videoRangeType});
   factory _MediaStream.fromJson(Map<String, dynamic> json) => _$MediaStreamFromJson(json);
 
 @override final  int index;
@@ -241,6 +245,10 @@ class _MediaStream implements MediaStream {
 /// token: never log it.
 @override final  String? deliveryUrl;
 @override final  int? channels;
+/// Video: its size, and SDR / HDR10 / HDR10Plus / HLG / DOVI...
+@override final  int? width;
+@override final  int? height;
+@override final  String? videoRangeType;
 
 /// Create a copy of MediaStream
 /// with the given fields replaced by the non-null parameter values.
@@ -255,16 +263,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _MediaStream&&(identical(other.index, index) || other.index == index)&&(identical(other.type, type) || other.type == type)&&(identical(other.codec, codec) || other.codec == codec)&&(identical(other.language, language) || other.language == language)&&(identical(other.title, title) || other.title == title)&&(identical(other.displayTitle, displayTitle) || other.displayTitle == displayTitle)&&(identical(other.isExternal, isExternal) || other.isExternal == isExternal)&&(identical(other.isDefault, isDefault) || other.isDefault == isDefault)&&(identical(other.isForced, isForced) || other.isForced == isForced)&&(identical(other.deliveryMethod, deliveryMethod) || other.deliveryMethod == deliveryMethod)&&(identical(other.deliveryUrl, deliveryUrl) || other.deliveryUrl == deliveryUrl)&&(identical(other.channels, channels) || other.channels == channels));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _MediaStream&&(identical(other.index, index) || other.index == index)&&(identical(other.type, type) || other.type == type)&&(identical(other.codec, codec) || other.codec == codec)&&(identical(other.language, language) || other.language == language)&&(identical(other.title, title) || other.title == title)&&(identical(other.displayTitle, displayTitle) || other.displayTitle == displayTitle)&&(identical(other.isExternal, isExternal) || other.isExternal == isExternal)&&(identical(other.isDefault, isDefault) || other.isDefault == isDefault)&&(identical(other.isForced, isForced) || other.isForced == isForced)&&(identical(other.deliveryMethod, deliveryMethod) || other.deliveryMethod == deliveryMethod)&&(identical(other.deliveryUrl, deliveryUrl) || other.deliveryUrl == deliveryUrl)&&(identical(other.channels, channels) || other.channels == channels)&&(identical(other.width, width) || other.width == width)&&(identical(other.height, height) || other.height == height)&&(identical(other.videoRangeType, videoRangeType) || other.videoRangeType == videoRangeType));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,index,type,codec,language,title,displayTitle,isExternal,isDefault,isForced,deliveryMethod,deliveryUrl,channels);
+int get hashCode => Object.hash(runtimeType,index,type,codec,language,title,displayTitle,isExternal,isDefault,isForced,deliveryMethod,deliveryUrl,channels,width,height,videoRangeType);
 
 @override
 String toString() {
-  return 'MediaStream(index: $index, type: $type, codec: $codec, language: $language, title: $title, displayTitle: $displayTitle, isExternal: $isExternal, isDefault: $isDefault, isForced: $isForced, deliveryMethod: $deliveryMethod, deliveryUrl: $deliveryUrl, channels: $channels)';
+  return 'MediaStream(index: $index, type: $type, codec: $codec, language: $language, title: $title, displayTitle: $displayTitle, isExternal: $isExternal, isDefault: $isDefault, isForced: $isForced, deliveryMethod: $deliveryMethod, deliveryUrl: $deliveryUrl, channels: $channels, width: $width, height: $height, videoRangeType: $videoRangeType)';
 }
 
 
@@ -275,7 +283,7 @@ abstract mixin class _$MediaStreamCopyWith<$Res> implements $MediaStreamCopyWith
   factory _$MediaStreamCopyWith(_MediaStream value, $Res Function(_MediaStream) _then) = __$MediaStreamCopyWithImpl;
 @override @useResult
 $Res call({
- int index,@JsonKey(unknownEnumValue: MediaStreamType.unknown) MediaStreamType type, String? codec, String? language, String? title, String? displayTitle, bool isExternal, bool isDefault, bool isForced,@JsonKey(unknownEnumValue: SubtitleDeliveryMethod.unknown) SubtitleDeliveryMethod? deliveryMethod, String? deliveryUrl, int? channels
+ int index,@JsonKey(unknownEnumValue: MediaStreamType.unknown) MediaStreamType type, String? codec, String? language, String? title, String? displayTitle, bool isExternal, bool isDefault, bool isForced,@JsonKey(unknownEnumValue: SubtitleDeliveryMethod.unknown) SubtitleDeliveryMethod? deliveryMethod, String? deliveryUrl, int? channels, int? width, int? height, String? videoRangeType
 });
 
 
@@ -292,7 +300,7 @@ class __$MediaStreamCopyWithImpl<$Res>
 
 /// Create a copy of MediaStream
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? index = null,Object? type = null,Object? codec = freezed,Object? language = freezed,Object? title = freezed,Object? displayTitle = freezed,Object? isExternal = null,Object? isDefault = null,Object? isForced = null,Object? deliveryMethod = freezed,Object? deliveryUrl = freezed,Object? channels = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? index = null,Object? type = null,Object? codec = freezed,Object? language = freezed,Object? title = freezed,Object? displayTitle = freezed,Object? isExternal = null,Object? isDefault = null,Object? isForced = null,Object? deliveryMethod = freezed,Object? deliveryUrl = freezed,Object? channels = freezed,Object? width = freezed,Object? height = freezed,Object? videoRangeType = freezed,}) {
   return _then(_MediaStream(
 index: null == index ? _self.index : index // ignore: cast_nullable_to_non_nullable
 as int,type: null == type ? _self.type : type // ignore: cast_nullable_to_non_nullable
@@ -306,7 +314,10 @@ as bool,isForced: null == isForced ? _self.isForced : isForced // ignore: cast_n
 as bool,deliveryMethod: freezed == deliveryMethod ? _self.deliveryMethod : deliveryMethod // ignore: cast_nullable_to_non_nullable
 as SubtitleDeliveryMethod?,deliveryUrl: freezed == deliveryUrl ? _self.deliveryUrl : deliveryUrl // ignore: cast_nullable_to_non_nullable
 as String?,channels: freezed == channels ? _self.channels : channels // ignore: cast_nullable_to_non_nullable
-as int?,
+as int?,width: freezed == width ? _self.width : width // ignore: cast_nullable_to_non_nullable
+as int?,height: freezed == height ? _self.height : height // ignore: cast_nullable_to_non_nullable
+as int?,videoRangeType: freezed == videoRangeType ? _self.videoRangeType : videoRangeType // ignore: cast_nullable_to_non_nullable
+as String?,
   ));
 }
 

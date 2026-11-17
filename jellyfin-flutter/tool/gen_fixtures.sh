@@ -4,7 +4,7 @@
 # change what is generated. Output is deterministic (bitexact, no dates).
 #
 #   movies/Test Movie (2020)/   H.264 + 2 audio tracks (eng, por) + embedded
-#                               and external subtitles
+#                               and external subtitles + 3 chapters
 #   movies/HEVC Movie (2021)/   HEVC 10-bit, for the transcode path
 #   shows/Test Show/Season 01/  3 episodes (next episode, Next Up)
 #   music/Test Artist/Test Album/  2 tagged tracks
@@ -51,16 +51,40 @@ SRT
 d="$root/movies/Test Movie (2020)"
 mkdir -p "$d"
 srt "$tmp/eng.srt" "English"
+# Chapters, for the seek bar's marks and their names (named again on the
+# output: -map_metadata -1 drops the names along with the rest).
+cat > "$tmp/chapters.txt" <<'META'
+;FFMETADATA1
+[CHAPTER]
+TIMEBASE=1/1000
+START=0
+END=3500
+title=Opening
+[CHAPTER]
+TIMEBASE=1/1000
+START=3500
+END=7000
+title=The middle
+[CHAPTER]
+TIMEBASE=1/1000
+START=7000
+END=10000
+title=The end
+META
 ff -f lavfi -i "testsrc2=size=320x180:rate=25:duration=10" \
    -f lavfi -i "sine=frequency=440:duration=10" \
    -f lavfi -i "sine=frequency=660:duration=10" \
    -i "$tmp/eng.srt" \
-   -map 0:v -map 1:a -map 2:a -map 3:s \
+   -f ffmetadata -i "$tmp/chapters.txt" \
+   -map 0:v -map 1:a -map 2:a -map 3:s -map_chapters 4 \
    "${x264[@]}" -c:a aac -b:a 32k -ac 1 -c:s srt \
    -metadata:s:a:0 language=eng -metadata:s:a:0 title="English" \
    -metadata:s:a:1 language=por -metadata:s:a:1 title="Português" \
    -metadata:s:s:0 language=eng \
-   "${exact[@]}" "$d/Test Movie (2020).mkv"
+   "${exact[@]}" \
+   -metadata:c:0 title="Opening" -metadata:c:1 title="The middle" \
+   -metadata:c:2 title="The end" \
+   "$d/Test Movie (2020).mkv"
 # With a UTF-8 BOM: on a file this small the server's charset detection
 # guesses wrong ("Portugu√™s") without one.
 srt "$tmp/por.srt" "Português"

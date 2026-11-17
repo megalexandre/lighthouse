@@ -23,9 +23,12 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  /// Title shown in the player's OSD.
-  Finder playing(String name) =>
-      find.descendant(of: find.byType(PlayerScreen), matching: find.text(name));
+  /// Title shown in the player's OSD (an episode: "S1:E2 · Episode 2",
+  /// under the series).
+  Finder playing(String name) => find.descendant(
+    of: find.byType(PlayerScreen),
+    matching: find.textContaining(name),
+  );
 
   Future<void> leave(WidgetTester tester) async {
     await tester.sendKeyEvent(LogicalKeyboardKey.escape);

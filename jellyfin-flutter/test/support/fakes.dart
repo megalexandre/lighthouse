@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 import 'dart:ui' as ui;
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -17,6 +18,8 @@ import 'package:jellyfin_flutter/api/models/user_item_data_dto.dart';
 import 'package:jellyfin_flutter/app.dart';
 import 'package:jellyfin_flutter/core/failure.dart';
 import 'package:jellyfin_flutter/core/storage.dart';
+import 'package:jellyfin_flutter/core/theme/appearance.dart';
+import 'package:jellyfin_flutter/core/theme/theme_catalog.dart';
 import 'package:jellyfin_flutter/core/window.dart';
 import 'package:jellyfin_flutter/features/auth/data/auth_repository.dart';
 import 'package:jellyfin_flutter/features/auth/data/session.dart';
@@ -354,6 +357,22 @@ class FakePlaybackRepository implements PlaybackRepository {
   /// itemId → played, from [setPlayed].
   final played = <String, bool>{};
 
+  /// Tiles asked for, as `itemId/width/index`, and what they return.
+  final tilesAsked = <String>[];
+  Uint8List? tile;
+
+  @override
+  Future<Uint8List> trickplayTile(
+    String itemId, {
+    required String mediaSourceId,
+    required int width,
+    required int index,
+  }) async {
+    tilesAsked.add('$itemId/$width/$index');
+    if (failures['tile'] case final Failure f) throw f;
+    return tile ?? Uint8List(0);
+  }
+
   static Uri urlFor(String itemId, {int attempt = 0}) =>
       Uri.parse('$testUrl/Videos/$itemId/stream?static=true&attempt=$attempt');
 
@@ -555,6 +574,29 @@ class FakePlayerEngine implements PlayerEngine {
   @override
   Stream<String> get errorStream => _error.stream;
 
+  @override
+  Duration buffer = Duration.zero;
+  final _buffer = StreamController<Duration>.broadcast();
+  @override
+  Stream<Duration> get bufferStream => _buffer.stream;
+
+  /// The media loaded up to [to].
+  void buffered(Duration to) {
+    buffer = to;
+    _buffer.add(to);
+  }
+
+  @override
+  double rate = 1;
+  final _rate = StreamController<double>.broadcast();
+  @override
+  Stream<double> get rateStream => _rate.stream;
+  @override
+  Future<void> setRate(double r) async {
+    rate = r;
+    _rate.add(r);
+  }
+
   /// Every track change, in order: `audio 2`, `subtitle no`, `add PATH`.
   final trackLog = <String>[];
 
@@ -611,6 +653,12 @@ class FakePlayerEngine implements PlayerEngine {
   @override
   Widget buildVideo() => const ColoredBox(color: Color(0xFF000000));
 
+  /// What [setSubtitleLift] was last given.
+  double subtitleLift = 0;
+
+  @override
+  void setSubtitleLift(double pixels) => subtitleLift = pixels;
+
   @override
   Future<Map<String, String>> diagnostics() async => {};
 
@@ -625,6 +673,8 @@ class FakePlayerEngine implements PlayerEngine {
     await _error.close();
     await _volume.close();
     await _muted.close();
+    await _buffer.close();
+    await _rate.close();
   }
 }
 
@@ -787,6 +837,12 @@ class TestApp {
 
   /// The reader's preferences and bookmarks file store.
   final readerStore = MemoryKeyValueStore();
+
+  /// The app's own files (the appearance).
+  final appFiles = MemoryKeyValueStore();
+
+  /// The user's themes folder.
+  final userThemes = MemoryUserThemes();
   final servers = FakeServerRepository();
   final auth = FakeAuthRepository();
   final library = FakeLibraryRepository();
@@ -820,6 +876,9 @@ class TestApp {
   List<Override> get overrides => [
     keyValueStoreProvider.overrideWithValue(store),
     readerStoreProvider.overrideWithValue(readerStore),
+    appFilesStoreProvider.overrideWithValue(appFiles),
+    builtInThemesProvider.overrideWithValue(builtInThemesForTests),
+    userThemeSourceProvider.overrideWithValue(userThemes),
     serverRepositoryProvider.overrideWithValue(servers),
     authRepositoryProvider.overrideWithValue(auth),
     libraryRepositoryProvider.overrideWithValue(library),
@@ -876,3 +935,17 @@ void useDesktopWindow(WidgetTester tester) {
     ..devicePixelRatio = 1;
   addTearDown(tester.view.reset);
 }
+
+/// The app's built-in themes, read from assets/themes/ at once (widget
+/// tests run on a fake clock, where the asset bundle's reads never end).
+final builtInThemesForTests = [
+  for (final file
+      in Directory('assets/themes').listSync().whereType<File>().toList()
+        ..sort((a, b) => a.path.compareTo(b.path)))
+    if (file.path.endsWith('.json'))
+      ThemeFile(
+        id: 'builtin:${file.uri.pathSegments.last}',
+        path: 'assets/themes/${file.uri.pathSegments.last}',
+        source: file.readAsStringSync(),
+      ),
+];

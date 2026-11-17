@@ -29,11 +29,24 @@ tools="${XDG_CACHE_HOME:-$HOME/.cache}/jellyfin-flutter/tools"
 
 step() { printf '\n\033[1;35m== %s\033[0m\n' "$*"; }
 
+# No other Flutter Linux build meanwhile (tool/with_build_lock.sh says why).
+source tool/with_build_lock.sh
+
 if [[ "${1:-}" != "--no-build" ]]; then
   step "Release build"
   flutter build linux --release
 fi
 [[ -x "$bundle/$binary" ]] || { echo "No release bundle at $bundle." >&2; exit 1; }
+
+# The engine must be the release one: a debug engine (from a debug build
+# that ran at the same time) cannot run the AOT code and the app does not
+# start.
+release_engine="$(dirname "$(readlink -f "$(command -v flutter)")")/cache/artifacts/engine/linux-x64-release/libflutter_linux_gtk.so"
+if ! cmp -s "$bundle/lib/libflutter_linux_gtk.so" "$release_engine"; then
+  echo "The bundle's Flutter engine is not the release one ($release_engine)." >&2
+  echo "Another Flutter build probably ran at the same time: build again." >&2
+  exit 1
+fi
 
 step "linuxdeploy $LINUXDEPLOY_VERSION"
 linuxdeploy="$tools/linuxdeploy-$LINUXDEPLOY_VERSION-x86_64.AppImage"
@@ -85,7 +98,8 @@ logs=$(mktemp -d)
 trap 'rm -rf "$logs"' EXIT
 XDG_DATA_HOME="$logs" timeout 20 xvfb-run -a "$output" >/dev/null 2>&1 || true
 if ! grep -q 'starting' "$logs/jellyfin-flutter/logs/app.log" 2>/dev/null; then
-  echo "The AppImage did not start (no log written)." >&2
+  echo "The AppImage did not start (no log written); removed." >&2
+  rm -f "$output"
   exit 1
 fi
 grep -m1 'starting' "$logs/jellyfin-flutter/logs/app.log"

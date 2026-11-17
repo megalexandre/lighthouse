@@ -57,6 +57,11 @@ abstract class MediaStream with _$MediaStream {
     /// token: never log it.
     String? deliveryUrl,
     int? channels,
+
+    /// Video: its size, and SDR / HDR10 / HDR10Plus / HLG / DOVI...
+    int? width,
+    int? height,
+    String? videoRangeType,
   }) = _MediaStream;
 
   factory MediaStream.fromJson(Map<String, dynamic> json) =>

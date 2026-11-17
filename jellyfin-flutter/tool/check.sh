@@ -40,6 +40,10 @@ step "Server tests"
 flutter test --tags server
 
 step "Integration tests (Linux, Xvfb)"
+# They build the Linux app: no other Flutter Linux build meanwhile (an
+# AppImage built at the same time got this build's debug engine, and this
+# run hung). See tool/with_build_lock.sh.
+source tool/with_build_lock.sh
 xvfb-run -a flutter test integration_test -d linux
 
 step "OK"

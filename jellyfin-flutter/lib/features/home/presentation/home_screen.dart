@@ -184,11 +184,16 @@ class ItemRow extends StatelessWidget {
         return const SizedBox.shrink();
       case AsyncData(value: final items):
         final aspect = aspectRatio ?? cardAspectRatio(items.first.type);
+        // Room above and below: a card grows on hover.
         body = SizedBox(
-          height: ItemCard.heightFor(cardWidth, aspect),
+          height:
+              ItemCard.heightFor(cardWidth, aspect) + 2 * ItemCard.hoverRoom,
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 24),
+            padding: const EdgeInsets.symmetric(
+              horizontal: 24,
+              vertical: ItemCard.hoverRoom,
+            ),
             itemCount: items.length,
             separatorBuilder: (_, _) => const SizedBox(width: 16),
             itemBuilder: (_, i) =>

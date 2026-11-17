@@ -1,6 +1,9 @@
 import 'package:freezed_annotation/freezed_annotation.dart';
 
 import '../json_shape.dart';
+import 'chapter_info.dart';
+import 'media_stream.dart';
+import 'trickplay_info.dart';
 import 'user_item_data_dto.dart';
 
 part 'base_item_dto.freezed.dart';
@@ -75,6 +78,17 @@ abstract class BaseItemDto with _$BaseItemDto {
     @Default([]) List<String> backdropImageTags,
     UserItemDataDto? userData,
     int? childCount,
+
+    /// The file's tracks (video, audio, subtitles): only on the full item
+    /// (`GET /Items/{id}`), for its technical badges.
+    @Default([]) List<MediaStream> mediaStreams,
+
+    /// A video's chapters, in order (full item only).
+    @Default([]) List<ChapterInfo> chapters,
+
+    /// Seek-bar thumbnails: media source id → picture width → how they are
+    /// stored (full item only; empty when the server made none).
+    @Default({}) Map<String, Map<String, TrickplayInfo>> trickplay,
   }) = _BaseItemDto;
 
   const BaseItemDto._();
@@ -84,7 +98,12 @@ abstract class BaseItemDto with _$BaseItemDto {
 
   static const jsonShape = JsonShape(
     _$BaseItemDtoFieldMap,
-    nested: {'UserData': UserItemDataDto.jsonShape},
+    nested: {
+      'UserData': UserItemDataDto.jsonShape,
+      'MediaStreams': MediaStream.jsonShape,
+      'Chapters': ChapterInfo.jsonShape,
+      'Trickplay': TrickplayInfo.jsonShape,
+    },
   );
 
   String? get primaryImageTag => imageTags['Primary'];

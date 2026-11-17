@@ -32,6 +32,16 @@ abstract interface class PlayerEngine {
   Stream<bool> get playingStream;
   Stream<bool> get bufferingStream;
 
+  /// How far the media is loaded (the seek bar shows it ahead of the
+  /// position).
+  Duration get buffer;
+  Stream<Duration> get bufferStream;
+
+  /// Playback speed: 1 is normal.
+  double get rate;
+  Stream<double> get rateStream;
+  Future<void> setRate(double rate);
+
   /// Fires once when the media plays to its end.
   Stream<void> get completedStream;
 
@@ -61,6 +71,10 @@ abstract interface class PlayerEngine {
 
   /// The picture. Empty for audio.
   Widget buildVideo();
+
+  /// Raises the subtitles by [pixels] above their usual place (the
+  /// player's controls are up: the lines stay clear of them).
+  void setSubtitleLift(double pixels);
 
   /// How playback is really going (decoder, frame rates, dropped frames),
   /// for the log. Empty when the engine cannot tell.
@@ -283,14 +297,49 @@ class MediaKitEngine implements PlayerEngine {
   Stream<bool> get bufferingStream => _player.stream.buffering;
 
   @override
+  Duration get buffer => _player.state.buffer;
+
+  @override
+  Stream<Duration> get bufferStream => _player.stream.buffer;
+
+  @override
+  double get rate => _player.state.rate;
+
+  @override
+  Stream<double> get rateStream => _player.stream.rate;
+
+  @override
+  Future<void> setRate(double rate) => _player.setRate(rate);
+
+  @override
   Stream<void> get completedStream => _completed;
 
   @override
   Stream<String> get errorStream => _player.stream.error;
 
+  final _videoKey = GlobalKey<VideoState>();
+
+  /// Subtitles: 24 px off the bottom, plus the lift.
+  static EdgeInsets _subtitlePadding(double lift) =>
+      EdgeInsets.fromLTRB(16, 0, 16, 24 + lift);
+
   @override
-  Widget buildVideo() =>
-      Video(controller: _video, controls: null, fill: Colors.black);
+  Widget buildVideo() => Video(
+    key: _videoKey,
+    controller: _video,
+    controls: null,
+    fill: Colors.black,
+    subtitleViewConfiguration: SubtitleViewConfiguration(
+      padding: _subtitlePadding(0),
+    ),
+  );
+
+  @override
+  void setSubtitleLift(double pixels) =>
+      _videoKey.currentState?.setSubtitleViewPadding(
+        _subtitlePadding(pixels),
+        duration: const Duration(milliseconds: 200),
+      );
 
   @override
   Future<void> dispose() async {

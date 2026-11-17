@@ -1,3 +1,7 @@
+import 'dart:typed_data';
+
+import 'package:dio/dio.dart';
+
 import 'jellyfin_api.dart';
 import 'models/playback_info_dto.dart';
 import 'models/playback_info_response.dart';
@@ -69,4 +73,23 @@ Uri serverUrl(String baseUrl, String relative) {
     path: '${base.path}${rel.path}',
     query: rel.hasQuery ? rel.query : null,
   );
+}
+
+extension TrickplayApi on JellyfinApi {
+  /// Tile [index] of an item's seek-bar thumbnails at [width] (an encoded
+  /// JPEG). Fetched with the session's credentials: the server wants them,
+  /// and a token never goes in a URL.
+  Future<Uint8List> trickplayTile(
+    String itemId, {
+    required String mediaSourceId,
+    required int width,
+    required int index,
+  }) => guard((dio) async {
+    final res = await dio.get<List<int>>(
+      '/Videos/$itemId/Trickplay/$width/$index.jpg',
+      queryParameters: {'mediaSourceId': mediaSourceId},
+      options: Options(responseType: ResponseType.bytes),
+    );
+    return Uint8List.fromList(res.data!);
+  });
 }

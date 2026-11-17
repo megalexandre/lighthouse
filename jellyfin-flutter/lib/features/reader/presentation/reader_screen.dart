@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 
+import '../../../core/theme/app_tokens.dart';
 import '../../../widgets/error_retry.dart';
 import '../application/reader_controller.dart';
 import '../application/reader_preferences.dart';
@@ -160,7 +161,7 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
       SafeArea(
         child: IconButton(
           key: ReaderScreen.backButton,
-          color: Colors.white,
+          color: context.tokens.osdInk,
           icon: const Icon(Icons.arrow_back),
           onPressed: () => context.pop(),
         ),
@@ -414,7 +415,7 @@ class _Chrome extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    const bar = Color(0xE6202124);
+    final bar = context.tokens.osdSurface;
     final count = session.pageCount;
     return Column(
       children: [
@@ -426,7 +427,7 @@ class _Chrome extends StatelessWidget {
               children: [
                 IconButton(
                   key: ReaderScreen.backButton,
-                  color: Colors.white,
+                  color: context.tokens.osdInk,
                   tooltip: 'Back',
                   icon: const Icon(Icons.arrow_back),
                   onPressed: onBack,
@@ -437,20 +438,20 @@ class _Chrome extends StatelessWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: theme.textTheme.titleMedium?.copyWith(
-                      color: Colors.white,
+                      color: context.tokens.osdInk,
                     ),
                   ),
                 ),
                 IconButton(
                   key: ReaderScreen.contentsButton,
-                  color: Colors.white,
+                  color: context.tokens.osdInk,
                   tooltip: 'Contents and bookmarks',
                   icon: const Icon(Icons.toc),
                   onPressed: onContents,
                 ),
                 IconButton(
                   key: ReaderScreen.bookmarkButton,
-                  color: Colors.white,
+                  color: context.tokens.osdInk,
                   tooltip: session.bookmarked
                       ? 'Remove bookmark'
                       : 'Bookmark this page',
@@ -461,7 +462,7 @@ class _Chrome extends StatelessWidget {
                 ),
                 IconButton(
                   key: ReaderScreen.displayButton,
-                  color: Colors.white,
+                  color: context.tokens.osdInk,
                   tooltip: 'Display',
                   icon: const Icon(Icons.text_format),
                   onPressed: onDisplay,
@@ -495,7 +496,7 @@ class _Chrome extends StatelessWidget {
                     'Page ${session.page + 1} of $count',
                     key: ReaderScreen.pageText,
                     style: theme.textTheme.bodyMedium?.copyWith(
-                      color: Colors.white70,
+                      color: context.tokens.osdInkMuted,
                     ),
                   ),
                 ],

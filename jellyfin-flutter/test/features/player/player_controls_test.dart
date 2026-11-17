@@ -29,7 +29,13 @@ void main() {
     await tester.pumpAndSettle();
   }
 
+  /// Opens [menu] in the settings panel (audio: through the gear;
+  /// subtitles: the bar's own button), then picks [item].
   Future<void> pick(WidgetTester tester, Key menu, Key item) async {
+    if (menu == PlayerScreen.audioMenu) {
+      await tester.tap(find.byKey(PlayerScreen.settingsButton));
+      await tester.pumpAndSettle();
+    }
     await tester.tap(find.byKey(menu));
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(item));
@@ -66,15 +72,16 @@ void main() {
     expect(lastReport().audioStreamIndex, 3);
 
     // The menu now has it checked.
+    await tester.tap(find.byKey(PlayerScreen.settingsButton));
+    await tester.pumpAndSettle();
     await tester.tap(find.byKey(PlayerScreen.audioMenu));
     await tester.pumpAndSettle();
     expect(
-      tester
-          .widget<CheckedPopupMenuItem<(int?,)>>(
-            find.byKey(PlayerScreen.audioItem(3)),
-          )
-          .checked,
-      isTrue,
+      find.descendant(
+        of: find.byKey(PlayerScreen.audioItem(3)),
+        matching: find.byIcon(Icons.check),
+      ),
+      findsOneWidget,
     );
     await tester.tapAt(Offset.zero); // close the menu
     await tester.pumpAndSettle();
@@ -148,7 +155,7 @@ void main() {
     await tester.tap(find.byKey(PlayerScreen.muteButton));
     await tester.pump();
     expect(engine.muted, isTrue);
-    expect(find.byTooltip('Unmute'), findsOneWidget);
+    expect(find.byTooltip('Unmute (M)'), findsOneWidget);
 
     // Raising the volume unmutes.
     await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
@@ -172,7 +179,7 @@ void main() {
     await tester.sendKeyEvent(LogicalKeyboardKey.f11);
     await tester.pump();
     expect(app.window.isFullScreen, isTrue);
-    expect(find.byTooltip('Exit full screen'), findsOneWidget);
+    expect(find.byTooltip('Exit full screen (F)'), findsOneWidget);
 
     await tester.tap(find.byKey(PlayerScreen.fullscreenButton));
     await tester.pump();

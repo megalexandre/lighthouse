@@ -27,11 +27,22 @@ void main() {
   }
 
   /// Every key of [shape] missing from [schema], as dotted paths. An
-  /// array schema is checked through its items.
+  /// array schema is checked through its items, a map (an object with
+  /// `additionalProperties`, such as Trickplay's id → width → info)
+  /// through its values.
   List<String> missing(JsonShape shape, Map<String, dynamic> schema) {
     var resolved = resolve(schema);
-    if (resolved['type'] == 'array') {
-      resolved = resolve(resolved['items'] as Map<String, dynamic>);
+    while (true) {
+      if (resolved['type'] == 'array') {
+        resolved = resolve(resolved['items'] as Map<String, dynamic>);
+      } else if (resolved['properties'] == null &&
+          resolved['additionalProperties'] is Map<String, dynamic>) {
+        resolved = resolve(
+          resolved['additionalProperties'] as Map<String, dynamic>,
+        );
+      } else {
+        break;
+      }
     }
     final props = (resolved['properties'] as Map?) ?? const {};
     return [

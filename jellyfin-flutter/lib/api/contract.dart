@@ -193,6 +193,12 @@ const apiContract = [
   ),
   ApiEndpoint('GET', '/Items/{itemId}/Download', kind: ResponseKind.file),
   ApiEndpoint(
+    'GET',
+    '/Videos/{itemId}/Trickplay/{width}/{index}.jpg',
+    query: ['mediaSourceId'],
+    kind: ResponseKind.file,
+  ),
+  ApiEndpoint(
     'POST',
     '/UserItems/{itemId}/UserData',
     query: ['userId'],

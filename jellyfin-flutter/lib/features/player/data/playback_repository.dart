@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -36,6 +38,15 @@ abstract interface class PlaybackRepository {
 
   /// Marks [itemId] watched or not, by hand.
   Future<UserItemDataDto> setPlayed(String itemId, {required bool played});
+
+  /// Tile [index] of [itemId]'s seek-bar thumbnails (see TrickplayInfo):
+  /// an encoded image.
+  Future<Uint8List> trickplayTile(
+    String itemId, {
+    required String mediaSourceId,
+    required int width,
+    required int index,
+  });
 }
 
 final playbackRepositoryProvider = Provider<PlaybackRepository>((ref) {
@@ -128,6 +139,21 @@ class JellyfinPlaybackRepository implements PlaybackRepository {
             ? api.markPlayed(_client.userId, itemId)
             : api.markUnplayed(_client.userId, itemId),
       );
+
+  @override
+  Future<Uint8List> trickplayTile(
+    String itemId, {
+    required String mediaSourceId,
+    required int width,
+    required int index,
+  }) => _client.call(
+    (api) => api.trickplayTile(
+      itemId,
+      mediaSourceId: mediaSourceId,
+      width: width,
+      index: index,
+    ),
+  );
 }
 
 /// While nobody is signed in (see SignedOutLibraryRepository).
@@ -156,4 +182,12 @@ class SignedOutPlaybackRepository implements PlaybackRepository {
   @override
   Future<UserItemDataDto> setPlayed(String itemId, {required bool played}) =>
       _fail();
+
+  @override
+  Future<Uint8List> trickplayTile(
+    String itemId, {
+    required String mediaSourceId,
+    required int width,
+    required int index,
+  }) => _fail();
 }

@@ -1,6 +1,10 @@
+import 'dart:io';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:jellyfin_flutter/api/models/user_configuration.dart';
 import 'package:jellyfin_flutter/core/failure.dart';
+import 'package:jellyfin_flutter/core/theme/design_tokens.dart';
+import 'package:jellyfin_flutter/core/theme/theme_catalog.dart';
 import 'package:jellyfin_flutter/features/home/presentation/home_screen.dart';
 import 'package:jellyfin_flutter/features/item/presentation/item_screen.dart';
 import 'package:jellyfin_flutter/features/player/presentation/player_screen.dart';
@@ -135,5 +139,79 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byType(PlayerScreen), findsNothing);
     expect(app.engines, hasLength(1));
+  });
+
+  group('appearance', () {
+    final lanterna = File('assets/themes/lanterna.json').readAsStringSync();
+
+    ThemeData shownTheme(WidgetTester tester) =>
+        Theme.of(tester.element(find.byType(SettingsScreen)));
+
+    Color accent(String mode) =>
+        DesignTokens.parse(lanterna).color('accent', mode);
+
+    testWidgets('Lanterna in dark by default; light picked: applied and '
+        'kept', (tester) async {
+      await app.open(tester, Routes.settings);
+      expect(shownTheme(tester).colorScheme.primary, accent('dark'));
+      await tester.ensureVisible(
+        find.byKey(SettingsScreen.modeChoice(ThemeMode.light)),
+      );
+      await tester.tap(find.byKey(SettingsScreen.modeChoice(ThemeMode.light)));
+      await tester.pumpAndSettle();
+      expect(shownTheme(tester).brightness, Brightness.light);
+      expect(shownTheme(tester).colorScheme.primary, accent('light'));
+      expect(app.appFiles.values['appearance'], contains('"light"'));
+    });
+
+    testWidgets('a theme from the user\'s folder: listed, picked; one '
+        'that cannot be read is reported', (tester) async {
+      app.userThemes.files
+        ..['mine.json'] = lanterna
+            .replaceFirst('"name": "Lanterna"', '"name": "Mine"')
+            .replaceAll('#00a4dc', '#ff8800')
+        ..['broken.json'] = '{';
+      await app.open(tester, Routes.settings);
+      await tester.ensureVisible(find.byKey(SettingsScreen.themeField));
+      await choose(tester, SettingsScreen.themeField, 'Mine (your folder)');
+      expect(shownTheme(tester).colorScheme.primary, const Color(0xFFFF8800));
+      expect(app.appFiles.values['appearance'], contains('user:mine.json'));
+
+      await tester.ensureVisible(find.byKey(SettingsScreen.themeIssues));
+      expect(find.text('1 theme issue'), findsOneWidget);
+      await tester.tap(find.byKey(SettingsScreen.themeIssues));
+      await tester.pumpAndSettle();
+      expect(find.textContaining('broken.json: not used'), findsOneWidget);
+    });
+
+    testWidgets('saving the theme file changes the app as it runs', (
+      tester,
+    ) async {
+      app.userThemes.files['mine.json'] = lanterna;
+      app.appFiles.values['appearance'] = '{"theme":"user:mine.json"}';
+      await app.open(tester, Routes.settings);
+      expect(shownTheme(tester).colorScheme.primary, accent('dark'));
+      app.userThemes.files['mine.json'] = lanterna.replaceAll(
+        '#00a4dc',
+        '#22cc66',
+      );
+      app.userThemes.changed();
+      await tester.pump(ThemeCatalogController.settle);
+      await tester.pumpAndSettle();
+      expect(shownTheme(tester).colorScheme.primary, const Color(0xFF22CC66));
+    });
+
+    testWidgets('the player stays dark in light mode', (tester) async {
+      app.appFiles.values['appearance'] = '{"mode":"light"}';
+      await app.open(tester, Routes.item(TestItems.episodes.first.id));
+      expect(
+        Theme.of(tester.element(find.byType(ItemScreen))).brightness,
+        Brightness.light,
+      );
+      await tester.tap(find.byKey(ItemScreen.playButton));
+      await tester.pumpAndSettle();
+      final player = Theme.of(tester.element(find.byKey(PlayerScreen.seekBar)));
+      expect(player.brightness, Brightness.dark);
+    });
   });
 }

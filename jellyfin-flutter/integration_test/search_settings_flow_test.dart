@@ -117,7 +117,7 @@ void main() {
     await tapOn(tester, find.byType(BackButton));
     await searchTestMovie(tester);
     await tapOn(tester, find.byKey(ItemScreen.playButton));
-    await waitFor(tester, find.byKey(PlayerScreen.audioMenu));
+    await waitFor(tester, find.byKey(PlayerScreen.settingsButton));
 
     final request = tester
         .widget<PlayerScreen>(find.byType(PlayerScreen))

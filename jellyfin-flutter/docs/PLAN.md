@@ -194,6 +194,15 @@ bordas, teclado), progresso no servidor.
 - PDFium vem de `bblanchon/pdfium-binaries` (versão fixa `chromium/8125`), baixado no build pelo hook do
   `pdfium_dart`, sem conferência de hash.
 
+**T1 — Temas por design system (feita).** O visual vem do `tokens.json` do Claude Design: o Lanterna vem
+embutido, e outros temas podem ser colocados numa pasta do usuário, recarregados sem recompilar. A escolha de tema e
+modo fica em Settings, e o player é sempre escuro. Detalhes, fluxo de modificação e a tabela de tokens estão em
+[THEMES.md](THEMES.md). 
+**T2 — Componentes do Lanterna (feita).** Button, foco, Badge, MediaCard e o player completo (ControlButton,
+SeekBar com buffer, capítulos e prévia por trickplay, SettingsMenu com velocidade, UpNext, ±10 s). O vídeo de teste
+ganhou capítulos, e o servidor de teste gera trickplay. Os detalhes estão em [THEMES.md](THEMES.md). Pendente: textos
+em pt-BR (i18n).
+
 **F5+ — Pós-MVP (planejar em detalhe ao chegar)**
 MPRIS (D-Bus), gamepads/remotes (demais inputmaps), WebSocket de sessão (controle remoto a partir de outro cliente),
 múltiplos servidores/perfis, troca de refresh rate e passthrough de áudio, Windows e macOS.

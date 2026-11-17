@@ -1,0 +1,361 @@
+{
+  "name": "Lanterna",
+  "version": 1,
+  "color": {
+    "themes": [
+      {
+        "id": "dark",
+        "name": "Escuro"
+      },
+      {
+        "id": "light",
+        "name": "Claro"
+      }
+    ],
+    "tokens": [
+      {
+        "name": "bg-000",
+        "value": {
+          "dark": "#0b0b0d",
+          "light": "#e9ecf0"
+        },
+        "usage": "Fundo mais profundo: área atrás do vídeo (letterbox), barra lateral."
+      },
+      {
+        "name": "bg-100",
+        "value": {
+          "dark": "#101114",
+          "light": "#ffffff"
+        },
+        "usage": "Fundo da página da biblioteca e telas de detalhe."
+      },
+      {
+        "name": "bg-200",
+        "value": {
+          "dark": "#1a1c20",
+          "light": "#f2f4f7"
+        },
+        "usage": "Superfícies elevadas: cards, painéis, campos de busca."
+      },
+      {
+        "name": "bg-300",
+        "value": {
+          "dark": "#24272c",
+          "light": "#e2e5ea"
+        },
+        "usage": "Hover de cards e itens de lista; botão secundário."
+      },
+      {
+        "name": "line",
+        "value": {
+          "dark": "#30343a",
+          "light": "#cfd4db"
+        },
+        "usage": "Divisores finos e borda de campos. Bordas, não sombras, separam a UI clara."
+      },
+      {
+        "name": "ink",
+        "value": {
+          "dark": "#f2f3f5",
+          "light": "#14161a"
+        },
+        "usage": "Texto principal sobre bg-000…bg-300."
+      },
+      {
+        "name": "ink-muted",
+        "value": {
+          "dark": "#a3a8b0",
+          "light": "#545a63"
+        },
+        "usage": "Metadados: ano, duração, gênero, legenda de card. ≥4.5:1 sobre bg-200 nos dois temas."
+      },
+      {
+        "name": "accent",
+        "value": {
+          "dark": "#00a4dc",
+          "light": "#0077a8"
+        },
+        "usage": "Cor de marca: botão Reproduzir, progresso assistido, item ativo, anel de foco."
+      },
+      {
+        "name": "accent-hover",
+        "value": {
+          "dark": "#33b8e6",
+          "light": "#00658f"
+        },
+        "usage": "Hover/pressionado de elementos em accent."
+      },
+      {
+        "name": "accent-ink",
+        "value": {
+          "dark": "#061620",
+          "light": "#ffffff"
+        },
+        "usage": "Texto e ícones sobre accent (≥4.5:1 nos dois temas)."
+      },
+      {
+        "name": "accent-2",
+        "value": {
+          "dark": "#b98ad6",
+          "light": "#8a3fab"
+        },
+        "usage": "Acento secundário, uso raro: favoritos, coleções, destaque editorial. Nunca em gradiente com accent."
+      },
+      {
+        "name": "success",
+        "value": {
+          "dark": "#3fb950",
+          "light": "#1a7f37"
+        },
+        "usage": "Estado: biblioteca sincronizada, download concluído."
+      },
+      {
+        "name": "warning",
+        "value": {
+          "dark": "#d29922",
+          "light": "#9a6700"
+        },
+        "usage": "Estado: transcodificação, rede lenta."
+      },
+      {
+        "name": "danger",
+        "value": {
+          "dark": "#f85149",
+          "light": "#cf222e"
+        },
+        "usage": "Estado: erro de reprodução, item indisponível."
+      },
+      {
+        "name": "osd-surface",
+        "value": "rgba(20, 22, 26, 0.94)",
+        "usage": "Menus e painéis sobre o vídeo (configurações, A seguir). Igual nos dois temas: o player é sempre escuro."
+      },
+      {
+        "name": "osd-hover",
+        "value": "rgba(255, 255, 255, 0.12)",
+        "usage": "Fundo de hover/foco de botões e itens sobre o vídeo."
+      },
+      {
+        "name": "osd-scrim",
+        "value": "rgba(0, 0, 0, 0.72)",
+        "usage": "Cor final do degradê inferior/superior atrás dos controles (de rgba(0,0,0,0) até esta)."
+      },
+      {
+        "name": "osd-ink",
+        "value": "#ffffff",
+        "usage": "Ícones e texto dos controles sobre o vídeo/scrim."
+      },
+      {
+        "name": "osd-ink-muted",
+        "value": "rgba(255, 255, 255, 0.72)",
+        "usage": "Tempo restante, subtítulo do episódio, rótulos secundários no player."
+      },
+      {
+        "name": "osd-track",
+        "value": "rgba(255, 255, 255, 0.24)",
+        "usage": "Trilho vazio da barra de progresso e do volume."
+      },
+      {
+        "name": "osd-buffer",
+        "value": "rgba(255, 255, 255, 0.48)",
+        "usage": "Trecho já carregado (buffer) na barra de progresso."
+      },
+      {
+        "name": "osd-accent",
+        "value": "#00a4dc",
+        "usage": "Progresso reproduzido, thumb e item ativo no player (fixo, independe do tema)."
+      },
+      {
+        "name": "osd-accent-ink",
+        "value": "#061620",
+        "usage": "Ícone/texto sobre osd-accent (botão central, Assistir agora)."
+      }
+    ]
+  },
+  "type": {
+    "fonts": [],
+    "families": {
+      "sans": "\"Noto Sans\", system-ui, -apple-system, \"Segoe UI\", Roboto, sans-serif",
+      "mono": "\"Noto Sans Mono\", ui-monospace, \"SF Mono\", Menlo, monospace"
+    },
+    "groups": [
+      {
+        "name": "Display",
+        "family": "sans",
+        "styles": [
+          {
+            "name": "hero-title",
+            "fontSize": "40px",
+            "lineHeight": "46px",
+            "fontWeight": 700,
+            "letterSpacing": "-0.01em",
+            "sample": "O Farol do Norte",
+            "usage": "Título na página de detalhe do filme/série."
+          },
+          {
+            "name": "section-title",
+            "fontSize": "22px",
+            "lineHeight": "28px",
+            "fontWeight": 600,
+            "sample": "Continuar assistindo",
+            "usage": "Títulos de prateleiras da biblioteca."
+          }
+        ]
+      },
+      {
+        "name": "Texto",
+        "family": "sans",
+        "styles": [
+          {
+            "name": "title",
+            "fontSize": "16px",
+            "lineHeight": "22px",
+            "fontWeight": 600,
+            "sample": "Episódio 3 · A Maré",
+            "usage": "Título no topo do player, nome de card, itens de menu."
+          },
+          {
+            "name": "body",
+            "fontSize": "14px",
+            "lineHeight": "20px",
+            "fontWeight": 400,
+            "sample": "Uma faroleira descobre que a luz guia mais do que navios.",
+            "usage": "Sinopse e texto corrido."
+          },
+          {
+            "name": "caption",
+            "fontSize": "12px",
+            "lineHeight": "16px",
+            "fontWeight": 400,
+            "sample": "2024 · 1h 52min · Drama",
+            "usage": "Metadados sob cards, valores em menus."
+          },
+          {
+            "name": "overline",
+            "fontSize": "11px",
+            "lineHeight": "14px",
+            "fontWeight": 700,
+            "letterSpacing": "0.08em",
+            "sample": "A SEGUIR",
+            "usage": "Rótulos curtos em caixa alta: A SEGUIR, NOVO, badges."
+          }
+        ]
+      },
+      {
+        "name": "Tempo",
+        "family": "mono",
+        "styles": [
+          {
+            "name": "timecode",
+            "fontSize": "13px",
+            "lineHeight": "16px",
+            "fontWeight": 500,
+            "sample": "00:23:41 / 01:52:07",
+            "usage": "Tempo decorrido e restante no player; dígitos de largura fixa não fazem o layout tremer."
+          }
+        ]
+      }
+    ]
+  },
+  "spacing": {
+    "tokens": [
+      {
+        "name": "space-1",
+        "value": "4px",
+        "usage": "Gap entre ícone e rótulo pequeno; gap de badges."
+      },
+      {
+        "name": "space-2",
+        "value": "8px",
+        "usage": "Gap entre botões de controle; padding de badge."
+      },
+      {
+        "name": "space-3",
+        "value": "12px",
+        "usage": "Padding de itens de menu; gap entre cards."
+      },
+      {
+        "name": "space-4",
+        "value": "16px",
+        "usage": "Padding lateral da barra de controles; padding de painel."
+      },
+      {
+        "name": "space-6",
+        "value": "24px",
+        "usage": "Margem do player (top bar e controles) em telas largas."
+      },
+      {
+        "name": "space-8",
+        "value": "32px",
+        "usage": "Espaço entre prateleiras da biblioteca."
+      },
+      {
+        "name": "space-12",
+        "value": "48px",
+        "usage": "Margem da página de detalhe; respiro do título hero."
+      }
+    ]
+  },
+  "radius": {
+    "tokens": [
+      {
+        "name": "radius-sm",
+        "value": "4px",
+        "usage": "Pôsteres, badges, thumbnail de prévia, trilhos (8px de altura viram pílula)."
+      },
+      {
+        "name": "radius-md",
+        "value": "8px",
+        "usage": "Cards paisagem, botões com rótulo, campos."
+      },
+      {
+        "name": "radius-lg",
+        "value": "12px",
+        "usage": "Menus e painéis sobre o vídeo, diálogos."
+      },
+      {
+        "name": "radius-pill",
+        "value": "999px",
+        "usage": "Botões de ícone circulares, thumb do slider, botão Reproduzir central."
+      }
+    ]
+  },
+  "shadow": {
+    "tokens": [
+      {
+        "name": "shadow-poster",
+        "value": "0 4px 12px rgba(0, 0, 0, 0.40)",
+        "usage": "Pôster em hover/foco na biblioteca escura."
+      },
+      {
+        "name": "shadow-menu",
+        "value": "0 8px 24px rgba(0, 0, 0, 0.50)",
+        "usage": "Menus e painéis flutuando sobre o vídeo."
+      }
+    ]
+  },
+  "zIndex": {
+    "tokens": [
+      {
+        "name": "z-video",
+        "value": "0",
+        "usage": "Elemento de vídeo."
+      },
+      {
+        "name": "z-subtitles",
+        "value": "5",
+        "usage": "Legendas renderizadas: acima do vídeo, abaixo dos controles."
+      },
+      {
+        "name": "z-osd",
+        "value": "10",
+        "usage": "Scrim e controles do player."
+      },
+      {
+        "name": "z-menu",
+        "value": "20",
+        "usage": "Menus de configurações, A seguir, tooltips."
+      }
+    ]
+  }
+}

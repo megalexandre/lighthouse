@@ -9,7 +9,8 @@
       // The release app: build/linux/x64/release/bundle/jellyfin_flutter.
       "label": "jellyfin-flutter: build (release)",
       "type": "shell",
-      "command": "flutter build linux --release",
+      // Waits for any other Flutter Linux build (see tool/with_build_lock.sh).
+      "command": "tool/with_build_lock.sh flutter build linux --release",
       "group": "build",
       "problemMatcher": [],
       "presentation": { "reveal": "always", "panel": "dedicated", "clear": true }

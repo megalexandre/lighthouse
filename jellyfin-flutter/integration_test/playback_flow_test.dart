@@ -86,7 +86,7 @@ void main() {
     );
 
     await tapOn(tester, find.byKey(PlayerScreen.playPauseButton));
-    await waitFor(tester, find.byTooltip('Play'));
+    await waitFor(tester, find.byKey(PlayerScreen.centerPlayButton)); // Paused.
     final paused = shownPosition(tester);
 
     await tapOn(tester, find.byKey(PlayerScreen.backButton));
@@ -152,7 +152,7 @@ void main() {
       'mpv plays and shows them', (tester) async {
     await openTestMovie(tester);
     await tapOn(tester, find.byKey(ItemScreen.playButton));
-    await waitFor(tester, find.byKey(PlayerScreen.audioMenu));
+    await waitFor(tester, find.byKey(PlayerScreen.settingsButton));
 
     final request = tester
         .widget<PlayerScreen>(find.byType(PlayerScreen))
@@ -185,6 +185,8 @@ void main() {
     await engine.seek(const Duration(seconds: 1));
     await tester.pump(const Duration(milliseconds: 300));
 
+    // Audio is in the settings panel (the gear).
+    await tapOn(tester, find.byKey(PlayerScreen.settingsButton));
     await tapOn(tester, find.byKey(PlayerScreen.audioMenu));
     await tapOn(tester, find.byKey(PlayerScreen.audioItem(3)));
     await mpvShows('current-tracks/audio/lang', 'por');

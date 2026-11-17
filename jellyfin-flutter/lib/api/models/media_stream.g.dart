@@ -27,6 +27,9 @@ _MediaStream _$MediaStreamFromJson(Map<String, dynamic> json) => _MediaStream(
   ),
   deliveryUrl: json['DeliveryUrl'] as String?,
   channels: (json['Channels'] as num?)?.toInt(),
+  width: (json['Width'] as num?)?.toInt(),
+  height: (json['Height'] as num?)?.toInt(),
+  videoRangeType: json['VideoRangeType'] as String?,
 );
 
 const _$MediaStreamFieldMap = <String, String>{
@@ -42,6 +45,9 @@ const _$MediaStreamFieldMap = <String, String>{
   'deliveryMethod': 'DeliveryMethod',
   'deliveryUrl': 'DeliveryUrl',
   'channels': 'Channels',
+  'width': 'Width',
+  'height': 'Height',
+  'videoRangeType': 'VideoRangeType',
 };
 
 Map<String, dynamic> _$MediaStreamToJson(
@@ -59,6 +65,9 @@ Map<String, dynamic> _$MediaStreamToJson(
   'DeliveryMethod': ?_$SubtitleDeliveryMethodEnumMap[instance.deliveryMethod],
   'DeliveryUrl': ?instance.deliveryUrl,
   'Channels': ?instance.channels,
+  'Width': ?instance.width,
+  'Height': ?instance.height,
+  'VideoRangeType': ?instance.videoRangeType,
 };
 
 const _$MediaStreamTypeEnumMap = {

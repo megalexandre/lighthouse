@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:media_kit/media_kit.dart';
@@ -9,6 +10,7 @@ import 'package:media_kit/media_kit.dart';
 import 'app.dart';
 import 'core/config.dart';
 import 'core/log.dart';
+import 'core/theme/theme_catalog.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -32,5 +34,13 @@ Future<void> main() async {
   };
 
   MediaKit.ensureInitialized();
-  runApp(const ProviderScope(retry: noAutomaticRetry, child: JellyfinApp()));
+  // Read before the first frame, so it already has its theme.
+  final themes = await loadBuiltInThemes(rootBundle);
+  runApp(
+    ProviderScope(
+      retry: noAutomaticRetry,
+      overrides: [builtInThemesProvider.overrideWithValue(themes)],
+      child: const JellyfinApp(),
+    ),
+  );
 }

@@ -5,6 +5,7 @@
 library;
 
 import 'dart:convert';
+import 'dart:ui' as ui;
 
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -163,5 +164,49 @@ void main() {
       start: const Duration(seconds: 3),
     );
     expect(plan.start, const Duration(seconds: 3));
+  });
+
+  test('Test Movie: its chapters, its technical tracks, and seek-bar '
+      'thumbnails the app can fetch', () async {
+    final item = await movie(Fixtures.testMovie);
+    expect(item.chapters.map((c) => c.name), Fixtures.testMovieChapters);
+    expect(
+      item.chapters.map((c) => ticksToDuration(c.startPositionTicks)),
+      Fixtures.testMovieChapterStarts,
+    );
+    final video = item.mediaStreams.firstWhere(
+      (s) => s.type == MediaStreamType.video,
+    );
+    expect((video.width, video.height), (320, 180));
+    expect(video.videoRangeType, 'SDR');
+
+    final MapEntry(key: sourceId, value: widths) =
+        item.trickplay.entries.single;
+    final info = widths['${Fixtures.trickplayWidth}']!;
+    expect(
+      (info.width, info.height, info.tileWidth, info.tileHeight),
+      (
+        Fixtures.trickplayWidth,
+        Fixtures.trickplayHeight,
+        Fixtures.trickplayTileColumns,
+        Fixtures.trickplayTileRows,
+      ),
+    );
+    expect(info.thumbnailCount, Fixtures.trickplayCount);
+    // The 10th picture (9 s) is the first of the second tile.
+    expect(info.at(const Duration(seconds: 9)), (tile: 1, x: 0, y: 0));
+
+    final tile = await playback.trickplayTile(
+      item.id,
+      mediaSourceId: sourceId,
+      width: info.width,
+      index: 0,
+    );
+    final codec = await ui.instantiateImageCodec(tile);
+    final frame = (await codec.getNextFrame()).image;
+    expect(
+      (frame.width, frame.height),
+      (info.width * info.tileWidth, info.height * info.tileHeight),
+    );
   });
 }

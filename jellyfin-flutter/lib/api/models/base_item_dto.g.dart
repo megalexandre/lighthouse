@@ -44,6 +44,27 @@ _BaseItemDto _$BaseItemDtoFromJson(Map<String, dynamic> json) => _BaseItemDto(
       ? null
       : UserItemDataDto.fromJson(json['UserData'] as Map<String, dynamic>),
   childCount: (json['ChildCount'] as num?)?.toInt(),
+  mediaStreams:
+      (json['MediaStreams'] as List<dynamic>?)
+          ?.map((e) => MediaStream.fromJson(e as Map<String, dynamic>))
+          .toList() ??
+      const [],
+  chapters:
+      (json['Chapters'] as List<dynamic>?)
+          ?.map((e) => ChapterInfo.fromJson(e as Map<String, dynamic>))
+          .toList() ??
+      const [],
+  trickplay:
+      (json['Trickplay'] as Map<String, dynamic>?)?.map(
+        (k, e) => MapEntry(
+          k,
+          (e as Map<String, dynamic>).map(
+            (k, e) =>
+                MapEntry(k, TrickplayInfo.fromJson(e as Map<String, dynamic>)),
+          ),
+        ),
+      ) ??
+      const {},
 );
 
 const _$BaseItemDtoFieldMap = <String, String>{
@@ -70,6 +91,9 @@ const _$BaseItemDtoFieldMap = <String, String>{
   'backdropImageTags': 'BackdropImageTags',
   'userData': 'UserData',
   'childCount': 'ChildCount',
+  'mediaStreams': 'MediaStreams',
+  'chapters': 'Chapters',
+  'trickplay': 'Trickplay',
 };
 
 Map<String, dynamic> _$BaseItemDtoToJson(_BaseItemDto instance) =>
@@ -97,6 +121,11 @@ Map<String, dynamic> _$BaseItemDtoToJson(_BaseItemDto instance) =>
       'BackdropImageTags': instance.backdropImageTags,
       'UserData': ?instance.userData?.toJson(),
       'ChildCount': ?instance.childCount,
+      'MediaStreams': instance.mediaStreams.map((e) => e.toJson()).toList(),
+      'Chapters': instance.chapters.map((e) => e.toJson()).toList(),
+      'Trickplay': instance.trickplay.map(
+        (k, e) => MapEntry(k, e.map((k, e) => MapEntry(k, e.toJson()))),
+      ),
     };
 
 const _$BaseItemKindEnumMap = {

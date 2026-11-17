@@ -40,6 +40,23 @@ abstract final class Fixtures {
   /// Items with a local poster (fixtures/media/**/poster.jpg, folder.jpg).
   /// HEVC Movie has none.
   static const withPoster = [testMovie, testShow, testAlbum];
+
+  /// Test Movie's chapters (tool/gen_fixtures.sh), and where they start.
+  static const testMovieChapters = ['Opening', 'The middle', 'The end'];
+  static const testMovieChapterStarts = [
+    Duration.zero,
+    Duration(milliseconds: 3500),
+    Duration(seconds: 7),
+  ];
+
+  /// Test Movie's trickplay (seek bar thumbnails), as the test server makes
+  /// it: one 160 × 90 picture a second, 3 × 3 to a tile file.
+  static const trickplayWidth = 160;
+  static const trickplayHeight = 90;
+  static const trickplayTileColumns = 3;
+  static const trickplayTileRows = 3;
+  static const trickplayCount = 10;
+  static const trickplayInterval = Duration(seconds: 1);
 }
 
 /// Credentials of a user created for one test.
@@ -122,7 +139,9 @@ class TestServer {
     final token = (await _login(dio, adminName, adminPassword)).token;
     final server = TestServer._(url, dio, token);
     await server._allowResumeOfShortItems();
+    await server._setTrickplayOptions();
     await server._ensureLibraries();
+    await server._ensureChaptersAndTrickplay();
     return server;
   }
 
@@ -209,6 +228,119 @@ class TestServer {
       data: {...config, 'MinResumeDurationSeconds': 0},
       options: _asAdmin,
     );
+  }
+
+  /// Seek bar thumbnails: small, often, few to a file (the fixtures last
+  /// seconds; the defaults would make one picture of each).
+  Future<void> _setTrickplayOptions() async {
+    final config = await adminGet<Map<String, dynamic>>(
+      '/System/Configuration',
+    );
+    final wanted = {
+      'Interval': Fixtures.trickplayInterval.inMilliseconds,
+      'WidthResolutions': [Fixtures.trickplayWidth],
+      'TileWidth': Fixtures.trickplayTileColumns,
+      'TileHeight': Fixtures.trickplayTileRows,
+    };
+    final current = config['TrickplayOptions'] as Map<String, dynamic>;
+    if (wanted.entries.every((e) => '${current[e.key]}' == '${e.value}')) {
+      return;
+    }
+    await _dio.post<void>(
+      '/System/Configuration',
+      data: {
+        ...config,
+        'TrickplayOptions': {...current, ...wanted},
+      },
+      options: _asAdmin,
+    );
+  }
+
+  /// Test Movie with its chapters and trickplay. A server that scanned the
+  /// file before it had chapters (one that kept running) reads it again;
+  /// the trickplay task makes the thumbnails. Several test processes may
+  /// get here at once: everything is checked first, and the task started
+  /// twice runs once.
+  Future<void> _ensureChaptersAndTrickplay() async {
+    final movies = (await _libraries()).firstWhere(
+      (f) => f['Name'] == 'Movies',
+    );
+    final options = movies['LibraryOptions'] as Map<String, dynamic>;
+    if (options['EnableTrickplayImageExtraction'] != true) {
+      await _dio.post<void>(
+        '/Library/VirtualFolders/LibraryOptions',
+        data: {
+          'Id': movies['ItemId'],
+          'LibraryOptions': {
+            ...options,
+            'EnableTrickplayImageExtraction': true,
+          },
+        },
+        options: _asAdmin,
+      );
+    }
+
+    final found = await adminGet<Map<String, dynamic>>(
+      '/Items',
+      query: {
+        'Recursive': true,
+        'IncludeItemTypes': 'Movie',
+        'SearchTerm': Fixtures.testMovie,
+      },
+    );
+    final id =
+        (found['Items'] as List).cast<Map<String, dynamic>>().firstWhere(
+              (i) => i['Name'] == Fixtures.testMovie,
+            )['Id']
+            as String;
+    Future<Map<String, dynamic>> movie() => adminGet<Map<String, dynamic>>(
+      '/Items/$id',
+      query: {'fields': 'Chapters,Trickplay'},
+    );
+
+    if (((await movie())['Chapters'] as List?)?.isEmpty ?? true) {
+      await _dio.post<void>(
+        '/Items/$id/Refresh',
+        queryParameters: {'metadataRefreshMode': 'FullRefresh'},
+        options: _asAdmin,
+      );
+      await _waitFor(
+        'Test Movie\'s chapters',
+        () async => ((await movie())['Chapters'] as List?)?.isNotEmpty ?? false,
+      );
+    }
+
+    if (((await movie())['Trickplay'] as Map?)?.isEmpty ?? true) {
+      final tasks = await adminGet<List<dynamic>>('/ScheduledTasks');
+      final task = tasks.cast<Map<String, dynamic>>().firstWhere(
+        (t) => t['Key'] == 'RefreshTrickplayImages',
+      );
+      await _dio.post<void>(
+        '/ScheduledTasks/Running/${task['Id']}',
+        options: _asAdmin,
+      );
+      await _waitFor(
+        'Test Movie\'s trickplay',
+        () async => ((await movie())['Trickplay'] as Map?)?.isNotEmpty ?? false,
+      );
+    }
+  }
+
+  Future<void> _waitFor(String what, Future<bool> Function() done) async {
+    final deadline = DateTime.now().add(const Duration(seconds: 90));
+    while (DateTime.now().isBefore(deadline)) {
+      if (await done()) return;
+      await Future<void>.delayed(const Duration(seconds: 1));
+    }
+    throw TestServerException('$what did not appear within 90 s');
+  }
+
+  Future<List<Map<String, dynamic>>> _libraries() async {
+    final res = await _dio.get<List<dynamic>>(
+      '/Library/VirtualFolders',
+      options: _asAdmin,
+    );
+    return res.data!.cast<Map<String, dynamic>>();
   }
 
   /// Libraries created on the server, by name → (collection type, path).

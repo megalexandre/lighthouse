@@ -8,6 +8,8 @@
 # actual release build.
 set -euo pipefail
 cd "$(dirname "$0")/.."
+# No other Flutter Linux build meanwhile (tool/with_build_lock.sh says why).
+source tool/with_build_lock.sh
 
 failed=()
 for test in integration_test/*_test.dart; do

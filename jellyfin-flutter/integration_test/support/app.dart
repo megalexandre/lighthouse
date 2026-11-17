@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:jellyfin_flutter/app.dart';
 import 'package:jellyfin_flutter/core/storage.dart';
+import 'package:jellyfin_flutter/core/theme/appearance.dart';
+import 'package:jellyfin_flutter/core/theme/theme_catalog.dart';
 import 'package:jellyfin_flutter/core/window.dart';
 import 'package:jellyfin_flutter/features/player/data/player_engine.dart';
 import 'package:jellyfin_flutter/features/reader/data/book_repository.dart';
@@ -26,9 +28,10 @@ Future<void> launch(
   WidgetTester tester,
   MemoryKeyValueStore store, {
   MemoryKeyValueStore? readerStore,
-}) {
+}) async {
   _simulateTextInput(tester);
-  return tester.pumpWidget(
+  final themes = await loadBuiltInThemes(rootBundle);
+  await tester.pumpWidget(
     ProviderScope(
       key: UniqueKey(),
       retry: noAutomaticRetry,
@@ -37,6 +40,11 @@ Future<void> launch(
         readerStoreProvider.overrideWithValue(
           readerStore ?? MemoryKeyValueStore(),
         ),
+        // The app's own files (the appearance) and themes folder: kept
+        // off the desktop's.
+        appFilesStoreProvider.overrideWithValue(MemoryKeyValueStore()),
+        builtInThemesProvider.overrideWithValue(themes),
+        userThemeSourceProvider.overrideWithValue(const NoUserThemes()),
         playerOptionsProvider.overrideWithValue(
           const PlayerOptions(hardwareDecoding: false, audio: false),
         ),

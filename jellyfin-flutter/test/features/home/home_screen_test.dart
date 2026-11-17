@@ -60,7 +60,7 @@ void main() {
 
     expect(find.text('Continue watching'), findsOneWidget);
     expect(
-      inRow(HomeScreen.resumeRow, find.byType(LinearProgressIndicator)),
+      inRow(HomeScreen.resumeRow, find.byKey(ItemCard.progressBar)),
       findsOneWidget,
     );
     expect(find.text('Next up'), findsOneWidget);

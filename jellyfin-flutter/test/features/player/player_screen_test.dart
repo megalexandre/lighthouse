@@ -96,7 +96,9 @@ void main() {
     await tester.pump();
     expect(engine.playing, isFalse);
     expect(app.playback.progress.last.isPaused, isTrue);
-    expect(find.byTooltip('Play'), findsOneWidget);
+    // The bar's button, and the big one in the middle of the paused video.
+    expect(find.byTooltip('Play (Space)'), findsNWidgets(2));
+    expect(find.byKey(PlayerScreen.centerPlayButton), findsOneWidget);
 
     await tester.sendKeyEvent(LogicalKeyboardKey.space);
     await tester.pump();

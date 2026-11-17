@@ -1,9 +1,11 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:jellyfin_flutter/api/models/media_stream.dart';
 import 'package:jellyfin_flutter/core/failure.dart';
 import 'package:jellyfin_flutter/features/item/presentation/item_screen.dart';
 import 'package:jellyfin_flutter/features/library/presentation/item_card.dart';
 import 'package:jellyfin_flutter/router.dart';
 import 'package:jellyfin_flutter/widgets/error_retry.dart';
+import 'package:jellyfin_flutter/widgets/media_badge.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../../support/fakes.dart';
@@ -79,5 +81,49 @@ void main() {
     await tester.tap(find.byKey(ErrorRetry.retryButton));
     await tester.pumpAndSettle();
     expect(title(tester), 'Test Movie');
+  });
+
+  group('technical badges', () {
+    MediaStream video({int? width, String? range}) => MediaStream(
+      index: 0,
+      type: MediaStreamType.video,
+      width: width,
+      videoRangeType: range,
+    );
+    MediaStream audio(int channels) =>
+        MediaStream(index: 1, type: MediaStreamType.audio, channels: channels);
+    const subtitle = MediaStream(index: 2, type: MediaStreamType.subtitle);
+
+    test('resolution, dynamic range, surround, subtitles', () {
+      List<String> of(List<MediaStream> streams) =>
+          technicalBadges(TestItems.testMovie.copyWith(mediaStreams: streams));
+      expect(of([video(width: 3840, range: 'HDR10'), audio(6), subtitle]), [
+        '4K',
+        'HDR10',
+        '5.1',
+        'CC',
+      ]);
+      expect(of([video(width: 1920, range: 'DOVIWithHDR10'), audio(8)]), [
+        '1080P',
+        'Dolby Vision',
+        '7.1',
+      ]);
+      // SD, SDR, stereo: nothing worth a badge.
+      expect(of([video(width: 640, range: 'SDR'), audio(2)]), isEmpty);
+      expect(of(const []), isEmpty);
+    });
+
+    testWidgets('shown under the facts', (tester) async {
+      app.library.movies = [
+        TestItems.testMovie.copyWith(
+          mediaStreams: [video(width: 1920), audio(6), subtitle],
+        ),
+      ];
+      await app.open(tester, Routes.item(TestItems.testMovie.id));
+      expect(find.byType(MediaBadge), findsNWidgets(3));
+      expect(find.text('1080P'), findsOneWidget);
+      expect(find.text('5.1'), findsOneWidget);
+      expect(find.text('CC'), findsOneWidget);
+    });
   });
 }

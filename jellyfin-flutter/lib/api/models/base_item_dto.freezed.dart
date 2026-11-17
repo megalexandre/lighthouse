@@ -21,7 +21,12 @@ mixin _$BaseItemDto {
  int? get indexNumber; int? get parentIndexNumber; String? get seriesId; String? get seriesName; String? get seasonId; String? get seasonName; String? get seriesPrimaryImageTag; String? get albumArtist;/// For a track: its album, and the album's cover.
  String? get albumId; String? get album; String? get albumPrimaryImageTag;/// Image type (Primary, Thumb, Logo...) → tag, which changes when the
 /// image does; it goes in the image URL so caches stay right.
- Map<String, String> get imageTags; List<String> get backdropImageTags; UserItemDataDto? get userData; int? get childCount;
+ Map<String, String> get imageTags; List<String> get backdropImageTags; UserItemDataDto? get userData; int? get childCount;/// The file's tracks (video, audio, subtitles): only on the full item
+/// (`GET /Items/{id}`), for its technical badges.
+ List<MediaStream> get mediaStreams;/// A video's chapters, in order (full item only).
+ List<ChapterInfo> get chapters;/// Seek-bar thumbnails: media source id → picture width → how they are
+/// stored (full item only; empty when the server made none).
+ Map<String, Map<String, TrickplayInfo>> get trickplay;
 /// Create a copy of BaseItemDto
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -34,16 +39,16 @@ $BaseItemDtoCopyWith<BaseItemDto> get copyWith => _$BaseItemDtoCopyWithImpl<Base
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is BaseItemDto&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.type, type) || other.type == type)&&(identical(other.collectionType, collectionType) || other.collectionType == collectionType)&&(identical(other.overview, overview) || other.overview == overview)&&(identical(other.productionYear, productionYear) || other.productionYear == productionYear)&&(identical(other.officialRating, officialRating) || other.officialRating == officialRating)&&(identical(other.runTimeTicks, runTimeTicks) || other.runTimeTicks == runTimeTicks)&&(identical(other.indexNumber, indexNumber) || other.indexNumber == indexNumber)&&(identical(other.parentIndexNumber, parentIndexNumber) || other.parentIndexNumber == parentIndexNumber)&&(identical(other.seriesId, seriesId) || other.seriesId == seriesId)&&(identical(other.seriesName, seriesName) || other.seriesName == seriesName)&&(identical(other.seasonId, seasonId) || other.seasonId == seasonId)&&(identical(other.seasonName, seasonName) || other.seasonName == seasonName)&&(identical(other.seriesPrimaryImageTag, seriesPrimaryImageTag) || other.seriesPrimaryImageTag == seriesPrimaryImageTag)&&(identical(other.albumArtist, albumArtist) || other.albumArtist == albumArtist)&&(identical(other.albumId, albumId) || other.albumId == albumId)&&(identical(other.album, album) || other.album == album)&&(identical(other.albumPrimaryImageTag, albumPrimaryImageTag) || other.albumPrimaryImageTag == albumPrimaryImageTag)&&const DeepCollectionEquality().equals(other.imageTags, imageTags)&&const DeepCollectionEquality().equals(other.backdropImageTags, backdropImageTags)&&(identical(other.userData, userData) || other.userData == userData)&&(identical(other.childCount, childCount) || other.childCount == childCount));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is BaseItemDto&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.type, type) || other.type == type)&&(identical(other.collectionType, collectionType) || other.collectionType == collectionType)&&(identical(other.overview, overview) || other.overview == overview)&&(identical(other.productionYear, productionYear) || other.productionYear == productionYear)&&(identical(other.officialRating, officialRating) || other.officialRating == officialRating)&&(identical(other.runTimeTicks, runTimeTicks) || other.runTimeTicks == runTimeTicks)&&(identical(other.indexNumber, indexNumber) || other.indexNumber == indexNumber)&&(identical(other.parentIndexNumber, parentIndexNumber) || other.parentIndexNumber == parentIndexNumber)&&(identical(other.seriesId, seriesId) || other.seriesId == seriesId)&&(identical(other.seriesName, seriesName) || other.seriesName == seriesName)&&(identical(other.seasonId, seasonId) || other.seasonId == seasonId)&&(identical(other.seasonName, seasonName) || other.seasonName == seasonName)&&(identical(other.seriesPrimaryImageTag, seriesPrimaryImageTag) || other.seriesPrimaryImageTag == seriesPrimaryImageTag)&&(identical(other.albumArtist, albumArtist) || other.albumArtist == albumArtist)&&(identical(other.albumId, albumId) || other.albumId == albumId)&&(identical(other.album, album) || other.album == album)&&(identical(other.albumPrimaryImageTag, albumPrimaryImageTag) || other.albumPrimaryImageTag == albumPrimaryImageTag)&&const DeepCollectionEquality().equals(other.imageTags, imageTags)&&const DeepCollectionEquality().equals(other.backdropImageTags, backdropImageTags)&&(identical(other.userData, userData) || other.userData == userData)&&(identical(other.childCount, childCount) || other.childCount == childCount)&&const DeepCollectionEquality().equals(other.mediaStreams, mediaStreams)&&const DeepCollectionEquality().equals(other.chapters, chapters)&&const DeepCollectionEquality().equals(other.trickplay, trickplay));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hashAll([runtimeType,id,name,type,collectionType,overview,productionYear,officialRating,runTimeTicks,indexNumber,parentIndexNumber,seriesId,seriesName,seasonId,seasonName,seriesPrimaryImageTag,albumArtist,albumId,album,albumPrimaryImageTag,const DeepCollectionEquality().hash(imageTags),const DeepCollectionEquality().hash(backdropImageTags),userData,childCount]);
+int get hashCode => Object.hashAll([runtimeType,id,name,type,collectionType,overview,productionYear,officialRating,runTimeTicks,indexNumber,parentIndexNumber,seriesId,seriesName,seasonId,seasonName,seriesPrimaryImageTag,albumArtist,albumId,album,albumPrimaryImageTag,const DeepCollectionEquality().hash(imageTags),const DeepCollectionEquality().hash(backdropImageTags),userData,childCount,const DeepCollectionEquality().hash(mediaStreams),const DeepCollectionEquality().hash(chapters),const DeepCollectionEquality().hash(trickplay)]);
 
 @override
 String toString() {
-  return 'BaseItemDto(id: $id, name: $name, type: $type, collectionType: $collectionType, overview: $overview, productionYear: $productionYear, officialRating: $officialRating, runTimeTicks: $runTimeTicks, indexNumber: $indexNumber, parentIndexNumber: $parentIndexNumber, seriesId: $seriesId, seriesName: $seriesName, seasonId: $seasonId, seasonName: $seasonName, seriesPrimaryImageTag: $seriesPrimaryImageTag, albumArtist: $albumArtist, albumId: $albumId, album: $album, albumPrimaryImageTag: $albumPrimaryImageTag, imageTags: $imageTags, backdropImageTags: $backdropImageTags, userData: $userData, childCount: $childCount)';
+  return 'BaseItemDto(id: $id, name: $name, type: $type, collectionType: $collectionType, overview: $overview, productionYear: $productionYear, officialRating: $officialRating, runTimeTicks: $runTimeTicks, indexNumber: $indexNumber, parentIndexNumber: $parentIndexNumber, seriesId: $seriesId, seriesName: $seriesName, seasonId: $seasonId, seasonName: $seasonName, seriesPrimaryImageTag: $seriesPrimaryImageTag, albumArtist: $albumArtist, albumId: $albumId, album: $album, albumPrimaryImageTag: $albumPrimaryImageTag, imageTags: $imageTags, backdropImageTags: $backdropImageTags, userData: $userData, childCount: $childCount, mediaStreams: $mediaStreams, chapters: $chapters, trickplay: $trickplay)';
 }
 
 
@@ -54,7 +59,7 @@ abstract mixin class $BaseItemDtoCopyWith<$Res>  {
   factory $BaseItemDtoCopyWith(BaseItemDto value, $Res Function(BaseItemDto) _then) = _$BaseItemDtoCopyWithImpl;
 @useResult
 $Res call({
- String id, String name,@JsonKey(unknownEnumValue: BaseItemKind.unknown) BaseItemKind type, String? collectionType, String? overview, int? productionYear, String? officialRating, int? runTimeTicks, int? indexNumber, int? parentIndexNumber, String? seriesId, String? seriesName, String? seasonId, String? seasonName, String? seriesPrimaryImageTag, String? albumArtist, String? albumId, String? album, String? albumPrimaryImageTag, Map<String, String> imageTags, List<String> backdropImageTags, UserItemDataDto? userData, int? childCount
+ String id, String name,@JsonKey(unknownEnumValue: BaseItemKind.unknown) BaseItemKind type, String? collectionType, String? overview, int? productionYear, String? officialRating, int? runTimeTicks, int? indexNumber, int? parentIndexNumber, String? seriesId, String? seriesName, String? seasonId, String? seasonName, String? seriesPrimaryImageTag, String? albumArtist, String? albumId, String? album, String? albumPrimaryImageTag, Map<String, String> imageTags, List<String> backdropImageTags, UserItemDataDto? userData, int? childCount, List<MediaStream> mediaStreams, List<ChapterInfo> chapters, Map<String, Map<String, TrickplayInfo>> trickplay
 });
 
 
@@ -71,7 +76,7 @@ class _$BaseItemDtoCopyWithImpl<$Res>
 
 /// Create a copy of BaseItemDto
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? name = null,Object? type = null,Object? collectionType = freezed,Object? overview = freezed,Object? productionYear = freezed,Object? officialRating = freezed,Object? runTimeTicks = freezed,Object? indexNumber = freezed,Object? parentIndexNumber = freezed,Object? seriesId = freezed,Object? seriesName = freezed,Object? seasonId = freezed,Object? seasonName = freezed,Object? seriesPrimaryImageTag = freezed,Object? albumArtist = freezed,Object? albumId = freezed,Object? album = freezed,Object? albumPrimaryImageTag = freezed,Object? imageTags = null,Object? backdropImageTags = null,Object? userData = freezed,Object? childCount = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? name = null,Object? type = null,Object? collectionType = freezed,Object? overview = freezed,Object? productionYear = freezed,Object? officialRating = freezed,Object? runTimeTicks = freezed,Object? indexNumber = freezed,Object? parentIndexNumber = freezed,Object? seriesId = freezed,Object? seriesName = freezed,Object? seasonId = freezed,Object? seasonName = freezed,Object? seriesPrimaryImageTag = freezed,Object? albumArtist = freezed,Object? albumId = freezed,Object? album = freezed,Object? albumPrimaryImageTag = freezed,Object? imageTags = null,Object? backdropImageTags = null,Object? userData = freezed,Object? childCount = freezed,Object? mediaStreams = null,Object? chapters = null,Object? trickplay = null,}) {
   return _then(_self.copyWith(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
@@ -96,7 +101,10 @@ as String?,imageTags: null == imageTags ? _self.imageTags : imageTags // ignore:
 as Map<String, String>,backdropImageTags: null == backdropImageTags ? _self.backdropImageTags : backdropImageTags // ignore: cast_nullable_to_non_nullable
 as List<String>,userData: freezed == userData ? _self.userData : userData // ignore: cast_nullable_to_non_nullable
 as UserItemDataDto?,childCount: freezed == childCount ? _self.childCount : childCount // ignore: cast_nullable_to_non_nullable
-as int?,
+as int?,mediaStreams: null == mediaStreams ? _self.mediaStreams : mediaStreams // ignore: cast_nullable_to_non_nullable
+as List<MediaStream>,chapters: null == chapters ? _self.chapters : chapters // ignore: cast_nullable_to_non_nullable
+as List<ChapterInfo>,trickplay: null == trickplay ? _self.trickplay : trickplay // ignore: cast_nullable_to_non_nullable
+as Map<String, Map<String, TrickplayInfo>>,
   ));
 }
 /// Create a copy of BaseItemDto
@@ -193,10 +201,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  String name, @JsonKey(unknownEnumValue: BaseItemKind.unknown)  BaseItemKind type,  String? collectionType,  String? overview,  int? productionYear,  String? officialRating,  int? runTimeTicks,  int? indexNumber,  int? parentIndexNumber,  String? seriesId,  String? seriesName,  String? seasonId,  String? seasonName,  String? seriesPrimaryImageTag,  String? albumArtist,  String? albumId,  String? album,  String? albumPrimaryImageTag,  Map<String, String> imageTags,  List<String> backdropImageTags,  UserItemDataDto? userData,  int? childCount)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  String name, @JsonKey(unknownEnumValue: BaseItemKind.unknown)  BaseItemKind type,  String? collectionType,  String? overview,  int? productionYear,  String? officialRating,  int? runTimeTicks,  int? indexNumber,  int? parentIndexNumber,  String? seriesId,  String? seriesName,  String? seasonId,  String? seasonName,  String? seriesPrimaryImageTag,  String? albumArtist,  String? albumId,  String? album,  String? albumPrimaryImageTag,  Map<String, String> imageTags,  List<String> backdropImageTags,  UserItemDataDto? userData,  int? childCount,  List<MediaStream> mediaStreams,  List<ChapterInfo> chapters,  Map<String, Map<String, TrickplayInfo>> trickplay)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _BaseItemDto() when $default != null:
-return $default(_that.id,_that.name,_that.type,_that.collectionType,_that.overview,_that.productionYear,_that.officialRating,_that.runTimeTicks,_that.indexNumber,_that.parentIndexNumber,_that.seriesId,_that.seriesName,_that.seasonId,_that.seasonName,_that.seriesPrimaryImageTag,_that.albumArtist,_that.albumId,_that.album,_that.albumPrimaryImageTag,_that.imageTags,_that.backdropImageTags,_that.userData,_that.childCount);case _:
+return $default(_that.id,_that.name,_that.type,_that.collectionType,_that.overview,_that.productionYear,_that.officialRating,_that.runTimeTicks,_that.indexNumber,_that.parentIndexNumber,_that.seriesId,_that.seriesName,_that.seasonId,_that.seasonName,_that.seriesPrimaryImageTag,_that.albumArtist,_that.albumId,_that.album,_that.albumPrimaryImageTag,_that.imageTags,_that.backdropImageTags,_that.userData,_that.childCount,_that.mediaStreams,_that.chapters,_that.trickplay);case _:
   return orElse();
 
 }
@@ -214,10 +222,10 @@ return $default(_that.id,_that.name,_that.type,_that.collectionType,_that.overvi
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  String name, @JsonKey(unknownEnumValue: BaseItemKind.unknown)  BaseItemKind type,  String? collectionType,  String? overview,  int? productionYear,  String? officialRating,  int? runTimeTicks,  int? indexNumber,  int? parentIndexNumber,  String? seriesId,  String? seriesName,  String? seasonId,  String? seasonName,  String? seriesPrimaryImageTag,  String? albumArtist,  String? albumId,  String? album,  String? albumPrimaryImageTag,  Map<String, String> imageTags,  List<String> backdropImageTags,  UserItemDataDto? userData,  int? childCount)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  String name, @JsonKey(unknownEnumValue: BaseItemKind.unknown)  BaseItemKind type,  String? collectionType,  String? overview,  int? productionYear,  String? officialRating,  int? runTimeTicks,  int? indexNumber,  int? parentIndexNumber,  String? seriesId,  String? seriesName,  String? seasonId,  String? seasonName,  String? seriesPrimaryImageTag,  String? albumArtist,  String? albumId,  String? album,  String? albumPrimaryImageTag,  Map<String, String> imageTags,  List<String> backdropImageTags,  UserItemDataDto? userData,  int? childCount,  List<MediaStream> mediaStreams,  List<ChapterInfo> chapters,  Map<String, Map<String, TrickplayInfo>> trickplay)  $default,) {final _that = this;
 switch (_that) {
 case _BaseItemDto():
-return $default(_that.id,_that.name,_that.type,_that.collectionType,_that.overview,_that.productionYear,_that.officialRating,_that.runTimeTicks,_that.indexNumber,_that.parentIndexNumber,_that.seriesId,_that.seriesName,_that.seasonId,_that.seasonName,_that.seriesPrimaryImageTag,_that.albumArtist,_that.albumId,_that.album,_that.albumPrimaryImageTag,_that.imageTags,_that.backdropImageTags,_that.userData,_that.childCount);case _:
+return $default(_that.id,_that.name,_that.type,_that.collectionType,_that.overview,_that.productionYear,_that.officialRating,_that.runTimeTicks,_that.indexNumber,_that.parentIndexNumber,_that.seriesId,_that.seriesName,_that.seasonId,_that.seasonName,_that.seriesPrimaryImageTag,_that.albumArtist,_that.albumId,_that.album,_that.albumPrimaryImageTag,_that.imageTags,_that.backdropImageTags,_that.userData,_that.childCount,_that.mediaStreams,_that.chapters,_that.trickplay);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -234,10 +242,10 @@ return $default(_that.id,_that.name,_that.type,_that.collectionType,_that.overvi
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  String name, @JsonKey(unknownEnumValue: BaseItemKind.unknown)  BaseItemKind type,  String? collectionType,  String? overview,  int? productionYear,  String? officialRating,  int? runTimeTicks,  int? indexNumber,  int? parentIndexNumber,  String? seriesId,  String? seriesName,  String? seasonId,  String? seasonName,  String? seriesPrimaryImageTag,  String? albumArtist,  String? albumId,  String? album,  String? albumPrimaryImageTag,  Map<String, String> imageTags,  List<String> backdropImageTags,  UserItemDataDto? userData,  int? childCount)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  String name, @JsonKey(unknownEnumValue: BaseItemKind.unknown)  BaseItemKind type,  String? collectionType,  String? overview,  int? productionYear,  String? officialRating,  int? runTimeTicks,  int? indexNumber,  int? parentIndexNumber,  String? seriesId,  String? seriesName,  String? seasonId,  String? seasonName,  String? seriesPrimaryImageTag,  String? albumArtist,  String? albumId,  String? album,  String? albumPrimaryImageTag,  Map<String, String> imageTags,  List<String> backdropImageTags,  UserItemDataDto? userData,  int? childCount,  List<MediaStream> mediaStreams,  List<ChapterInfo> chapters,  Map<String, Map<String, TrickplayInfo>> trickplay)?  $default,) {final _that = this;
 switch (_that) {
 case _BaseItemDto() when $default != null:
-return $default(_that.id,_that.name,_that.type,_that.collectionType,_that.overview,_that.productionYear,_that.officialRating,_that.runTimeTicks,_that.indexNumber,_that.parentIndexNumber,_that.seriesId,_that.seriesName,_that.seasonId,_that.seasonName,_that.seriesPrimaryImageTag,_that.albumArtist,_that.albumId,_that.album,_that.albumPrimaryImageTag,_that.imageTags,_that.backdropImageTags,_that.userData,_that.childCount);case _:
+return $default(_that.id,_that.name,_that.type,_that.collectionType,_that.overview,_that.productionYear,_that.officialRating,_that.runTimeTicks,_that.indexNumber,_that.parentIndexNumber,_that.seriesId,_that.seriesName,_that.seasonId,_that.seasonName,_that.seriesPrimaryImageTag,_that.albumArtist,_that.albumId,_that.album,_that.albumPrimaryImageTag,_that.imageTags,_that.backdropImageTags,_that.userData,_that.childCount,_that.mediaStreams,_that.chapters,_that.trickplay);case _:
   return null;
 
 }
@@ -249,7 +257,7 @@ return $default(_that.id,_that.name,_that.type,_that.collectionType,_that.overvi
 @JsonSerializable()
 
 class _BaseItemDto extends BaseItemDto {
-  const _BaseItemDto({required this.id, required this.name, @JsonKey(unknownEnumValue: BaseItemKind.unknown) required this.type, this.collectionType, this.overview, this.productionYear, this.officialRating, this.runTimeTicks, this.indexNumber, this.parentIndexNumber, this.seriesId, this.seriesName, this.seasonId, this.seasonName, this.seriesPrimaryImageTag, this.albumArtist, this.albumId, this.album, this.albumPrimaryImageTag, this.imageTags = const {}, this.backdropImageTags = const [], this.userData, this.childCount}): super._();
+  const _BaseItemDto({required this.id, required this.name, @JsonKey(unknownEnumValue: BaseItemKind.unknown) required this.type, this.collectionType, this.overview, this.productionYear, this.officialRating, this.runTimeTicks, this.indexNumber, this.parentIndexNumber, this.seriesId, this.seriesName, this.seasonId, this.seasonName, this.seriesPrimaryImageTag, this.albumArtist, this.albumId, this.album, this.albumPrimaryImageTag, this.imageTags = const {}, this.backdropImageTags = const [], this.userData, this.childCount, this.mediaStreams = const [], this.chapters = const [], this.trickplay = const {}}): super._();
   factory _BaseItemDto.fromJson(Map<String, dynamic> json) => _$BaseItemDtoFromJson(json);
 
 @override final  String id;
@@ -281,6 +289,14 @@ class _BaseItemDto extends BaseItemDto {
 @override@JsonKey() final  List<String> backdropImageTags;
 @override final  UserItemDataDto? userData;
 @override final  int? childCount;
+/// The file's tracks (video, audio, subtitles): only on the full item
+/// (`GET /Items/{id}`), for its technical badges.
+@override@JsonKey() final  List<MediaStream> mediaStreams;
+/// A video's chapters, in order (full item only).
+@override@JsonKey() final  List<ChapterInfo> chapters;
+/// Seek-bar thumbnails: media source id → picture width → how they are
+/// stored (full item only; empty when the server made none).
+@override@JsonKey() final  Map<String, Map<String, TrickplayInfo>> trickplay;
 
 /// Create a copy of BaseItemDto
 /// with the given fields replaced by the non-null parameter values.
@@ -295,16 +311,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _BaseItemDto&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.type, type) || other.type == type)&&(identical(other.collectionType, collectionType) || other.collectionType == collectionType)&&(identical(other.overview, overview) || other.overview == overview)&&(identical(other.productionYear, productionYear) || other.productionYear == productionYear)&&(identical(other.officialRating, officialRating) || other.officialRating == officialRating)&&(identical(other.runTimeTicks, runTimeTicks) || other.runTimeTicks == runTimeTicks)&&(identical(other.indexNumber, indexNumber) || other.indexNumber == indexNumber)&&(identical(other.parentIndexNumber, parentIndexNumber) || other.parentIndexNumber == parentIndexNumber)&&(identical(other.seriesId, seriesId) || other.seriesId == seriesId)&&(identical(other.seriesName, seriesName) || other.seriesName == seriesName)&&(identical(other.seasonId, seasonId) || other.seasonId == seasonId)&&(identical(other.seasonName, seasonName) || other.seasonName == seasonName)&&(identical(other.seriesPrimaryImageTag, seriesPrimaryImageTag) || other.seriesPrimaryImageTag == seriesPrimaryImageTag)&&(identical(other.albumArtist, albumArtist) || other.albumArtist == albumArtist)&&(identical(other.albumId, albumId) || other.albumId == albumId)&&(identical(other.album, album) || other.album == album)&&(identical(other.albumPrimaryImageTag, albumPrimaryImageTag) || other.albumPrimaryImageTag == albumPrimaryImageTag)&&const DeepCollectionEquality().equals(other.imageTags, imageTags)&&const DeepCollectionEquality().equals(other.backdropImageTags, backdropImageTags)&&(identical(other.userData, userData) || other.userData == userData)&&(identical(other.childCount, childCount) || other.childCount == childCount));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _BaseItemDto&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.type, type) || other.type == type)&&(identical(other.collectionType, collectionType) || other.collectionType == collectionType)&&(identical(other.overview, overview) || other.overview == overview)&&(identical(other.productionYear, productionYear) || other.productionYear == productionYear)&&(identical(other.officialRating, officialRating) || other.officialRating == officialRating)&&(identical(other.runTimeTicks, runTimeTicks) || other.runTimeTicks == runTimeTicks)&&(identical(other.indexNumber, indexNumber) || other.indexNumber == indexNumber)&&(identical(other.parentIndexNumber, parentIndexNumber) || other.parentIndexNumber == parentIndexNumber)&&(identical(other.seriesId, seriesId) || other.seriesId == seriesId)&&(identical(other.seriesName, seriesName) || other.seriesName == seriesName)&&(identical(other.seasonId, seasonId) || other.seasonId == seasonId)&&(identical(other.seasonName, seasonName) || other.seasonName == seasonName)&&(identical(other.seriesPrimaryImageTag, seriesPrimaryImageTag) || other.seriesPrimaryImageTag == seriesPrimaryImageTag)&&(identical(other.albumArtist, albumArtist) || other.albumArtist == albumArtist)&&(identical(other.albumId, albumId) || other.albumId == albumId)&&(identical(other.album, album) || other.album == album)&&(identical(other.albumPrimaryImageTag, albumPrimaryImageTag) || other.albumPrimaryImageTag == albumPrimaryImageTag)&&const DeepCollectionEquality().equals(other.imageTags, imageTags)&&const DeepCollectionEquality().equals(other.backdropImageTags, backdropImageTags)&&(identical(other.userData, userData) || other.userData == userData)&&(identical(other.childCount, childCount) || other.childCount == childCount)&&const DeepCollectionEquality().equals(other.mediaStreams, mediaStreams)&&const DeepCollectionEquality().equals(other.chapters, chapters)&&const DeepCollectionEquality().equals(other.trickplay, trickplay));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hashAll([runtimeType,id,name,type,collectionType,overview,productionYear,officialRating,runTimeTicks,indexNumber,parentIndexNumber,seriesId,seriesName,seasonId,seasonName,seriesPrimaryImageTag,albumArtist,albumId,album,albumPrimaryImageTag,const DeepCollectionEquality().hash(imageTags),const DeepCollectionEquality().hash(backdropImageTags),userData,childCount]);
+int get hashCode => Object.hashAll([runtimeType,id,name,type,collectionType,overview,productionYear,officialRating,runTimeTicks,indexNumber,parentIndexNumber,seriesId,seriesName,seasonId,seasonName,seriesPrimaryImageTag,albumArtist,albumId,album,albumPrimaryImageTag,const DeepCollectionEquality().hash(imageTags),const DeepCollectionEquality().hash(backdropImageTags),userData,childCount,const DeepCollectionEquality().hash(mediaStreams),const DeepCollectionEquality().hash(chapters),const DeepCollectionEquality().hash(trickplay)]);
 
 @override
 String toString() {
-  return 'BaseItemDto(id: $id, name: $name, type: $type, collectionType: $collectionType, overview: $overview, productionYear: $productionYear, officialRating: $officialRating, runTimeTicks: $runTimeTicks, indexNumber: $indexNumber, parentIndexNumber: $parentIndexNumber, seriesId: $seriesId, seriesName: $seriesName, seasonId: $seasonId, seasonName: $seasonName, seriesPrimaryImageTag: $seriesPrimaryImageTag, albumArtist: $albumArtist, albumId: $albumId, album: $album, albumPrimaryImageTag: $albumPrimaryImageTag, imageTags: $imageTags, backdropImageTags: $backdropImageTags, userData: $userData, childCount: $childCount)';
+  return 'BaseItemDto(id: $id, name: $name, type: $type, collectionType: $collectionType, overview: $overview, productionYear: $productionYear, officialRating: $officialRating, runTimeTicks: $runTimeTicks, indexNumber: $indexNumber, parentIndexNumber: $parentIndexNumber, seriesId: $seriesId, seriesName: $seriesName, seasonId: $seasonId, seasonName: $seasonName, seriesPrimaryImageTag: $seriesPrimaryImageTag, albumArtist: $albumArtist, albumId: $albumId, album: $album, albumPrimaryImageTag: $albumPrimaryImageTag, imageTags: $imageTags, backdropImageTags: $backdropImageTags, userData: $userData, childCount: $childCount, mediaStreams: $mediaStreams, chapters: $chapters, trickplay: $trickplay)';
 }
 
 
@@ -315,7 +331,7 @@ abstract mixin class _$BaseItemDtoCopyWith<$Res> implements $BaseItemDtoCopyWith
   factory _$BaseItemDtoCopyWith(_BaseItemDto value, $Res Function(_BaseItemDto) _then) = __$BaseItemDtoCopyWithImpl;
 @override @useResult
 $Res call({
- String id, String name,@JsonKey(unknownEnumValue: BaseItemKind.unknown) BaseItemKind type, String? collectionType, String? overview, int? productionYear, String? officialRating, int? runTimeTicks, int? indexNumber, int? parentIndexNumber, String? seriesId, String? seriesName, String? seasonId, String? seasonName, String? seriesPrimaryImageTag, String? albumArtist, String? albumId, String? album, String? albumPrimaryImageTag, Map<String, String> imageTags, List<String> backdropImageTags, UserItemDataDto? userData, int? childCount
+ String id, String name,@JsonKey(unknownEnumValue: BaseItemKind.unknown) BaseItemKind type, String? collectionType, String? overview, int? productionYear, String? officialRating, int? runTimeTicks, int? indexNumber, int? parentIndexNumber, String? seriesId, String? seriesName, String? seasonId, String? seasonName, String? seriesPrimaryImageTag, String? albumArtist, String? albumId, String? album, String? albumPrimaryImageTag, Map<String, String> imageTags, List<String> backdropImageTags, UserItemDataDto? userData, int? childCount, List<MediaStream> mediaStreams, List<ChapterInfo> chapters, Map<String, Map<String, TrickplayInfo>> trickplay
 });
 
 
@@ -332,7 +348,7 @@ class __$BaseItemDtoCopyWithImpl<$Res>
 
 /// Create a copy of BaseItemDto
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? name = null,Object? type = null,Object? collectionType = freezed,Object? overview = freezed,Object? productionYear = freezed,Object? officialRating = freezed,Object? runTimeTicks = freezed,Object? indexNumber = freezed,Object? parentIndexNumber = freezed,Object? seriesId = freezed,Object? seriesName = freezed,Object? seasonId = freezed,Object? seasonName = freezed,Object? seriesPrimaryImageTag = freezed,Object? albumArtist = freezed,Object? albumId = freezed,Object? album = freezed,Object? albumPrimaryImageTag = freezed,Object? imageTags = null,Object? backdropImageTags = null,Object? userData = freezed,Object? childCount = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? name = null,Object? type = null,Object? collectionType = freezed,Object? overview = freezed,Object? productionYear = freezed,Object? officialRating = freezed,Object? runTimeTicks = freezed,Object? indexNumber = freezed,Object? parentIndexNumber = freezed,Object? seriesId = freezed,Object? seriesName = freezed,Object? seasonId = freezed,Object? seasonName = freezed,Object? seriesPrimaryImageTag = freezed,Object? albumArtist = freezed,Object? albumId = freezed,Object? album = freezed,Object? albumPrimaryImageTag = freezed,Object? imageTags = null,Object? backdropImageTags = null,Object? userData = freezed,Object? childCount = freezed,Object? mediaStreams = null,Object? chapters = null,Object? trickplay = null,}) {
   return _then(_BaseItemDto(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
@@ -357,7 +373,10 @@ as String?,imageTags: null == imageTags ? _self.imageTags : imageTags // ignore:
 as Map<String, String>,backdropImageTags: null == backdropImageTags ? _self.backdropImageTags : backdropImageTags // ignore: cast_nullable_to_non_nullable
 as List<String>,userData: freezed == userData ? _self.userData : userData // ignore: cast_nullable_to_non_nullable
 as UserItemDataDto?,childCount: freezed == childCount ? _self.childCount : childCount // ignore: cast_nullable_to_non_nullable
-as int?,
+as int?,mediaStreams: null == mediaStreams ? _self.mediaStreams : mediaStreams // ignore: cast_nullable_to_non_nullable
+as List<MediaStream>,chapters: null == chapters ? _self.chapters : chapters // ignore: cast_nullable_to_non_nullable
+as List<ChapterInfo>,trickplay: null == trickplay ? _self.trickplay : trickplay // ignore: cast_nullable_to_non_nullable
+as Map<String, Map<String, TrickplayInfo>>,
   ));
 }
 

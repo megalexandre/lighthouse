@@ -3,10 +3,14 @@ import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../../../api/models/base_item_dto.dart';
+import '../../../api/models/media_stream.dart';
 import '../../../core/failure.dart';
+import '../../../core/theme/app_tokens.dart';
 import '../../../core/ticks.dart';
 import '../../../router.dart';
+import '../../../widgets/app_button.dart';
 import '../../../widgets/error_retry.dart';
+import '../../../widgets/media_badge.dart';
 import '../../library/application/library_providers.dart';
 import '../../library/presentation/item_card.dart';
 import '../../player/data/playback_repository.dart';
@@ -131,32 +135,32 @@ class _PlayButtonsState extends ConsumerState<_PlayButtons> {
       runSpacing: 12,
       crossAxisAlignment: WrapCrossAlignment.center,
       children: [
+        // One primary button: Resume when there is a place, else Play.
         if (resumable) ...[
-          FilledButton.icon(
+          AppButton(
             key: ItemScreen.resumeButton,
-            icon: const Icon(Icons.play_arrow),
-            label: Text('Resume from ${formatPosition(position)}'),
+            icon: Icons.play_arrow,
+            label: 'Resume from ${formatPosition(position)}',
             onPressed: () => _play(position),
           ),
-          OutlinedButton.icon(
+          AppButton.secondary(
             key: ItemScreen.playButton,
-            icon: const Icon(Icons.replay),
-            label: const Text('Start over'),
+            icon: Icons.replay,
+            label: 'Start over',
             onPressed: () => _play(Duration.zero),
           ),
         ] else
-          FilledButton.icon(
+          AppButton(
             key: ItemScreen.playButton,
-            icon: const Icon(Icons.play_arrow),
-            label: const Text('Play'),
+            icon: Icons.play_arrow,
+            label: 'Play',
             onPressed: () => _play(Duration.zero),
           ),
-        IconButton(
+        AppIconButton(
           key: ItemScreen.watchedButton,
           tooltip: played ? 'Mark as unwatched' : 'Mark as watched',
-          isSelected: played,
-          icon: const Icon(Icons.check_circle_outline),
-          selectedIcon: const Icon(Icons.check_circle),
+          selected: played,
+          icon: Icons.check,
           onPressed: _saving ? null : () => _toggleWatched(played),
         ),
       ],
@@ -207,23 +211,54 @@ class _ReadButtonsState extends ConsumerState<_ReadButtons> {
       runSpacing: 12,
       crossAxisAlignment: WrapCrossAlignment.center,
       children: [
-        FilledButton.icon(
+        AppButton(
           key: ItemScreen.readButton,
-          icon: const Icon(Icons.auto_stories),
-          label: Text(started ? 'Continue reading · $percent%' : 'Read'),
+          icon: Icons.auto_stories,
+          label: started ? 'Continue reading · $percent%' : 'Read',
           onPressed: () => context.push(Routes.read(item.id)),
         ),
-        IconButton(
+        AppIconButton(
           key: ItemScreen.watchedButton,
           tooltip: read ? 'Mark as unread' : 'Mark as read',
-          isSelected: read,
-          icon: const Icon(Icons.check_circle_outline),
-          selectedIcon: const Icon(Icons.check_circle),
+          selected: read,
+          icon: Icons.check,
           onPressed: _saving ? null : () => _toggleRead(read),
         ),
       ],
     );
   }
+}
+
+/// The file's technical labels, as the design system shows them: its
+/// resolution (4K, 1080P, 720P), dynamic range (HDR10, DOLBY VISION, HLG),
+/// surround sound (5.1, 7.1) and CC when it has subtitles.
+List<String> technicalBadges(BaseItemDto item) {
+  final streams = item.mediaStreams;
+  final video = streams
+      .where((s) => s.type == MediaStreamType.video)
+      .firstOrNull;
+  final channels = streams
+      .where((s) => s.type == MediaStreamType.audio)
+      .map((s) => s.channels ?? 0)
+      .fold(0, (a, b) => a > b ? a : b);
+  return [
+    if (video?.width case final int w)
+      if (w >= 3200)
+        '4K'
+      else if (w >= 1800)
+        '1080P'
+      else if (w >= 1200)
+        '720P',
+    if (video?.videoRangeType case final String range)
+      if (range.startsWith('DOVI'))
+        'Dolby Vision'
+      else if (range.startsWith('HDR10'))
+        'HDR10'
+      else if (range == 'HLG')
+        'HLG',
+    if (channels >= 8) '7.1' else if (channels >= 6) '5.1',
+    if (streams.any((s) => s.type == MediaStreamType.subtitle)) 'CC',
+  ];
 }
 
 /// Year · 1h 32m · rating, whichever are known.
@@ -261,7 +296,7 @@ class _Header extends StatelessWidget {
         Text(
           item.name,
           key: ItemScreen.title,
-          style: theme.textTheme.headlineMedium,
+          style: theme.textTheme.headlineLarge,
         ),
         if (item.albumArtist != null)
           Text(item.albumArtist!, style: theme.textTheme.titleMedium),
@@ -273,6 +308,15 @@ class _Header extends StatelessWidget {
               style: theme.textTheme.bodyMedium?.copyWith(
                 color: theme.colorScheme.onSurfaceVariant,
               ),
+            ),
+          ),
+        if (technicalBadges(item) case final badges when badges.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.only(top: 12),
+            child: Wrap(
+              spacing: context.tokens.space(1),
+              runSpacing: context.tokens.space(1),
+              children: [for (final b in badges) MediaBadge(b)],
             ),
           ),
         if (item.userData?.played ?? false)
@@ -301,7 +345,11 @@ class _Header extends StatelessWidget {
         final poster = SizedBox(
           width: posterWidth,
           child: ClipRRect(
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(
+              cardAspectRatio(item.type) < 1
+                  ? context.tokens.radiusSm
+                  : context.tokens.radiusMd,
+            ),
             child: AspectRatio(
               aspectRatio: cardAspectRatio(item.type),
               child: ItemImage(item: item, width: posterWidth),
@@ -413,7 +461,7 @@ class _EpisodeTile extends StatelessWidget {
     final number = episode.indexNumber;
     return InkWell(
       key: ItemScreen.episodeKey(episode.id),
-      borderRadius: BorderRadius.circular(8),
+      borderRadius: BorderRadius.circular(context.tokens.radiusMd),
       onTap: () => context.push(Routes.item(episode.id)),
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 8),
@@ -423,7 +471,7 @@ class _EpisodeTile extends StatelessWidget {
             SizedBox(
               width: 200,
               child: ClipRRect(
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(context.tokens.radiusMd),
                 child: AspectRatio(
                   aspectRatio: 16 / 9,
                   child: Stack(
@@ -497,10 +545,10 @@ class _Tracks extends ConsumerWidget {
         // The album plays on from the chosen track (see PlayerScreen).
         Padding(
           padding: const EdgeInsets.only(bottom: 8),
-          child: FilledButton.icon(
+          child: AppButton(
             key: ItemScreen.playButton,
-            icon: const Icon(Icons.play_arrow),
-            label: const Text('Play'),
+            icon: Icons.play_arrow,
+            label: 'Play',
             onPressed: () => context.push(Routes.play(tracks.first.id)),
           ),
         ),
