@@ -1,0 +1,9 @@
+{
+  // bdd_widget_test writes x_test.dart beside x.feature (it cannot write
+  // anywhere else): the Explorer shows it under its .feature.
+  "explorer.fileNesting.enabled": true,
+  "explorer.fileNesting.expand": false,
+  "explorer.fileNesting.patterns": {
+    "*.feature": "${capture}_test.dart"
+  }
+}
