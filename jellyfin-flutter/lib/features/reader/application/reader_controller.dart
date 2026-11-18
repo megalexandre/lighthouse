@@ -89,9 +89,13 @@ class ReaderController extends AsyncNotifier<ReaderSession> {
   @override
   Future<ReaderSession> build() async {
     ref.onDispose(_release);
+    // Read before the first await: the reader can close while the book
+    // downloads, and a closed controller's ref cannot be read.
+    final books = _books;
+    final open = ref.read(bookOpenerProvider);
     final item = await ref.read(libraryRepositoryProvider).item(itemId);
-    final file = await _books.file(item);
-    final document = await ref.read(bookOpenerProvider)(file);
+    final file = await books.file(item);
+    final document = await open(file);
     if (!ref.mounted) {
       await document.dispose();
       throw const NotReadable('a book closed while opening');

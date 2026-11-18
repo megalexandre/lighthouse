@@ -28,6 +28,10 @@ final authControllerProvider = AsyncNotifierProvider<AuthController, AuthState>(
 /// Owns the server and the session: restores them at startup and changes
 /// them on connect, login and logout. Methods throw a [Failure] for the
 /// screen to show; the state only changes when they succeed.
+///
+/// The app can close while a method waits on the server. Each method takes
+/// the store before its first `await`, so what it was asked to save or drop
+/// still is, and sets the state only while the controller is alive.
 class AuthController extends AsyncNotifier<AuthState> {
   SessionStore get _store => ref.read(sessionStoreProvider);
 
@@ -54,25 +58,29 @@ class AuthController extends AsyncNotifier<AuthState> {
 
   /// Connect screen: checks [address] and makes it the current server.
   Future<void> connect(String address) async {
+    final store = _store;
     final server = await ref.read(serverRepositoryProvider).probe(address);
-    await _store.writeServer(server);
-    state = AsyncData(AuthState(server: server));
+    await store.writeServer(server);
+    if (ref.mounted) state = AsyncData(AuthState(server: server));
   }
 
   /// Back to the connect screen to pick another server.
   Future<void> changeServer() async {
     await _store.clearServer();
-    state = const AsyncData(AuthState());
+    if (ref.mounted) state = const AsyncData(AuthState());
   }
 
   Future<void> login(String username, String password) async {
     final server = state.requireValue.server;
     if (server == null) throw StateError('login before connecting');
+    final store = _store;
     final session = await ref
         .read(authRepositoryProvider)
         .login(server, username, password);
-    await _store.writeSession(session);
-    state = AsyncData(AuthState(server: server, session: session));
+    await store.writeSession(session);
+    if (ref.mounted) {
+      state = AsyncData(AuthState(server: server, session: session));
+    }
   }
 
   /// The server rejected the token while the app was open (revoked, or
@@ -90,12 +98,13 @@ class AuthController extends AsyncNotifier<AuthState> {
     final current = state.requireValue;
     final session = current.session;
     if (session == null) return;
+    final store = _store;
     try {
       await ref.read(authRepositoryProvider).logout(session);
     } on Failure catch (e) {
       log.warning('auth', 'server logout failed, signing out locally', e);
     }
-    await _store.clearSession();
-    state = AsyncData(AuthState(server: current.server));
+    await store.clearSession();
+    if (ref.mounted) state = AsyncData(AuthState(server: current.server));
   }
 }

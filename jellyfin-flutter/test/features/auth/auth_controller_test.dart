@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -96,6 +97,22 @@ void main() {
 
     await container.read(authControllerProvider.notifier).logout();
     expect(container.read(authControllerProvider).value!.signedIn, isFalse);
+    expect(app.store.values, isNot(contains(SessionStore.sessionKey)));
+  });
+
+  test('the app closing while the server is told about a logout: no error, '
+      'and the session is still dropped here', () async {
+    storeSession();
+    final answer = Completer<void>();
+    app.auth.logoutAnswer = answer.future;
+    final container = app.container();
+    await container.read(authControllerProvider.future);
+
+    final logout = container.read(authControllerProvider.notifier).logout();
+    container.dispose();
+    answer.complete();
+
+    await expectLater(logout, completes);
     expect(app.store.values, isNot(contains(SessionStore.sessionKey)));
   });
 

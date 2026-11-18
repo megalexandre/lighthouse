@@ -78,6 +78,9 @@ class FakeAuthRepository implements AuthRepository {
   /// Thrown by [logout].
   Failure? logoutFailure;
 
+  /// While set, [logout] waits for it: the server is slow to answer.
+  Future<void>? logoutAnswer;
+
   final loggedOut = <Session>[];
 
   @override
@@ -100,6 +103,7 @@ class FakeAuthRepository implements AuthRepository {
   @override
   Future<void> logout(Session session) async {
     loggedOut.add(session);
+    await logoutAnswer;
     if (logoutFailure != null) throw logoutFailure!;
   }
 }
