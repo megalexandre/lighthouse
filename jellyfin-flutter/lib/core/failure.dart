@@ -4,11 +4,16 @@
 sealed class Failure implements Exception {
   const Failure();
 
-  /// Text for the user.
+  /// Text for the user: plain words, never an exception's own text.
   String get message;
 
+  /// What went wrong technically, for the log; never shown to the user.
+  String? get detail => null;
+
   @override
-  String toString() => '$runtimeType: $message';
+  String toString() => detail == null
+      ? '$runtimeType: $message'
+      : '$runtimeType: $message ($detail)';
 }
 
 /// No answer: wrong address, server down, no network, timeout.
@@ -47,15 +52,21 @@ final class Unauthorized extends Failure {
   String get message => 'Wrong username or password.';
 }
 
-/// Any other error status, or a response the app cannot read.
+/// Any other error status, or a response the app cannot read. [hint], when
+/// the cause means something to the user (a bad certificate), replaces the
+/// generic message.
 final class ServerError extends Failure {
-  const ServerError(this.detail, {this.statusCode});
+  const ServerError(this.detail, {this.statusCode, this.hint});
+  @override
   final String detail;
   final int? statusCode;
+  final String? hint;
   @override
-  String get message => statusCode == null
-      ? 'Unexpected response from the server ($detail).'
-      : 'The server answered with error $statusCode.';
+  String get message =>
+      hint ??
+      (statusCode == null
+          ? 'Unexpected response from the server.'
+          : 'The server answered with error $statusCode.');
 }
 
 /// The system keyring refused to store or read the session (or, [what]
@@ -65,10 +76,11 @@ final class StorageFailure extends Failure {
     this.detail, {
     this.what = 'the login in the system keyring',
   });
+  @override
   final String detail;
   final String what;
   @override
-  String get message => 'Could not save $what ($detail).';
+  String get message => 'Could not save $what.';
 }
 
 /// The server offers no way for this client to play the item.
@@ -82,9 +94,10 @@ final class NotPlayable extends Failure {
 /// The player could not open or decode the stream.
 final class PlayerError extends Failure {
   const PlayerError(this.detail);
+  @override
   final String detail;
   @override
-  String get message => 'Playback failed: $detail';
+  String get message => 'Playback failed: the stream could not be opened.';
 }
 
 /// The book is in a format the reader cannot open.

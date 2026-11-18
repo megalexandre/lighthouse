@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:dio/dio.dart';
 
 import '../core/failure.dart';
+import '../core/log.dart';
 import 'auth_interceptor.dart';
 import 'client_info.dart';
 import 'log_interceptor.dart';
@@ -41,13 +42,20 @@ class JellyfinApi {
     try {
       return await request(dio);
     } on DioException catch (e) {
-      throw _failureOf(e);
+      throw _logged(_failureOf(e));
     } on TypeError catch (e) {
       // A field missing or of the wrong type in the response.
-      throw ServerError(e.toString());
+      throw _logged(ServerError(e.toString()));
     } on FormatException catch (e) {
-      throw ServerError(e.message);
+      throw _logged(ServerError(e.message));
     }
+  }
+
+  /// The screens show only a failure's plain message; its technical detail
+  /// (why a response could not be read) goes to the log here.
+  static Failure _logged(Failure failure) {
+    if (failure.detail != null) log.warning('http', 'request failed', failure);
+    return failure;
   }
 
   /// GET of a JSON object, parsed by [parse] (a model's fromJson). A
@@ -122,7 +130,10 @@ class JellyfinApi {
         if (status == 401) return const Unauthorized();
         return ServerError('HTTP $status', statusCode: status);
       case DioExceptionType.badCertificate:
-        return ServerError('invalid TLS certificate');
+        return const ServerError(
+          'invalid TLS certificate',
+          hint: "The server's security certificate is not valid.",
+        );
       case DioExceptionType.cancel:
         return ServerError('request cancelled');
       case DioExceptionType.transformTimeout:

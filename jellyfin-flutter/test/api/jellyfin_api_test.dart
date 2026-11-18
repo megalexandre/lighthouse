@@ -95,11 +95,18 @@ void main() {
     );
   });
 
-  test('JSON without a required field is ServerError', () async {
+  test('JSON without a required field is ServerError, and its message keeps '
+      "the Dart error's text from the user", () async {
     final adapter = FakeAdapter((_) async => json({'ServerName': 'x'}));
     await expectLater(
       api(adapter).publicSystemInfo(),
-      throwsA(isA<ServerError>()),
+      throwsA(
+        isA<ServerError>().having(
+          (e) => e.message,
+          'message',
+          'Unexpected response from the server.',
+        ),
+      ),
     );
   });
 }
