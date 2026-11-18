@@ -117,7 +117,7 @@ Os nomes são os do Lanterna. Um tema novo usa os mesmos nomes; os que ele não 
 | `accent-hover` | `inversePrimary` |
 | `accent-2` | Acento secundário (`secondary`, `tertiary`) |
 | `danger` | Erros (`error`); `success`, `warning` em `context.tokens` |
-| `osd-*` | Sobre o vídeo e sobre a página do leitor: ícones (`osd-ink`), textos secundários (`osd-ink-muted`), degradê dos controles (`osd-scrim`), barras (`osd-surface`), trilho, buffer e progresso do player (`osd-track`, `osd-buffer`, `osd-accent`). Iguais nos dois modos: o player é sempre escuro. |
+| `osd-*` | Sobre o vídeo e sobre a página do leitor: ícones (`osd-ink`), textos secundários (`osd-ink-muted`), degradê dos controles (`osd-scrim`), barras (`osd-surface`), trilho, buffer e progresso do player (`osd-track`, `osd-buffer`, `osd-accent`). Também sobre imagens: o carrossel da home e a top bar flutuante (texto, botões, degradês a partir de `osd-scrim` opaco, a barra sólida em `osd-surface`, o botão branco com tinta `osd-accent-ink`). Iguais nos dois modos: o player e o que fica sobre imagens são sempre escuros. |
 | `hero-title` | `headlineLarge`, `display*` |
 | `section-title` | `titleLarge`, `headlineMedium/Small`, títulos da AppBar |
 | `title` | `titleMedium/Small` |

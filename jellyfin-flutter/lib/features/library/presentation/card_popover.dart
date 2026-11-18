@@ -215,29 +215,36 @@ class _CardPopoverState extends ConsumerState<CardPopover>
       ].join(' · '),
       _ => null,
     };
-    const ink = Colors.white;
-    const muted = Color(0xFF9AABB6);
+    // On the page, so the theme's colours: in Prime's dark mode, white
+    // ink on a panel between bg-000 and bg-100.
+    final scheme = theme.colorScheme;
+    final ink = scheme.onSurface;
+    final muted = scheme.onSurfaceVariant;
 
-    return Material(
-      key: CardPopover.panel,
-      color: const Color(0xFF0B1118),
-      elevation: 0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(10),
-        side: const BorderSide(color: Color(0x0FFFFFFF)),
+    final corners = BorderRadius.circular(10);
+    // The shadow outside the panel: inside its clip it would darken the
+    // panel itself (unseen on a dark panel, grey on a light one).
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        borderRadius: corners,
+        boxShadow: [
+          BoxShadow(
+            color: scheme.shadow.withValues(alpha: 0.75),
+            blurRadius: 48,
+            offset: const Offset(0, 18),
+          ),
+        ],
       ),
-      shadowColor: Colors.transparent,
-      clipBehavior: Clip.antiAlias,
-      child: DecoratedBox(
-        decoration: const BoxDecoration(
-          boxShadow: [
-            BoxShadow(
-              color: Color(0xBF000000),
-              blurRadius: 48,
-              offset: Offset(0, 18),
-            ),
-          ],
+      child: Material(
+        key: CardPopover.panel,
+        color: Color.lerp(scheme.surfaceContainerLowest, scheme.surface, 0.7),
+        elevation: 0,
+        shape: RoundedRectangleBorder(
+          borderRadius: corners,
+          side: BorderSide(color: ink.withValues(alpha: 0.06)),
         ),
+        shadowColor: Colors.transparent,
+        clipBehavior: Clip.antiAlias,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           mainAxisSize: MainAxisSize.min,
@@ -247,7 +254,7 @@ class _CardPopoverState extends ConsumerState<CardPopover>
               child: AspectRatio(
                 aspectRatio: 16 / 9,
                 child: ColoredBox(
-                  color: const Color(0xFF1B2530),
+                  color: scheme.surfaceContainer,
                   child: picture == null
                       ? ItemImage(item: item, width: width)
                       : Image.network(
@@ -263,7 +270,7 @@ class _CardPopoverState extends ConsumerState<CardPopover>
               SizedBox(
                 height: 4,
                 child: ColoredBox(
-                  color: const Color(0x40FFFFFF),
+                  color: ink.withValues(alpha: 0.25),
                   child: FractionallySizedBox(
                     alignment: Alignment.centerLeft,
                     widthFactor: progress,
@@ -284,9 +291,6 @@ class _CardPopoverState extends ConsumerState<CardPopover>
                       overflow: TextOverflow.ellipsis,
                       style: theme.textTheme.titleLarge?.copyWith(
                         color: ink,
-                        fontSize: 24,
-                        height: 30 / 24,
-                        fontWeight: FontWeight.w700,
                         letterSpacing: 0.5,
                       ),
                     ),
@@ -295,10 +299,7 @@ class _CardPopoverState extends ConsumerState<CardPopover>
                     const SizedBox(height: 4),
                     Text(
                       context2,
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: muted,
-                        fontSize: 14,
-                      ),
+                      style: theme.textTheme.bodyMedium?.copyWith(color: muted),
                     ),
                   ],
                   const SizedBox(height: 14),
@@ -323,23 +324,23 @@ class _CardPopoverState extends ConsumerState<CardPopover>
                                 borderRadius: BorderRadius.circular(8),
                               ),
                             ),
+                            // Prime's white button: the ink as the fill.
                             backgroundColor: WidgetStateProperty.resolveWith(
                               (s) => s.contains(WidgetState.hovered)
-                                  ? const Color(0xFFE3E9EF)
-                                  : Colors.white,
+                                  ? Color.lerp(ink, muted, 0.2)
+                                  : ink,
                             ),
-                            foregroundColor: const WidgetStatePropertyAll(
-                              Color(0xFF00050D),
+                            foregroundColor: WidgetStatePropertyAll(
+                              scheme.surfaceContainerLowest,
                             ),
-                            iconColor: const WidgetStatePropertyAll(
-                              Color(0xFF00050D),
+                            iconColor: WidgetStatePropertyAll(
+                              scheme.surfaceContainerLowest,
                             ),
                             overlayColor: const WidgetStatePropertyAll(
                               Colors.transparent,
                             ),
                             textStyle: WidgetStatePropertyAll(
-                              theme.textTheme.labelLarge?.copyWith(
-                                fontSize: 17,
+                              theme.textTheme.titleMedium?.copyWith(
                                 fontWeight: FontWeight.w700,
                               ),
                             ),
@@ -375,7 +376,7 @@ class _CardPopoverState extends ConsumerState<CardPopover>
                           DecoratedBox(
                             decoration: BoxDecoration(
                               border: Border.all(
-                                color: const Color(0x59FFFFFF),
+                                color: ink.withValues(alpha: 0.35),
                               ),
                               borderRadius: BorderRadius.circular(3),
                             ),
@@ -401,7 +402,6 @@ class _CardPopoverState extends ConsumerState<CardPopover>
                             overflow: TextOverflow.ellipsis,
                             style: theme.textTheme.bodyMedium?.copyWith(
                               color: muted,
-                              fontSize: 14,
                               fontWeight: FontWeight.w700,
                             ),
                           ),
@@ -418,8 +418,6 @@ class _CardPopoverState extends ConsumerState<CardPopover>
                       overflow: TextOverflow.ellipsis,
                       style: theme.textTheme.bodyMedium?.copyWith(
                         color: ink,
-                        fontSize: 15,
-                        height: 21 / 15,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -449,25 +447,29 @@ class _Round extends StatelessWidget {
   final bool on;
 
   @override
-  Widget build(BuildContext context) => IconButton(
-    tooltip: tooltip,
-    onPressed: onPressed,
-    isSelected: on,
-    iconSize: 26,
-    icon: Icon(icon),
-    style: ButtonStyle(
-      fixedSize: const WidgetStatePropertyAll(Size.square(52)),
-      foregroundColor: WidgetStatePropertyAll(
-        on ? const Color(0xFF00050D) : Colors.white,
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final ink = scheme.onSurface;
+    return IconButton(
+      tooltip: tooltip,
+      onPressed: onPressed,
+      isSelected: on,
+      iconSize: 26,
+      icon: Icon(icon),
+      style: ButtonStyle(
+        fixedSize: const WidgetStatePropertyAll(Size.square(52)),
+        foregroundColor: WidgetStatePropertyAll(
+          on ? scheme.surfaceContainerLowest : ink,
+        ),
+        backgroundColor: WidgetStateProperty.resolveWith(
+          (s) => on
+              ? ink
+              : ink.withValues(
+                  alpha: s.contains(WidgetState.hovered) ? 0.32 : 0.2,
+                ),
+        ),
+        overlayColor: const WidgetStatePropertyAll(Colors.transparent),
       ),
-      backgroundColor: WidgetStateProperty.resolveWith(
-        (s) => on
-            ? Colors.white
-            : Colors.white.withValues(
-                alpha: s.contains(WidgetState.hovered) ? 0.32 : 0.2,
-              ),
-      ),
-      overlayColor: const WidgetStatePropertyAll(Colors.transparent),
-    ),
-  );
+    );
+  }
 }

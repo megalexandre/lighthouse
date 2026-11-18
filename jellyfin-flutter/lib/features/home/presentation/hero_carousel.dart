@@ -175,7 +175,9 @@ class _SlideState extends ConsumerState<_Slide> {
     final url = ref
         .watch(libraryRepositoryProvider)
         .backdropUrl(item, maxWidth: pixels);
-    const night = Color(0xFF00050D);
+    // Over a picture: the player's colours, dark whatever the mode.
+    final night = tokens.mediaShade;
+    final ink = tokens.osdInk;
     final ground = theme.scaffoldBackgroundColor;
     final left = widget.narrow ? tokens.space(4) : 72.0;
     final movie = item.type != BaseItemKind.series;
@@ -261,7 +263,7 @@ class _SlideState extends ConsumerState<_Slide> {
                   : math.min(700, size.width * 0.48),
             ),
             child: DefaultTextStyle.merge(
-              style: const TextStyle(color: Colors.white),
+              style: TextStyle(color: ink),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
@@ -278,14 +280,18 @@ class _SlideState extends ConsumerState<_Slide> {
                     item.name.toUpperCase(),
                     maxLines: 3,
                     overflow: TextOverflow.ellipsis,
+                    // Sized to the window, so not a fixed step of the scale.
                     style: theme.textTheme.displayLarge?.copyWith(
-                      color: Colors.white,
+                      color: ink,
                       fontSize: titleSize,
                       height: 1.08,
                       fontWeight: FontWeight.w600,
                       letterSpacing: titleSize * (widget.narrow ? 0.08 : 0.14),
-                      shadows: const [
-                        Shadow(blurRadius: 16, color: Color(0x59000000)),
+                      shadows: [
+                        Shadow(
+                          blurRadius: 16,
+                          color: night.withValues(alpha: 0.35),
+                        ),
                       ],
                     ),
                   ),
@@ -294,7 +300,7 @@ class _SlideState extends ConsumerState<_Slide> {
                     Text(
                       facts,
                       style: theme.textTheme.bodyMedium?.copyWith(
-                        color: Colors.white.withValues(alpha: 0.72),
+                        color: tokens.osdInkMuted,
                         fontWeight: FontWeight.w700,
                       ),
                     ),
@@ -305,11 +311,13 @@ class _SlideState extends ConsumerState<_Slide> {
                       overview,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                      style: theme.textTheme.bodyLarge?.copyWith(
-                        color: Colors.white,
-                        fontSize: widget.narrow ? 16 : 20,
-                        height: widget.narrow ? 23 / 16 : 29 / 20,
-                      ),
+                      style:
+                          (widget.narrow
+                                  ? theme.textTheme.bodyLarge
+                                  : theme.textTheme.titleLarge?.copyWith(
+                                      fontWeight: FontWeight.w400,
+                                    ))
+                              ?.copyWith(color: ink),
                     ),
                   ],
                   SizedBox(height: tokens.space(6)),
@@ -361,10 +369,12 @@ class _WhiteButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final radius = BorderRadius.circular(context.tokens.radiusMd);
+    final tokens = context.tokens;
+    final theme = Theme.of(context).textTheme;
+    final radius = BorderRadius.circular(tokens.radiusMd);
     return FocusRing(
       borderRadius: radius,
-      color: Colors.white,
+      color: tokens.osdInk,
       child: TextButton.icon(
         onPressed: onPressed,
         icon: Icon(icon, size: big ? 32 : 26),
@@ -379,15 +389,14 @@ class _WhiteButton extends StatelessWidget {
           ),
           backgroundColor: WidgetStateProperty.resolveWith(
             (s) => s.contains(WidgetState.hovered)
-                ? const Color(0xFFE8EEF3)
-                : Colors.white,
+                ? tokens.mediaButtonHover
+                : tokens.osdInk,
           ),
-          foregroundColor: const WidgetStatePropertyAll(Color(0xFF00050D)),
-          iconColor: const WidgetStatePropertyAll(Color(0xFF00050D)),
+          foregroundColor: WidgetStatePropertyAll(tokens.mediaButtonInk),
+          iconColor: WidgetStatePropertyAll(tokens.mediaButtonInk),
           overlayColor: const WidgetStatePropertyAll(Colors.transparent),
           textStyle: WidgetStatePropertyAll(
-            Theme.of(context).textTheme.labelLarge?.copyWith(
-              fontSize: big ? 20 : 17,
+            (big ? theme.titleLarge : theme.titleMedium)?.copyWith(
               fontWeight: FontWeight.w700,
             ),
           ),
@@ -414,9 +423,10 @@ class _RoundButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final size = big ? 60.0 : 52.0;
+    final ink = context.tokens.osdInk;
     return FocusRing(
       borderRadius: BorderRadius.circular(size),
-      color: Colors.white,
+      color: ink,
       child: IconButton(
         tooltip: tooltip,
         onPressed: onPressed,
@@ -424,9 +434,9 @@ class _RoundButton extends StatelessWidget {
         icon: Icon(icon),
         style: ButtonStyle(
           fixedSize: WidgetStatePropertyAll(Size.square(size)),
-          foregroundColor: const WidgetStatePropertyAll(Colors.white),
+          foregroundColor: WidgetStatePropertyAll(ink),
           backgroundColor: WidgetStateProperty.resolveWith(
-            (s) => Colors.white.withValues(
+            (s) => ink.withValues(
               alpha: s.contains(WidgetState.hovered) ? 0.34 : 0.22,
             ),
           ),
@@ -459,7 +469,7 @@ class _Arrow extends StatelessWidget {
         tooltip: forward ? 'Next' : 'Previous',
         onPressed: onTap,
         iconSize: 44,
-        color: Colors.white,
+        color: context.tokens.osdInk,
         icon: Icon(forward ? Icons.chevron_right : Icons.chevron_left),
         style: const ButtonStyle(
           fixedSize: WidgetStatePropertyAll(Size(56, 96)),
@@ -491,7 +501,9 @@ class _Dot extends StatelessWidget {
           width: on ? 18 : 6,
           height: 6,
           decoration: BoxDecoration(
-            color: on ? Colors.white : Colors.white.withValues(alpha: 0.45),
+            color: on
+                ? context.tokens.osdInk
+                : context.tokens.osdInk.withValues(alpha: 0.45),
             borderRadius: BorderRadius.circular(3),
           ),
         ),

@@ -86,6 +86,18 @@ class AppTokens extends ThemeExtension<AppTokens> {
     colors: [osdScrim, osdScrim.withValues(alpha: 0)],
   );
 
+  /// Over a picture (the home carousel, the bar on top of it) the colours
+  /// are the player's, dark whatever the mode, so white text stays
+  /// readable: this is the opaque dark that the shades over a picture fade
+  /// from.
+  Color get mediaShade => osdScrim.withValues(alpha: 1);
+
+  /// The bright button over a picture (Play in the carousel): [osdInk],
+  /// with dark ink on it, and a shade of that ink on hover.
+  Color get mediaButtonInk => osdAccentInk;
+  Color get mediaButtonHover =>
+      Color.alphaBlend(osdAccentInk.withValues(alpha: 0.09), osdInk);
+
   @override
   AppTokens copyWith() => this;
 

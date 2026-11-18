@@ -87,12 +87,13 @@ class _FloatingTopBarState extends ConsumerState<FloatingTopBar> {
 
   Widget _bar(BuildContext context) {
     final tokens = context.tokens;
-    final theme = Theme.of(context);
     final width = MediaQuery.sizeOf(context).width;
     final narrow = width < 760;
     final views = ref.watch(userViewsProvider).value ?? const [];
     final solid = widget.solid;
-    const night = Color(0xFF00050D);
+    // Over the carousel's pictures: the player's colours, dark whatever the
+    // mode (context.tokens.mediaShade).
+    final night = tokens.mediaShade;
     final inset = solid && !narrow ? 52.0 : 0.0;
     final side = narrow ? tokens.space(4) : (solid ? 20.0 : 72.0);
 
@@ -144,7 +145,7 @@ class _FloatingTopBarState extends ConsumerState<FloatingTopBar> {
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 250),
               decoration: BoxDecoration(
-                color: solid ? const Color(0xEB121A22) : null,
+                color: solid ? tokens.osdSurface : null,
                 gradient: solid
                     ? null
                     : LinearGradient(
@@ -156,11 +157,11 @@ class _FloatingTopBarState extends ConsumerState<FloatingTopBar> {
                         ],
                       ),
                 boxShadow: solid
-                    ? const [
+                    ? [
                         BoxShadow(
-                          color: Color(0x73000000),
+                          color: night.withValues(alpha: 0.45),
                           blurRadius: 24,
-                          offset: Offset(0, 8),
+                          offset: const Offset(0, 8),
                         ),
                       ]
                     : null,
@@ -169,7 +170,7 @@ class _FloatingTopBarState extends ConsumerState<FloatingTopBar> {
               child: SafeArea(
                 bottom: false,
                 child: IconTheme(
-                  data: IconThemeData(color: theme.colorScheme.onSurface),
+                  data: IconThemeData(color: tokens.osdInk),
                   child: content,
                 ),
               ),
@@ -181,15 +182,16 @@ class _FloatingTopBarState extends ConsumerState<FloatingTopBar> {
   }
 
   Widget _searchBox(BuildContext context) {
-    final radius = BorderRadius.circular(context.tokens.radiusMd);
+    final tokens = context.tokens;
+    final radius = BorderRadius.circular(tokens.radiusMd);
     return AnimatedContainer(
       duration: const Duration(milliseconds: 200),
       height: 40,
       decoration: BoxDecoration(
-        color: _searching ? const Color(0xD900050D) : Colors.transparent,
+        color: _searching ? tokens.osdSurface : Colors.transparent,
         border: Border.all(
           color: _searching
-              ? Colors.white.withValues(alpha: 0.5)
+              ? tokens.osdInk.withValues(alpha: 0.5)
               : Colors.transparent,
         ),
         borderRadius: radius,
@@ -222,7 +224,7 @@ class _FloatingTopBarState extends ConsumerState<FloatingTopBar> {
                         onTapOutside: (_) {
                           if (_query.text.isEmpty) _closeSearch();
                         },
-                        style: const TextStyle(color: Colors.white),
+                        style: TextStyle(color: tokens.osdInk),
                         decoration: const InputDecoration(
                           isDense: true,
                           filled: false,
@@ -277,12 +279,8 @@ class _Mark extends StatelessWidget {
             const SizedBox(width: 8),
             Text(
               'jellyfin',
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                color: Colors.white,
-                fontSize: 21,
-                fontWeight: FontWeight.w700,
-                letterSpacing: -0.6,
-              ),
+              style: Theme.of(context).textTheme.titleLarge
+                  ?.copyWith(color: context.tokens.osdInk, letterSpacing: -0.6),
             ),
           ],
         ),
@@ -305,7 +303,8 @@ class _Tab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final radius = BorderRadius.circular(context.tokens.radiusMd);
+    final tokens = context.tokens;
+    final radius = BorderRadius.circular(tokens.radiusMd);
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 1),
       child: TextButton(
@@ -317,21 +316,18 @@ class _Tab extends StatelessWidget {
           shape: WidgetStatePropertyAll(
             RoundedRectangleBorder(borderRadius: radius),
           ),
-          foregroundColor: const WidgetStatePropertyAll(Colors.white),
+          foregroundColor: WidgetStatePropertyAll(tokens.osdInk),
           backgroundColor: WidgetStateProperty.resolveWith(
             (s) => on
-                ? Colors.white.withValues(alpha: 0.18)
+                ? tokens.osdInk.withValues(alpha: 0.18)
                 : s.contains(WidgetState.hovered)
-                ? Colors.white.withValues(alpha: 0.12)
+                ? tokens.osdHover
                 : Colors.transparent,
           ),
           overlayColor: const WidgetStatePropertyAll(Colors.transparent),
           textStyle: WidgetStatePropertyAll(
-            Theme.of(context).textTheme.titleMedium?.copyWith(
-              fontSize: 17,
-              fontWeight: FontWeight.w700,
-              letterSpacing: 0.2,
-            ),
+            Theme.of(context).textTheme.titleMedium
+                ?.copyWith(fontWeight: FontWeight.w700, letterSpacing: 0.2),
           ),
         ),
         child: Text(label),
@@ -374,8 +370,8 @@ class _Profile extends ConsumerWidget {
       ),
       child: Text(
         name.isEmpty ? '?' : name.characters.first.toUpperCase(),
-        style: const TextStyle(
-          color: Colors.white,
+        style: TextStyle(
+          color: context.tokens.osdInk,
           fontWeight: FontWeight.w700,
         ),
       ),
