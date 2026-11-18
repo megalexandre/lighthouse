@@ -6,16 +6,11 @@ import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../../../api/models/base_item_dto.dart';
-import '../../../api/models/media_stream.dart';
-import '../../../api/models/playback_report.dart';
-import '../../../core/failure.dart';
 import '../../../core/theme/app_tokens.dart';
 import '../../../core/theme/appearance.dart';
 import '../../../core/ticks.dart';
 import '../../../router.dart';
 import '../../../widgets/error_retry.dart';
-import '../../../widgets/media_badge.dart';
-import '../../library/presentation/item_card.dart';
 import '../../settings/application/settings_providers.dart';
 import '../application/play_queue.dart';
 import '../application/player_carry_over.dart';
@@ -24,11 +19,11 @@ import '../application/trickplay.dart';
 import '../data/playback_repository.dart';
 import '../data/player_engine.dart';
 import '../data/tracks.dart';
-import 'osd/control_button.dart';
-import 'osd/seek_bar.dart';
+import 'osd/player_osd.dart';
 import 'osd/settings_menu.dart';
 import 'osd/up_next.dart';
 import 'player_keys.dart';
+import 'player_overlays.dart';
 
 /// Full-window playback of one item, with an on-screen display (OSD) that
 /// shows on mouse movement and hides after a few seconds of playing.
@@ -141,14 +136,14 @@ class PlayerScreen extends ConsumerWidget {
                     ? null
                     : () => _goTo(context, ref, neighbors.previous!),
               ),
-              AsyncError(:final error) => _Message(
+              AsyncError(:final error) => PlayerMessage(
                 onBack: () => context.pop(),
                 child: ErrorRetry(
                   error: error,
                   onRetry: () => ref.invalidate(provider),
                 ),
               ),
-              _ => _Message(
+              _ => PlayerMessage(
                 onBack: () => context.pop(),
                 child: const CircularProgressIndicator(),
               ),
@@ -210,28 +205,6 @@ class _FullscreenScopeState extends ConsumerState<_FullscreenScope> {
 
   @override
   Widget build(BuildContext context) => widget.child;
-}
-
-class _Message extends StatelessWidget {
-  const _Message({required this.onBack, required this.child});
-
-  final VoidCallback onBack;
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) => Stack(
-    children: [
-      Center(child: child),
-      SafeArea(
-        child: IconButton(
-          key: PlayerScreen.backButton,
-          color: context.tokens.osdInk,
-          icon: const Icon(Icons.arrow_back),
-          onPressed: onBack,
-        ),
-      ),
-    ],
-  );
 }
 
 class _Playing extends ConsumerStatefulWidget {
@@ -429,11 +402,11 @@ class _PlayingState extends ConsumerState<_Playing> {
               },
               onDoubleTap: _isAudio ? null : _toggleFullscreen,
               child: _isAudio
-                  ? _Cover(item: session.item)
+                  ? AudioCover(item: session.item)
                   : Center(child: engine.buildVideo()),
             ),
             if (session.interruptedAt case final Duration at)
-              _Interrupted(
+              InterruptedNotice(
                 at: at,
                 onResume: c.resumeAfterInterruption,
                 onBack: widget.onBack,
@@ -452,7 +425,7 @@ class _PlayingState extends ConsumerState<_Playing> {
               duration: Duration(milliseconds: _osdVisible ? 200 : 400),
               child: IgnorePointer(
                 ignoring: !_osdVisible,
-                child: _Osd(
+                child: PlayerOsd(
                   session: session,
                   controller: c,
                   chapters: [
@@ -476,75 +449,23 @@ class _PlayingState extends ConsumerState<_Playing> {
               ),
             ),
             if (widget.upNext case final BaseItemDto next when !_upNextHidden)
-              StreamBuilder<Duration>(
-                stream: engine.positionStream,
-                builder: (context, _) {
-                  final length = engine.duration;
-                  final remaining = length - engine.position;
-                  if (length <= Duration.zero ||
-                      remaining > UpNextCard.countdown ||
-                      remaining < Duration.zero) {
-                    return const SizedBox.shrink();
-                  }
-                  return Positioned(
-                    right: tokens.space(6),
-                    // Above the controls when they are up.
-                    bottom: _osdVisible ? 136 : tokens.space(6),
-                    child: UpNextCard(
-                      next: next,
-                      remaining: remaining,
-                      onWatchNow: () => unawaited(_next()),
-                      onHide: () => setState(() => _upNextHidden = true),
-                    ),
-                  );
-                },
+              _UpNextLayer(
+                engine: engine,
+                next: next,
+                raised: _osdVisible,
+                onWatchNow: () => unawaited(_next()),
+                onHide: () => setState(() => _upNextHidden = true),
               ),
             if (_menu case final SettingsPage page) ...[
               MenuBarrier(onDismiss: _closeMenu),
               Positioned(
                 right: tokens.space(6),
                 bottom: 88,
-                child: SettingsMenu(
-                  key: _menuKey,
-                  initialPage: page,
-                  audio: [
-                    for (final s in session.plan.audioStreams)
-                      (
-                        value: s.index,
-                        label: trackLabel(s),
-                        detail: null,
-                        key: PlayerScreen.audioItem(s.index),
-                      ),
-                  ],
-                  selectedAudio: session.audioStreamIndex,
-                  onAudio: (i) => reportFailure(
-                    context,
-                    c.selectAudio(i),
-                    'Could not change the track.',
-                  ),
-                  subtitles: [
-                    (
-                      value: null,
-                      label: 'Off',
-                      detail: null,
-                      key: PlayerScreen.subtitleOff,
-                    ),
-                    for (final s in session.plan.subtitleStreams)
-                      (
-                        value: s.index,
-                        label: trackLabel(s),
-                        detail: s.codec?.toUpperCase(),
-                        key: PlayerScreen.subtitleItem(s.index),
-                      ),
-                  ],
-                  selectedSubtitle: session.subtitleStreamIndex,
-                  onSubtitle: (i) => reportFailure(
-                    context,
-                    c.selectSubtitle(i),
-                    'Could not change the track.',
-                  ),
-                  rate: engine.rate,
-                  onRate: (r) => unawaited(engine.setRate(r)),
+                child: _TrackMenu(
+                  menuKey: _menuKey,
+                  page: page,
+                  session: session,
+                  controller: c,
                   onClose: _closeMenu,
                 ),
               ),
@@ -556,512 +477,114 @@ class _PlayingState extends ConsumerState<_Playing> {
   }
 }
 
-/// The on-screen controls (the design system's VideoPlayer): the title
-/// over a gradient at the top; at the bottom, over another, the seek bar
-/// and a row of buttons. Paused, a big play button in the middle.
-class _Osd extends StatelessWidget {
-  const _Osd({
-    required this.session,
-    required this.controller,
-    required this.chapters,
-    required this.thumbnails,
-    required this.fullscreen,
-    required this.onFullscreen,
-    required this.onNext,
-    required this.onPrevious,
-    required this.onSeekBy,
-    required this.onBack,
-    required this.onInteract,
-    required this.onMenu,
-    required this.showCenterPlay,
-  });
-
-  final PlayerSession session;
-  final PlayerController controller;
-  final List<SeekChapter> chapters;
-  final TrickplayThumbnails? thumbnails;
-  final bool fullscreen;
-  final VoidCallback onFullscreen;
-  final Future<void> Function()? onNext;
-  final Future<void> Function() onPrevious;
-  final Future<void> Function(Duration) onSeekBy;
-  final VoidCallback onBack;
-  final VoidCallback onInteract;
-  final void Function(SettingsPage page) onMenu;
-  final bool showCenterPlay;
-
-  BaseItemDto get item => session.item;
-  PlayerEngine get engine => session.engine;
-
-  /// Do [action], keeping the controls up.
-  VoidCallback _tap(FutureOr<void> Function() action) => () {
-    unawaited(Future.sync(action));
-    onInteract();
-  };
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final tokens = context.tokens;
-    final narrow = MediaQuery.sizeOf(context).width <= 720;
-    final margin = narrow ? tokens.space(4) : tokens.space(6);
-    // Episode: the series above, "S1:E3 · Name" under it.
-    final (title, subtitle) = switch (item) {
-      BaseItemDto(type: BaseItemKind.episode, :final seriesName?) => (
-        seriesName,
-        [?episodeNumber(item), item.name].join(' · '),
-      ),
-      _ => (item.name, cardSubtitle(item)),
-    };
-    final badges = qualityBadges(session);
-
-    return Stack(
-      fit: StackFit.expand,
-      children: [
-        Column(
-          children: [
-            // Top: back and title, over a gradient so they read on any
-            // frame.
-            DecoratedBox(
-              decoration: BoxDecoration(
-                gradient: tokens.scrim(from: Alignment.topCenter),
-              ),
-              child: SafeArea(
-                child: Padding(
-                  padding: EdgeInsets.fromLTRB(
-                    margin - 8,
-                    tokens.space(3),
-                    margin,
-                    tokens.space(8),
-                  ),
-                  child: Row(
-                    children: [
-                      ControlButton(
-                        key: PlayerScreen.backButton,
-                        icon: Icons.arrow_back,
-                        label: 'Back',
-                        shortcut: 'Esc',
-                        onPressed: onBack,
-                      ),
-                      SizedBox(width: tokens.space(2)),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              title,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: theme.textTheme.titleMedium?.copyWith(
-                                color: tokens.osdInk,
-                              ),
-                            ),
-                            if (subtitle != null && subtitle.isNotEmpty)
-                              Text(
-                                subtitle,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: theme.textTheme.bodySmall?.copyWith(
-                                  color: tokens.osdInkMuted,
-                                ),
-                              ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-            const Spacer(),
-            DecoratedBox(
-              decoration: BoxDecoration(
-                gradient: tokens.scrim(from: Alignment.bottomCenter),
-              ),
-              child: SafeArea(
-                child: Padding(
-                  padding: EdgeInsets.fromLTRB(
-                    margin,
-                    tokens.space(12),
-                    margin,
-                    tokens.space(3),
-                  ),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      SeekBar(
-                        key: PlayerScreen.seekBar,
-                        engine: engine,
-                        chapters: chapters,
-                        thumbnails: thumbnails,
-                        onInteract: onInteract,
-                      ),
-                      SizedBox(height: tokens.space(2)),
-                      Row(
-                        children: [
-                          ControlButton(
-                            key: PlayerScreen.previousButton,
-                            icon: Icons.skip_previous,
-                            label: 'Previous',
-                            shortcut: 'Shift+P',
-                            onPressed: _tap(onPrevious),
-                          ),
-                          ControlButton(
-                            key: PlayerScreen.seekBackButton,
-                            icon: Icons.replay_10,
-                            label: 'Back 10 seconds',
-                            shortcut: '←',
-                            onPressed: _tap(
-                              () => onSeekBy(const Duration(seconds: -10)),
-                            ),
-                          ),
-                          StreamBuilder<bool>(
-                            stream: engine.playingStream,
-                            initialData: engine.playing,
-                            builder: (_, snap) {
-                              final playing = snap.data ?? false;
-                              return ControlButton(
-                                key: PlayerScreen.playPauseButton,
-                                icon: playing ? Icons.pause : Icons.play_arrow,
-                                label: playing ? 'Pause' : 'Play',
-                                shortcut: 'Space',
-                                size: 52,
-                                iconSize: 32,
-                                onPressed: _tap(engine.playOrPause),
-                              );
-                            },
-                          ),
-                          ControlButton(
-                            key: PlayerScreen.seekForwardButton,
-                            icon: Icons.forward_10,
-                            label: 'Forward 10 seconds',
-                            shortcut: '→',
-                            onPressed: _tap(
-                              () => onSeekBy(const Duration(seconds: 10)),
-                            ),
-                          ),
-                          if (onNext != null)
-                            ControlButton(
-                              key: PlayerScreen.nextButton,
-                              icon: Icons.skip_next,
-                              label: 'Next',
-                              shortcut: 'Shift+N',
-                              onPressed: _tap(onNext!),
-                            ),
-                          SizedBox(width: tokens.space(2)),
-                          _Time(engine: engine, showLength: !narrow),
-                          const Spacer(),
-                          _Volume(
-                            engine: engine,
-                            controller: controller,
-                            onInteract: onInteract,
-                            slider: !narrow,
-                          ),
-                          for (final b in badges)
-                            Padding(
-                              padding: EdgeInsets.only(left: tokens.space(1)),
-                              child: MediaBadge(b, onVideo: true),
-                            ),
-                          SizedBox(width: tokens.space(1)),
-                          if (session.plan.subtitleStreams.isNotEmpty)
-                            ControlButton(
-                              key: PlayerScreen.subtitleMenu,
-                              icon: Icons.subtitles,
-                              label: 'Subtitles',
-                              shortcut: 'S',
-                              active: session.subtitleStreamIndex != null,
-                              onPressed: () => onMenu(SettingsPage.subtitles),
-                            ),
-                          ControlButton(
-                            key: PlayerScreen.settingsButton,
-                            icon: Icons.settings,
-                            label: 'Settings',
-                            onPressed: () => onMenu(SettingsPage.root),
-                          ),
-                          ControlButton(
-                            key: PlayerScreen.fullscreenButton,
-                            icon: fullscreen
-                                ? Icons.fullscreen_exit
-                                : Icons.fullscreen,
-                            label: fullscreen
-                                ? 'Exit full screen'
-                                : 'Full screen',
-                            shortcut: 'F',
-                            onPressed: _tap(onFullscreen),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-        if (showCenterPlay)
-          StreamBuilder<bool>(
-            stream: engine.playingStream,
-            initialData: engine.playing,
-            builder: (_, snap) => (snap.data ?? false)
-                ? const SizedBox.shrink()
-                : Center(
-                    child: CenterPlayButton(
-                      key: PlayerScreen.centerPlayButton,
-                      onPressed: _tap(engine.play),
-                    ),
-                  ),
-          ),
-      ],
-    );
-  }
-}
-
-/// What is shown over the video about the stream: its resolution, and
-/// TRANSCODING when the server converts it.
-List<String> qualityBadges(PlayerSession session) {
-  final video = session.plan.source.mediaStreams
-      .where((s) => s.type == MediaStreamType.video)
-      .firstOrNull;
-  final height = video?.height ?? 0;
-  return [
-    if (height >= 2000)
-      '4K'
-    else if (height >= 1000)
-      '1080P'
-    else if (height >= 700)
-      '720P',
-    if (session.plan.method == PlayMethod.transcode) 'Transcoding',
-  ];
-}
-
-/// "0:01 / 1:52:07": elapsed and length, in fixed-width digits so the row
-/// does not jiggle as it runs.
-class _Time extends StatelessWidget {
-  const _Time({required this.engine, required this.showLength});
-
-  final PlayerEngine engine;
-  final bool showLength;
-
-  @override
-  Widget build(BuildContext context) {
-    final tokens = context.tokens;
-    final style = tokens.timecode.copyWith(color: tokens.osdInk);
-    return StreamBuilder<Duration>(
-      stream: engine.durationStream,
-      initialData: engine.duration,
-      builder: (_, durationSnap) => StreamBuilder<Duration>(
-        stream: engine.positionStream,
-        initialData: engine.position,
-        builder: (_, positionSnap) {
-          final duration = durationSnap.data ?? Duration.zero;
-          final position = positionSnap.data ?? Duration.zero;
-          return Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                formatPosition(position > duration ? duration : position),
-                key: PlayerScreen.positionText,
-                style: style,
-              ),
-              if (showLength)
-                Text(
-                  ' / ${formatPosition(duration)}',
-                  style: style.copyWith(color: tokens.osdInkMuted),
-                ),
-            ],
-          );
-        },
-      ),
-    );
-  }
-}
-
-/// Mute button and a short volume bar (the bar left out on narrow
-/// windows).
-class _Volume extends StatelessWidget {
-  const _Volume({
+/// The "Up next" card, in the last seconds of an episode that plays on:
+/// bottom right, [raised] above the controls while they are up.
+class _UpNextLayer extends StatelessWidget {
+  const _UpNextLayer({
     required this.engine,
-    required this.controller,
-    required this.onInteract,
-    required this.slider,
+    required this.next,
+    required this.raised,
+    required this.onWatchNow,
+    required this.onHide,
   });
 
   final PlayerEngine engine;
-  final PlayerController controller;
-  final VoidCallback onInteract;
-  final bool slider;
+  final BaseItemDto next;
+  final bool raised;
+  final VoidCallback onWatchNow;
+  final VoidCallback onHide;
 
   @override
-  Widget build(BuildContext context) => StreamBuilder<bool>(
-    stream: engine.mutedStream,
-    initialData: engine.muted,
-    builder: (_, mutedSnap) => StreamBuilder<double>(
-      stream: engine.volumeStream,
-      initialData: engine.volume,
-      builder: (_, volumeSnap) {
-        final muted = mutedSnap.data ?? false;
-        final volume = muted ? 0.0 : (volumeSnap.data ?? 100).clamp(0, 100);
-        return Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ControlButton(
-              key: PlayerScreen.muteButton,
-              icon: muted || volume == 0
-                  ? Icons.volume_off
-                  : (volume < 50 ? Icons.volume_down : Icons.volume_up),
-              label: muted ? 'Unmute' : 'Mute',
-              shortcut: 'M',
-              active: false,
-              onPressed: () {
-                unawaited(controller.toggleMute());
-                onInteract();
-              },
-            ),
-            if (slider)
-              SizedBox(
-                width: 100,
-                child: Slider(
-                  key: PlayerScreen.volumeSlider,
-                  max: 100,
-                  value: volume.toDouble(),
-                  onChanged: (v) {
-                    unawaited(controller.setVolume(v));
-                    onInteract();
-                  },
-                ),
-              ),
-          ],
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    return StreamBuilder<Duration>(
+      stream: engine.positionStream,
+      builder: (context, _) {
+        final length = engine.duration;
+        final remaining = length - engine.position;
+        if (length <= Duration.zero ||
+            remaining > UpNextCard.countdown ||
+            remaining < Duration.zero) {
+          return const SizedBox.shrink();
+        }
+        return Positioned(
+          right: tokens.space(6),
+          bottom: raised ? 136 : tokens.space(6),
+          child: UpNextCard(
+            next: next,
+            remaining: remaining,
+            onWatchNow: onWatchNow,
+            onHide: onHide,
+          ),
         );
       },
-    ),
-  );
+    );
+  }
 }
 
-/// Music: the album cover, with the track, artist and album under it.
-class _Cover extends StatelessWidget {
-  const _Cover({required this.item});
+/// The settings panel with this item's tracks: audio, subtitles (Off
+/// first) and speed. A failed track change says so.
+class _TrackMenu extends StatelessWidget {
+  const _TrackMenu({
+    required this.menuKey,
+    required this.page,
+    required this.session,
+    required this.controller,
+    required this.onClose,
+  });
 
-  final BaseItemDto item;
+  /// On the menu itself: Esc asks it to go back a level.
+  final GlobalKey<SettingsMenuState> menuKey;
+  final SettingsPage page;
+  final PlayerSession session;
+  final PlayerController controller;
+  final VoidCallback onClose;
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final size = (MediaQuery.sizeOf(context).shortestSide * 0.5).clamp(
-      160.0,
-      480.0,
-    );
-    return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          SizedBox.square(
-            key: PlayerScreen.cover,
-            dimension: size,
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(context.tokens.radiusMd),
-              child: ItemImage(item: item, width: size),
-            ),
+    final engine = session.engine;
+    return SettingsMenu(
+      key: menuKey,
+      initialPage: page,
+      audio: [
+        for (final s in session.plan.audioStreams)
+          (
+            value: s.index,
+            label: trackLabel(s),
+            detail: null,
+            key: PlayerScreen.audioItem(s.index),
           ),
-          const SizedBox(height: 24),
-          Text(
-            item.name,
-            style: theme.textTheme.headlineSmall?.copyWith(
-              color: context.tokens.osdInk,
-            ),
-          ),
-          if ([?item.albumArtist, ?item.album] case final parts
-              when parts.isNotEmpty)
-            Text(
-              parts.join(' · '),
-              style: theme.textTheme.titleMedium?.copyWith(
-                color: context.tokens.osdInkMuted,
-              ),
-            ),
-        ],
+      ],
+      selectedAudio: session.audioStreamIndex,
+      onAudio: (i) => reportFailure(
+        context,
+        controller.selectAudio(i),
+        'Could not change the track.',
       ),
-    );
-  }
-}
-
-/// The stream broke off before the end (connection lost): where it was,
-/// and Resume from there once the server is reachable again.
-class _Interrupted extends StatefulWidget {
-  const _Interrupted({
-    required this.at,
-    required this.onResume,
-    required this.onBack,
-  });
-
-  final Duration at;
-  final Future<void> Function() onResume;
-  final VoidCallback onBack;
-
-  @override
-  State<_Interrupted> createState() => _InterruptedState();
-}
-
-class _InterruptedState extends State<_Interrupted> {
-  bool _resuming = false;
-  String? _error;
-
-  Future<void> _resume() async {
-    setState(() {
-      _resuming = true;
-      _error = null;
-    });
-    try {
-      await widget.onResume();
-    } on Failure catch (e) {
-      if (mounted) setState(() => _error = e.message);
-    } finally {
-      if (mounted) setState(() => _resuming = false);
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) => ColoredBox(
-    color: context.tokens.osdScrim,
-    child: Center(
-      child: Card(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(Icons.wifi_off, size: 40),
-              const SizedBox(height: 12),
-              Text(
-                'Playback stopped at ${formatPosition(widget.at)}: the '
-                'connection to the server was lost.',
-              ),
-              if (_error != null) ...[
-                const SizedBox(height: 8),
-                Text(
-                  _error!,
-                  style: TextStyle(color: Theme.of(context).colorScheme.error),
-                ),
-              ],
-              const SizedBox(height: 16),
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  TextButton(
-                    onPressed: widget.onBack,
-                    child: const Text('Back'),
-                  ),
-                  const SizedBox(width: 8),
-                  FilledButton.icon(
-                    key: PlayerScreen.resumeAfterBreak,
-                    onPressed: _resuming ? null : _resume,
-                    icon: const Icon(Icons.play_arrow),
-                    label: Text('Resume from ${formatPosition(widget.at)}'),
-                  ),
-                ],
-              ),
-            ],
-          ),
+      subtitles: [
+        (
+          value: null,
+          label: 'Off',
+          detail: null,
+          key: PlayerScreen.subtitleOff,
         ),
+        for (final s in session.plan.subtitleStreams)
+          (
+            value: s.index,
+            label: trackLabel(s),
+            detail: s.codec?.toUpperCase(),
+            key: PlayerScreen.subtitleItem(s.index),
+          ),
+      ],
+      selectedSubtitle: session.subtitleStreamIndex,
+      onSubtitle: (i) => reportFailure(
+        context,
+        controller.selectSubtitle(i),
+        'Could not change the track.',
       ),
-    ),
-  );
+      rate: engine.rate,
+      onRate: (r) => unawaited(engine.setRate(r)),
+      onClose: onClose,
+    );
+  }
 }

@@ -166,56 +166,89 @@ class _SlideState extends ConsumerState<_Slide> {
 
   @override
   Widget build(BuildContext context) {
-    final item = widget.item;
-    final tokens = context.tokens;
-    final theme = Theme.of(context);
     final size = MediaQuery.sizeOf(context);
     final pixels = (size.width * MediaQuery.devicePixelRatioOf(context))
         .round();
     final url = ref
         .watch(libraryRepositoryProvider)
-        .backdropUrl(item, maxWidth: pixels);
-    // Over a picture: the player's colours, dark whatever the mode.
-    final night = tokens.mediaShade;
-    final ink = tokens.osdInk;
-    final ground = theme.scaffoldBackgroundColor;
-    final left = widget.narrow ? tokens.space(4) : 72.0;
-    final movie = item.type != BaseItemKind.series;
-    final facts = [
-      ?item.productionYear?.toString(),
-      if (item.runTimeTicks case final int t when t > 0 && movie)
-        formatRuntime(ticksToDuration(t)),
-      ?item.officialRating,
-    ].join(' · ');
-    final titleSize = widget.narrow
-        ? 30.0
-        : (size.width * 0.042).clamp(36.0, 68.0);
-
+        .backdropUrl(widget.item, maxWidth: pixels);
+    final left = widget.narrow ? context.tokens.space(4) : 72.0;
     return Stack(
       fit: StackFit.expand,
       children: [
-        // The picture zooms out from 1.04: clipped to the slide (a Stack
-        // does not clip what a transform pushes out).
-        ColoredBox(
-          color: night,
-          child: url == null
-              ? null
-              : ClipRect(
-                  child: AnimatedScale(
-                    scale: _settled || widget.still ? 1 : 1.04,
-                    duration: widget.still
-                        ? Duration.zero
-                        : const Duration(seconds: 9),
-                    child: Image.network(
-                      url.toString(),
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, _, _) => const SizedBox.shrink(),
-                    ),
-                  ),
-                ),
+        _Backdrop(
+          url: url,
+          zoomed: !_settled && !widget.still,
+          still: widget.still,
         ),
-        // Dark on the left for the text, the page's colour at the bottom,
-        // a little shade at the top for the bar over it.
+        const _Shades(),
+        Positioned(
+          left: left,
+          right: widget.narrow ? left : null,
+          bottom: widget.narrow ? 96 : HeroCarousel.heightFor(size) * 0.15,
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              maxWidth: widget.narrow
+                  ? double.infinity
+                  : math.min(700, size.width * 0.48),
+            ),
+            child: _Caption(item: widget.item, narrow: widget.narrow),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// The item's backdrop, which settles from a slight zoom ([zoomed]) while
+/// the slide shows; over a picture, the player's dark behind it.
+class _Backdrop extends StatelessWidget {
+  const _Backdrop({
+    required this.url,
+    required this.zoomed,
+    required this.still,
+  });
+
+  final Uri? url;
+  final bool zoomed;
+
+  /// Reduced motion: no zoom at all.
+  final bool still;
+
+  @override
+  Widget build(BuildContext context) => ColoredBox(
+    color: context.tokens.mediaShade,
+    child: switch (url) {
+      null => null,
+      // Clipped to the slide: a Stack does not clip what a transform
+      // pushes out.
+      final url => ClipRect(
+        child: AnimatedScale(
+          scale: zoomed ? 1.04 : 1,
+          duration: still ? Duration.zero : const Duration(seconds: 9),
+          child: Image.network(
+            url.toString(),
+            fit: BoxFit.cover,
+            errorBuilder: (_, _, _) => const SizedBox.shrink(),
+          ),
+        ),
+      ),
+    },
+  );
+}
+
+/// Dark on the left for the text, the page's colour at the bottom, a
+/// little shade at the top for the bar over it.
+class _Shades extends StatelessWidget {
+  const _Shades();
+
+  @override
+  Widget build(BuildContext context) {
+    final night = context.tokens.mediaShade;
+    final ground = Theme.of(context).scaffoldBackgroundColor;
+    return Stack(
+      fit: StackFit.expand,
+      children: [
         DecoratedBox(
           decoration: BoxDecoration(
             gradient: LinearGradient(
@@ -252,102 +285,117 @@ class _SlideState extends ConsumerState<_Slide> {
             ),
           ),
         ),
-        Positioned(
-          left: left,
-          right: widget.narrow ? left : null,
-          bottom: widget.narrow ? 96 : HeroCarousel.heightFor(size) * 0.15,
-          child: ConstrainedBox(
-            constraints: BoxConstraints(
-              maxWidth: widget.narrow
-                  ? double.infinity
-                  : math.min(700, size.width * 0.48),
-            ),
-            child: DefaultTextStyle.merge(
-              style: TextStyle(color: ink),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    movie ? 'MOVIE' : 'SERIES',
-                    style: tokens.overline.copyWith(
-                      color: theme.colorScheme.inversePrimary,
-                      letterSpacing: 2,
-                    ),
-                  ),
-                  SizedBox(height: tokens.space(3)),
-                  Text(
-                    item.name.toUpperCase(),
-                    maxLines: 3,
-                    overflow: TextOverflow.ellipsis,
-                    // Sized to the window, so not a fixed step of the scale.
-                    style: theme.textTheme.displayLarge?.copyWith(
-                      color: ink,
-                      fontSize: titleSize,
-                      height: 1.08,
-                      fontWeight: FontWeight.w600,
-                      letterSpacing: titleSize * (widget.narrow ? 0.08 : 0.14),
-                      shadows: [
-                        Shadow(
-                          blurRadius: 16,
-                          color: night.withValues(alpha: 0.35),
-                        ),
-                      ],
-                    ),
-                  ),
-                  SizedBox(height: tokens.space(4)),
-                  if (facts.isNotEmpty)
-                    Text(
-                      facts,
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: tokens.osdInkMuted,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  if (item.overview case final String overview
-                      when overview.isNotEmpty) ...[
-                    SizedBox(height: tokens.space(3)),
-                    Text(
-                      overview,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style:
-                          (widget.narrow
-                                  ? theme.textTheme.bodyLarge
-                                  : theme.textTheme.titleLarge?.copyWith(
-                                      fontWeight: FontWeight.w400,
-                                    ))
-                              ?.copyWith(color: ink),
-                    ),
-                  ],
-                  SizedBox(height: tokens.space(6)),
-                  Row(
-                    children: [
-                      _WhiteButton(
-                        key: HeroCarousel.playButton,
-                        label: movie ? 'Play' : 'Episodes',
-                        icon: movie ? Icons.play_arrow : Icons.list,
-                        big: !widget.narrow,
-                        onPressed: () => context.push(
-                          movie ? Routes.play(item.id) : Routes.item(item.id),
-                        ),
-                      ),
-                      SizedBox(width: tokens.space(4)),
-                      _RoundButton(
-                        key: HeroCarousel.infoButton,
-                        tooltip: 'More info',
-                        icon: Icons.info_outline,
-                        big: !widget.narrow,
-                        onPressed: () => context.push(Routes.item(item.id)),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
+      ],
+    );
+  }
+}
+
+/// The slide's text and buttons: MOVIE or SERIES, the title in capitals
+/// (sized to the window), the facts, the start of the overview, Play (or
+/// Episodes) and More info.
+class _Caption extends StatelessWidget {
+  const _Caption({required this.item, required this.narrow});
+
+  final BaseItemDto item;
+  final bool narrow;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    final theme = Theme.of(context);
+    final ink = tokens.osdInk;
+    final movie = item.type != BaseItemKind.series;
+    final facts = [
+      ?item.productionYear?.toString(),
+      if (item.runTimeTicks case final int t when t > 0 && movie)
+        formatRuntime(ticksToDuration(t)),
+      ?item.officialRating,
+    ].join(' · ');
+    final titleSize = narrow
+        ? 30.0
+        : (MediaQuery.sizeOf(context).width * 0.042).clamp(36.0, 68.0);
+    return DefaultTextStyle.merge(
+      style: TextStyle(color: ink),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            movie ? 'MOVIE' : 'SERIES',
+            style: tokens.overline.copyWith(
+              color: theme.colorScheme.inversePrimary,
+              letterSpacing: 2,
             ),
           ),
-        ),
-      ],
+          SizedBox(height: tokens.space(3)),
+          Text(
+            item.name.toUpperCase(),
+            maxLines: 3,
+            overflow: TextOverflow.ellipsis,
+            // Sized to the window, so not a fixed step of the scale.
+            style: theme.textTheme.displayLarge?.copyWith(
+              color: ink,
+              fontSize: titleSize,
+              height: 1.08,
+              fontWeight: FontWeight.w600,
+              letterSpacing: titleSize * (narrow ? 0.08 : 0.14),
+              shadows: [
+                Shadow(
+                  blurRadius: 16,
+                  color: tokens.mediaShade.withValues(alpha: 0.35),
+                ),
+              ],
+            ),
+          ),
+          SizedBox(height: tokens.space(4)),
+          if (facts.isNotEmpty)
+            Text(
+              facts,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: tokens.osdInkMuted,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          if (item.overview case final String overview
+              when overview.isNotEmpty) ...[
+            SizedBox(height: tokens.space(3)),
+            Text(
+              overview,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style:
+                  (narrow
+                          ? theme.textTheme.bodyLarge
+                          : theme.textTheme.titleLarge?.copyWith(
+                              fontWeight: FontWeight.w400,
+                            ))
+                      ?.copyWith(color: ink),
+            ),
+          ],
+          SizedBox(height: tokens.space(6)),
+          Row(
+            children: [
+              _WhiteButton(
+                key: HeroCarousel.playButton,
+                label: movie ? 'Play' : 'Episodes',
+                icon: movie ? Icons.play_arrow : Icons.list,
+                big: !narrow,
+                onPressed: () => context.push(
+                  movie ? Routes.play(item.id) : Routes.item(item.id),
+                ),
+              ),
+              SizedBox(width: tokens.space(4)),
+              _RoundButton(
+                key: HeroCarousel.infoButton,
+                tooltip: 'More info',
+                icon: Icons.info_outline,
+                big: !narrow,
+                onPressed: () => context.push(Routes.item(item.id)),
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 }

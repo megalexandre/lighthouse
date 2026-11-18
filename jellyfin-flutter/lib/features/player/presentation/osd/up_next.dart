@@ -40,7 +40,6 @@ class UpNextCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tokens = context.tokens;
-    final theme = Theme.of(context);
     final seconds = (remaining.inMilliseconds / 1000).ceil().clamp(0, 99);
     final fraction = (remaining.inMilliseconds / countdown.inMilliseconds)
         .clamp(0.0, 1.0);
@@ -71,70 +70,10 @@ class UpNextCard extends StatelessWidget {
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              SizedBox(
-                width: 136,
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(tokens.radiusSm),
-                  child: AspectRatio(
-                    aspectRatio: 16 / 9,
-                    child: Stack(
-                      fit: StackFit.expand,
-                      children: [
-                        ItemImage(item: next, width: 136),
-                        Center(
-                          child: SizedBox.square(
-                            dimension: 40,
-                            child: CustomPaint(
-                              painter: _RingPainter(
-                                fraction: fraction,
-                                track: tokens.osdTrack,
-                                accent: tokens.osdAccent,
-                              ),
-                              child: Center(
-                                child: Text(
-                                  '$seconds',
-                                  style: tokens.timecode.copyWith(
-                                    color: tokens.osdInk,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
+              _Thumbnail(next: next, seconds: seconds, fraction: fraction),
               SizedBox(width: tokens.space(4)),
               Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'UP NEXT · IN $seconds S',
-                      style: tokens.overline.copyWith(
-                        color: tokens.osdInkMuted,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      title,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        color: tokens.osdInk,
-                      ),
-                    ),
-                    if (meta.isNotEmpty)
-                      Text(
-                        meta,
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: tokens.osdInkMuted,
-                        ),
-                      ),
-                  ],
-                ),
+                child: _Details(seconds: seconds, title: title, meta: meta),
               ),
             ],
           ),
@@ -164,14 +103,115 @@ class UpNextCard extends StatelessWidget {
   }
 }
 
+/// The next episode's picture, with the countdown ring over it.
+class _Thumbnail extends StatelessWidget {
+  const _Thumbnail({
+    required this.next,
+    required this.seconds,
+    required this.fraction,
+  });
+
+  final BaseItemDto next;
+  final int seconds;
+
+  /// Of the countdown left: the ring's arc.
+  final double fraction;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    return SizedBox(
+      width: 136,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(tokens.radiusSm),
+        child: AspectRatio(
+          aspectRatio: 16 / 9,
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              ItemImage(item: next, width: 136),
+              Center(
+                child: SizedBox.square(
+                  dimension: 40,
+                  child: CustomPaint(
+                    painter: _RingPainter(
+                      fraction: fraction,
+                      shade: tokens.mediaShade.withValues(alpha: 0.5),
+                      track: tokens.osdTrack,
+                      accent: tokens.osdAccent,
+                    ),
+                    child: Center(
+                      child: Text(
+                        '$seconds',
+                        style: tokens.timecode.copyWith(color: tokens.osdInk),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// "UP NEXT · IN 6 S", the next episode's name, and its length and when
+/// it would end.
+class _Details extends StatelessWidget {
+  const _Details({
+    required this.seconds,
+    required this.title,
+    required this.meta,
+  });
+
+  final int seconds;
+  final String title;
+  final String meta;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    final theme = Theme.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'UP NEXT · IN $seconds S',
+          style: tokens.overline.copyWith(color: tokens.osdInkMuted),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          title,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+          style: theme.textTheme.titleMedium?.copyWith(color: tokens.osdInk),
+        ),
+        if (meta.isNotEmpty)
+          Text(
+            meta,
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: tokens.osdInkMuted,
+            ),
+          ),
+      ],
+    );
+  }
+}
+
 class _RingPainter extends CustomPainter {
   _RingPainter({
     required this.fraction,
+    required this.shade,
     required this.track,
     required this.accent,
   });
 
   final double fraction;
+
+  /// Behind the number, so it reads on any picture.
+  final Color shade;
   final Color track;
   final Color accent;
 
@@ -180,7 +220,7 @@ class _RingPainter extends CustomPainter {
     final center = size.center(Offset.zero);
     final radius = size.shortestSide / 2 - 1.5;
     canvas
-      ..drawCircle(center, radius, Paint()..color = const Color(0x80000000))
+      ..drawCircle(center, radius, Paint()..color = shade)
       ..drawCircle(
         center,
         radius,

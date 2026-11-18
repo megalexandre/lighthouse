@@ -236,32 +236,108 @@ class _ItemCardState extends State<ItemCard> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     final tokens = context.tokens;
-    final subtitle = cardSubtitle(item);
-    final data = item.userData;
-    final progress = (data?.playedPercentage ?? 0) / 100;
-    final unplayed = data?.unplayedItemCount ?? 0;
     final still = MediaQuery.disableAnimationsOf(context);
     // Posters (tall) get the small radius, landscape cards the medium.
     final radius = BorderRadius.circular(
       _aspect < 1 ? tokens.radiusSm : tokens.radiusMd,
     );
-    final playRoute = _playRoute;
 
     final expands = _expands(context);
-    final picture = AnimatedContainer(
+    final picture = _Picture(
       key: _pictureKey,
+      item: item,
+      width: widget.width,
+      aspectRatio: _aspect,
+      radius: radius,
+      lifted: _lifted,
+      playRoute: _playRoute,
+    );
+
+    final card = SizedBox(
+      key: ItemCard.keyFor(item.id),
+      width: widget.width,
+      child: AnimatedScale(
+        scale: _lifted && !still ? 1.04 : 1,
+        alignment: Alignment.bottomCenter,
+        duration: const Duration(milliseconds: 150),
+        child: InkWell(
+          borderRadius: radius,
+          // The lift is the hover and focus feedback; no grey wash.
+          hoverColor: Colors.transparent,
+          focusColor: Colors.transparent,
+          // With the panel, the mouse opens it instead of lifting the
+          // card (the keyboard still lifts it).
+          onHover: (h) => setState(() => _hovered = h && !expands),
+          onFocusChange: (f) => setState(() => _focused = f),
+          onTap: () => openItem(context, item),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              picture,
+              _Caption(item: item),
+            ],
+          ),
+        ),
+      ),
+    );
+    if (!expands) return card;
+    return OverlayPortal(
+      controller: _popover,
+      overlayChildBuilder: (_) => CardPopover(
+        item: item,
+        origin: _origin ?? Rect.zero,
+        onEnter: () => _closeTimer?.cancel(),
+        onExit: _closeSoon,
+        onDone: _close,
+      ),
+      child: MouseRegion(onEnter: _mouseEnter, onExit: _mouseExit, child: card),
+    );
+  }
+}
+
+/// The card's picture: rounded, lifted (shadow and focus ring) while
+/// hovered or focused, with the play disc then, the watched check or the
+/// count of unplayed episodes, and the progress bar once started.
+class _Picture extends StatelessWidget {
+  const _Picture({
+    super.key,
+    required this.item,
+    required this.width,
+    required this.aspectRatio,
+    required this.radius,
+    required this.lifted,
+    required this.playRoute,
+  });
+
+  final BaseItemDto item;
+  final double width;
+  final double aspectRatio;
+  final BorderRadius radius;
+  final bool lifted;
+
+  /// Where the play disc goes; null: no disc.
+  final String? playRoute;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    final primary = Theme.of(context).colorScheme.primary;
+    final data = item.userData;
+    final progress = (data?.playedPercentage ?? 0) / 100;
+    final unplayed = data?.unplayedItemCount ?? 0;
+    final book = item.type == BaseItemKind.book;
+    return AnimatedContainer(
       duration: const Duration(milliseconds: 150),
       decoration: BoxDecoration(
         borderRadius: radius,
-        boxShadow: _lifted ? tokens.shadowPoster : const [],
+        boxShadow: lifted ? tokens.shadowPoster : const [],
       ),
-      foregroundDecoration: _lifted
+      foregroundDecoration: lifted
           ? BoxDecoration(
               borderRadius: radius,
               border: Border.all(
-                color: theme.colorScheme.primary,
+                color: primary,
                 width: 2,
                 strokeAlign: BorderSide.strokeAlignOutside,
               ),
@@ -270,24 +346,22 @@ class _ItemCardState extends State<ItemCard> {
       child: ClipRRect(
         borderRadius: radius,
         child: AspectRatio(
-          aspectRatio: _aspect,
+          aspectRatio: aspectRatio,
           child: Stack(
             fit: StackFit.expand,
             children: [
-              ItemImage(item: item, width: widget.width),
-              if (_lifted && playRoute != null)
+              ItemImage(item: item, width: width),
+              if (playRoute case final route? when lifted)
                 ColoredBox(
-                  color: const Color(0x59000000),
+                  color: tokens.mediaShade.withValues(alpha: 0.35),
                   child: Center(
                     child: _Disc(
                       key: ItemCard.playKeyFor(item.id),
                       size: 48,
-                      tooltip: item.type == BaseItemKind.book ? 'Read' : 'Play',
-                      onTap: () => context.push(playRoute),
+                      tooltip: book ? 'Read' : 'Play',
+                      onTap: () => context.push(route),
                       child: Icon(
-                        item.type == BaseItemKind.book
-                            ? Icons.auto_stories
-                            : Icons.play_arrow,
+                        book ? Icons.auto_stories : Icons.play_arrow,
                         size: 28,
                       ),
                     ),
@@ -313,11 +387,11 @@ class _ItemCardState extends State<ItemCard> {
                   bottom: 0,
                   height: 4,
                   child: ColoredBox(
-                    color: const Color(0x80000000),
+                    color: tokens.mediaShade.withValues(alpha: 0.5),
                     child: FractionallySizedBox(
                       alignment: Alignment.centerLeft,
                       widthFactor: progress.clamp(0, 1),
-                      child: ColoredBox(color: theme.colorScheme.primary),
+                      child: ColoredBox(color: primary),
                     ),
                   ),
                 ),
@@ -326,68 +400,43 @@ class _ItemCardState extends State<ItemCard> {
         ),
       ),
     );
+  }
+}
 
-    final card = SizedBox(
-      key: ItemCard.keyFor(item.id),
-      width: widget.width,
-      child: AnimatedScale(
-        scale: _lifted && !still ? 1.04 : 1,
-        alignment: Alignment.bottomCenter,
-        duration: const Duration(milliseconds: 150),
-        child: InkWell(
-          borderRadius: radius,
-          // The lift is the hover and focus feedback; no grey wash.
-          hoverColor: Colors.transparent,
-          focusColor: Colors.transparent,
-          // With the panel, the mouse opens it instead of lifting the
-          // card (the keyboard still lifts it).
-          onHover: (h) => setState(() => _hovered = h && !expands),
-          onFocusChange: (f) => setState(() => _focused = f),
-          onTap: () => openItem(context, item),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              picture,
-              SizedBox(
-                height: ItemCard.textHeight,
-                child: Padding(
-                  padding: EdgeInsets.only(top: tokens.space(2)),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        item.name,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: theme.textTheme.titleSmall,
-                      ),
-                      if (subtitle != null)
-                        Text(
-                          subtitle,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: theme.textTheme.bodySmall,
-                        ),
-                    ],
-                  ),
-                ),
+/// The two lines under the picture: the name, and the subtitle when the
+/// item has one.
+class _Caption extends StatelessWidget {
+  const _Caption({required this.item});
+
+  final BaseItemDto item;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final subtitle = cardSubtitle(item);
+    return SizedBox(
+      height: ItemCard.textHeight,
+      child: Padding(
+        padding: EdgeInsets.only(top: context.tokens.space(2)),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              item.name,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: theme.textTheme.titleSmall,
+            ),
+            if (subtitle != null)
+              Text(
+                subtitle,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: theme.textTheme.bodySmall,
               ),
-            ],
-          ),
+          ],
         ),
       ),
-    );
-    if (!expands) return card;
-    return OverlayPortal(
-      controller: _popover,
-      overlayChildBuilder: (_) => CardPopover(
-        item: item,
-        origin: _origin ?? Rect.zero,
-        onEnter: () => _closeTimer?.cancel(),
-        onExit: _closeSoon,
-        onDone: _close,
-      ),
-      child: MouseRegion(onEnter: _mouseEnter, onExit: _mouseExit, child: card),
     );
   }
 }
