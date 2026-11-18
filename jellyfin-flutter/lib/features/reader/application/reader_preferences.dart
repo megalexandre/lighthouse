@@ -5,6 +5,7 @@ import 'package:material_ui/material_ui.dart';
 
 import '../../../core/failure.dart';
 import '../../../core/log.dart';
+import '../../../l10n/l10n.dart';
 import '../data/book_document.dart';
 import '../data/book_repository.dart';
 import '../data/epub/epub_layout.dart';
@@ -32,10 +33,10 @@ enum ReaderTheme {
   /// The light theme keeps a PDF exactly as it is.
   PageColors get pageColors => this == light ? PageColors.plain : colors;
 
-  String get label => switch (this) {
-    light => 'Light',
-    sepia => 'Sepia',
-    dark => 'Dark',
+  String label(AppLocalizations l10n) => switch (this) {
+    light => l10n.readerLight,
+    sepia => l10n.readerSepia,
+    dark => l10n.readerDark,
   };
 }
 

@@ -9,6 +9,7 @@ import '../../../api/models/base_item_dto.dart';
 import '../../../core/failure.dart';
 import '../../../core/theme/app_tokens.dart';
 import '../../../core/ticks.dart';
+import '../../../l10n/l10n.dart';
 import '../../../router.dart';
 import '../../player/data/playback_repository.dart';
 import '../application/library_providers.dart';
@@ -105,7 +106,7 @@ class _CardPopoverState extends ConsumerState<CardPopover>
     } on Failure catch (e) {
       if (mounted) {
         ScaffoldMessenger.maybeOf(context)
-            ?.showSnackBar(SnackBar(content: Text(e.message)));
+            ?.showSnackBar(SnackBar(content: Text(e.describe(context.l10n))));
       }
     } finally {
       if (mounted) setState(() => _saving = false);
@@ -188,14 +189,18 @@ class _CardPopoverState extends ConsumerState<CardPopover>
         .backdropUrl(item, maxWidth: pixels);
 
     final (String label, IconData icon, String route) = switch (item.type) {
-      BaseItemKind.series => ('Episodes', Icons.list, Routes.item(item.id)),
+      BaseItemKind.series => (
+        context.l10n.episodes,
+        Icons.list,
+        Routes.item(item.id),
+      ),
       BaseItemKind.book => (
-        resumable ? 'Continue reading' : 'Read',
+        resumable ? context.l10n.continueReading : context.l10n.read,
         Icons.auto_stories,
         Routes.read(item.id),
       ),
       _ => (
-        resumable ? 'Resume' : 'Play',
+        resumable ? context.l10n.resume : context.l10n.play,
         Icons.play_arrow,
         Routes.play(item.id, start: resumable ? position : Duration.zero),
       ),
@@ -203,15 +208,15 @@ class _CardPopoverState extends ConsumerState<CardPopover>
     final facts = [
       ?item.productionYear?.toString(),
       if (item.type == BaseItemKind.series && (item.childCount ?? 0) > 0)
-        '${item.childCount} ${item.childCount == 1 ? 'season' : 'seasons'}'
+        context.l10n.seasonCount(item.childCount!)
       else if (item.runTimeTicks case final int t
           when t > 0 && item.type != BaseItemKind.book)
-        formatRuntime(ticksToDuration(t)),
+        formatRuntime(ticksToDuration(t), context.l10n),
     ];
     final context2 = switch (item.type) {
       BaseItemKind.episode => [
         ?item.seriesName,
-        ?episodeNumber(item),
+        ?episodeNumber(item, context.l10n),
       ].join(' · '),
       _ => null,
     };
@@ -351,8 +356,8 @@ class _CardPopoverState extends ConsumerState<CardPopover>
                       _Round(
                         key: CardPopover.watchedButton,
                         tooltip: played
-                            ? 'Mark as unwatched'
-                            : 'Mark as watched',
+                            ? context.l10n.markUnwatched
+                            : context.l10n.markWatched,
                         icon: Icons.check,
                         on: played,
                         onPressed: _saving
@@ -362,7 +367,7 @@ class _CardPopoverState extends ConsumerState<CardPopover>
                       const SizedBox(width: 12),
                       _Round(
                         key: CardPopover.infoButton,
-                        tooltip: 'Details',
+                        tooltip: context.l10n.details,
                         icon: Icons.info_outline,
                         onPressed: () => _go(Routes.item(item.id)),
                       ),

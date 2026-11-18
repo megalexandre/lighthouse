@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../../../core/theme/app_tokens.dart';
+import '../../../l10n/l10n.dart';
 import '../../../widgets/error_retry.dart';
 import '../application/reader_controller.dart';
 import '../application/reader_preferences.dart';
@@ -337,7 +338,9 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
                       key: ReaderScreen.linkBack,
                       avatar: const Icon(Icons.undo, size: 18),
                       label: Text(
-                        'Back to page ${session.document.pageAt(from) + 1}',
+                        context.l10n.backToPage(
+                          session.document.pageAt(from) + 1,
+                        ),
                       ),
                       onPressed: _controller.returnFromLink,
                     ),
@@ -428,7 +431,7 @@ class _Chrome extends StatelessWidget {
                 IconButton(
                   key: ReaderScreen.backButton,
                   color: context.tokens.osdInk,
-                  tooltip: 'Back',
+                  tooltip: context.l10n.back,
                   icon: const Icon(Icons.arrow_back),
                   onPressed: onBack,
                 ),
@@ -445,7 +448,7 @@ class _Chrome extends StatelessWidget {
                 IconButton(
                   key: ReaderScreen.contentsButton,
                   color: context.tokens.osdInk,
-                  tooltip: 'Contents and bookmarks',
+                  tooltip: context.l10n.contentsAndBookmarks,
                   icon: const Icon(Icons.toc),
                   onPressed: onContents,
                 ),
@@ -453,8 +456,8 @@ class _Chrome extends StatelessWidget {
                   key: ReaderScreen.bookmarkButton,
                   color: context.tokens.osdInk,
                   tooltip: session.bookmarked
-                      ? 'Remove bookmark'
-                      : 'Bookmark this page',
+                      ? context.l10n.removeBookmark
+                      : context.l10n.bookmarkPage,
                   isSelected: session.bookmarked,
                   icon: const Icon(Icons.bookmark_border),
                   selectedIcon: const Icon(Icons.bookmark),
@@ -463,7 +466,7 @@ class _Chrome extends StatelessWidget {
                 IconButton(
                   key: ReaderScreen.displayButton,
                   color: context.tokens.osdInk,
-                  tooltip: 'Display',
+                  tooltip: context.l10n.display,
                   icon: const Icon(Icons.text_format),
                   onPressed: onDisplay,
                 ),
@@ -493,7 +496,7 @@ class _Chrome extends StatelessWidget {
                         : const SizedBox.shrink(),
                   ),
                   Text(
-                    'Page ${session.page + 1} of $count',
+                    context.l10n.pageOf(session.page + 1, count),
                     key: ReaderScreen.pageText,
                     style: theme.textTheme.bodyMedium?.copyWith(
                       color: context.tokens.osdInkMuted,
@@ -544,10 +547,16 @@ class _ContentsDrawerState extends State<_ContentsDrawer> {
           length: 2,
           child: Column(
             children: [
-              const TabBar(
+              TabBar(
                 tabs: [
-                  Tab(key: ReaderScreen.contentsTab, text: 'Contents'),
-                  Tab(key: ReaderScreen.bookmarksTab, text: 'Bookmarks'),
+                  Tab(
+                    key: ReaderScreen.contentsTab,
+                    text: context.l10n.contents,
+                  ),
+                  Tab(
+                    key: ReaderScreen.bookmarksTab,
+                    text: context.l10n.bookmarks,
+                  ),
                 ],
               ),
               Expanded(
@@ -585,7 +594,7 @@ class _ContentsDrawerState extends State<_ContentsDrawer> {
     List<TocEntry> toc,
   ) {
     if (toc.isEmpty) {
-      return const _Empty('This book has no table of contents.');
+      return _Empty(context.l10n.noContents);
     }
     final document = session.document;
     final current = _entryAt(toc, document.fractionOf(session.page));
@@ -619,10 +628,7 @@ class _ContentsDrawerState extends State<_ContentsDrawer> {
     List<TocEntry> toc,
   ) {
     if (session.bookmarks.isEmpty) {
-      return const _Empty(
-        'No bookmarks yet. The bookmark button at the top marks the page '
-        'you are on.',
-      );
+      return _Empty(context.l10n.noBookmarks);
     }
     final document = session.document;
     return ListView(
@@ -630,7 +636,7 @@ class _ContentsDrawerState extends State<_ContentsDrawer> {
         for (final fraction in session.bookmarks)
           ListTile(
             leading: const Icon(Icons.bookmark),
-            title: Text('Page ${document.pageAt(fraction) + 1}'),
+            title: Text(context.l10n.page(document.pageAt(fraction) + 1)),
             subtitle: switch (_entryAt(toc, fraction)) {
               final TocEntry e when e.fraction >= 0 => Text(
                 e.title,
@@ -640,7 +646,7 @@ class _ContentsDrawerState extends State<_ContentsDrawer> {
               _ => null,
             },
             trailing: IconButton(
-              tooltip: 'Remove bookmark',
+              tooltip: context.l10n.removeBookmark,
               icon: const Icon(Icons.delete_outline),
               onPressed: () => widget.onRemoveBookmark(fraction),
             ),
@@ -698,7 +704,7 @@ class _DisplaySheet extends ConsumerWidget {
                 ButtonSegment(
                   value: theme,
                   label: Text(
-                    theme.label,
+                    theme.label(context.l10n),
                     key: ReaderScreen.themeChoice(theme),
                   ),
                 ),
@@ -713,7 +719,7 @@ class _DisplaySheet extends ConsumerWidget {
               children: [
                 IconButton.outlined(
                   key: ReaderScreen.fontSmaller,
-                  tooltip: 'Smaller text',
+                  tooltip: context.l10n.smallerText,
                   icon: const Icon(Icons.text_decrease),
                   onPressed: prefs.fontSize > sizes.first
                       ? () => update((p) => p.resized(-1))
@@ -721,14 +727,14 @@ class _DisplaySheet extends ConsumerWidget {
                 ),
                 Expanded(
                   child: Text(
-                    '${prefs.fontSize.round()} px',
+                    context.l10n.fontSizePx(prefs.fontSize.round()),
                     key: ReaderScreen.fontSize,
                     textAlign: TextAlign.center,
                   ),
                 ),
                 IconButton.outlined(
                   key: ReaderScreen.fontBigger,
-                  tooltip: 'Larger text',
+                  tooltip: context.l10n.largerText,
                   icon: const Icon(Icons.text_increase),
                   onPressed: prefs.fontSize < sizes.last
                       ? () => update((p) => p.resized(1))
@@ -743,7 +749,7 @@ class _DisplaySheet extends ConsumerWidget {
                 ButtonSegment(
                   value: false,
                   label: Text(
-                    'Serif',
+                    context.l10n.serif,
                     key: ReaderScreen.typefaceChoice(sans: false),
                     style: const TextStyle(fontFamily: 'serif'),
                   ),
@@ -751,7 +757,7 @@ class _DisplaySheet extends ConsumerWidget {
                 ButtonSegment(
                   value: true,
                   label: Text(
-                    'Sans',
+                    context.l10n.sans,
                     key: ReaderScreen.typefaceChoice(sans: true),
                     style: const TextStyle(fontFamily: 'sans-serif'),
                   ),

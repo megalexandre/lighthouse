@@ -5,6 +5,7 @@ import 'package:material_ui/material_ui.dart';
 import '../../../../api/models/base_item_dto.dart';
 import '../../../../core/theme/app_tokens.dart';
 import '../../../../core/ticks.dart';
+import '../../../../l10n/l10n.dart';
 import '../../../../widgets/app_button.dart';
 import '../../../library/presentation/item_card.dart';
 
@@ -43,7 +44,7 @@ class UpNextCard extends StatelessWidget {
     final seconds = (remaining.inMilliseconds / 1000).ceil().clamp(0, 99);
     final fraction = (remaining.inMilliseconds / countdown.inMilliseconds)
         .clamp(0.0, 1.0);
-    final title = [?episodeNumber(next), next.name].join(' · ');
+    final title = [?episodeNumber(next, context.l10n), next.name].join(' · ');
     final length = next.runTimeTicks == null
         ? null
         : ticksToDuration(next.runTimeTicks!);
@@ -51,8 +52,8 @@ class UpNextCard extends StatelessWidget {
         ? null
         : TimeOfDay.fromDateTime(DateTime.now().add(remaining + length));
     final meta = [
-      if (length != null) formatRuntime(length),
-      if (endsAt != null) 'Ends at ${endsAt.format(context)}',
+      if (length != null) formatRuntime(length, context.l10n),
+      if (endsAt != null) context.l10n.endsAt(endsAt.format(context)),
     ].join(' · ');
 
     return Container(
@@ -84,7 +85,7 @@ class UpNextCard extends StatelessWidget {
                 child: AppButton(
                   key: watchNowButton,
                   icon: Icons.play_arrow,
-                  label: 'Watch now',
+                  label: context.l10n.watchNow,
                   autofocus: true,
                   onPressed: onWatchNow,
                 ),
@@ -92,7 +93,7 @@ class UpNextCard extends StatelessWidget {
               SizedBox(width: tokens.space(2)),
               AppButton.ghost(
                 key: hideButton,
-                label: 'Hide',
+                label: context.l10n.hide,
                 onPressed: onHide,
               ),
             ],
@@ -178,7 +179,7 @@ class _Details extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'UP NEXT · IN $seconds S',
+          context.l10n.upNextIn(seconds),
           style: tokens.overline.copyWith(color: tokens.osdInkMuted),
         ),
         const SizedBox(height: 2),

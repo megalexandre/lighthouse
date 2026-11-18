@@ -10,6 +10,7 @@ import '../../../core/failure.dart';
 import '../../../core/log.dart';
 import '../../../core/theme/appearance.dart';
 import '../../../core/theme/theme_catalog.dart';
+import '../../../l10n/l10n.dart';
 import '../../../widgets/error_retry.dart';
 import '../../auth/application/auth_controller.dart';
 import '../application/settings_providers.dart';
@@ -27,6 +28,7 @@ class SettingsScreen extends ConsumerWidget {
   static const subtitleModeField = Key('settings.subtitleMode');
   static const autoplaySwitch = Key('settings.autoplay');
   static const themeField = Key('settings.theme');
+  static const languageField = Key('settings.language');
   static Key modeChoice(ThemeMode mode) => Key('settings.mode.${mode.name}');
   static const themesFolder = Key('settings.themesFolder');
   static const themeIssues = Key('settings.themeIssues');
@@ -38,19 +40,20 @@ class SettingsScreen extends ConsumerWidget {
     final quality = ref.watch(maxStreamingBitrateProvider).value;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Settings')),
+      appBar: AppBar(title: Text(context.l10n.settings)),
       body: ListView(
         padding: const EdgeInsets.symmetric(vertical: 16),
         children: [
-          const _Heading('Playback'),
+          _Heading(context.l10n.playback),
           _Choice<int?>(
             key: qualityField,
-            label: 'Maximum quality',
-            help:
-                'On this device. Above it the server converts the video '
-                'down; lower it on a slow network.',
+            label: context.l10n.maxQuality,
+            help: context.l10n.maxQualityHelp,
             value: quality,
-            options: qualityOptions,
+            options: [
+              for (final (bits, label) in qualityOptions)
+                (bits, bits == null ? context.l10n.qualityMaximum : label),
+            ],
             onChanged: (v) =>
                 ref.read(maxStreamingBitrateProvider.notifier).set(v),
           ),
@@ -65,10 +68,10 @@ class SettingsScreen extends ConsumerWidget {
               child: Center(child: CircularProgressIndicator()),
             ),
           },
-          const _Heading('Appearance'),
+          _Heading(context.l10n.appearance),
           const _AppearanceSettings(),
           if (session != null) ...[
-            const _Heading('Account'),
+            _Heading(context.l10n.account),
             ListTile(
               leading: const Icon(Icons.person_outline),
               title: Text(session.userName),
@@ -97,7 +100,7 @@ class _UserSettings extends ConsumerWidget {
     } on Failure catch (e) {
       if (context.mounted) {
         ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text(e.message)));
+            .showSnackBar(SnackBar(content: Text(e.describe(context.l10n))));
       }
     }
   }
@@ -113,43 +116,38 @@ class _UserSettings extends ConsumerWidget {
       children: [
         _LanguageChoice(
           key: SettingsScreen.audioLanguageField,
-          label: 'Audio language',
-          help:
-              'Played when a file has it. Saved for your account on '
-              'the server.',
+          label: context.l10n.audioLanguage,
+          help: context.l10n.audioLanguageHelp,
           value: config.audioLanguagePreference ?? noLanguage,
-          options: [(noLanguage, "The file's default"), ...options],
+          options: [(noLanguage, context.l10n.fileDefault), ...options],
           onChanged: (v) =>
               _save(context, ref, (c) => c.change(audioLanguage: v)),
         ),
         _LanguageChoice(
           key: SettingsScreen.subtitleLanguageField,
-          label: 'Subtitle language',
+          label: context.l10n.subtitleLanguage,
           value: config.subtitleLanguagePreference ?? noLanguage,
-          options: [(noLanguage, 'Any'), ...options],
+          options: [(noLanguage, context.l10n.anyLanguage), ...options],
           onChanged: (v) =>
               _save(context, ref, (c) => c.change(subtitleLanguage: v)),
         ),
         _Choice<SubtitlePlaybackMode>(
           key: SettingsScreen.subtitleModeField,
-          label: 'Show subtitles',
+          label: context.l10n.showSubtitles,
           value: config.subtitleMode,
-          options: const [
-            (SubtitlePlaybackMode.defaultMode, 'When the file says so'),
-            (
-              SubtitlePlaybackMode.smart,
-              'When the audio is in another language',
-            ),
-            (SubtitlePlaybackMode.always, 'Always'),
-            (SubtitlePlaybackMode.onlyForced, 'Only forced subtitles'),
-            (SubtitlePlaybackMode.none, 'Never'),
+          options: [
+            (SubtitlePlaybackMode.defaultMode, context.l10n.subtitlesDefault),
+            (SubtitlePlaybackMode.smart, context.l10n.subtitlesSmart),
+            (SubtitlePlaybackMode.always, context.l10n.subtitlesAlways),
+            (SubtitlePlaybackMode.onlyForced, context.l10n.subtitlesForced),
+            (SubtitlePlaybackMode.none, context.l10n.subtitlesNever),
           ],
           onChanged: (v) =>
               _save(context, ref, (c) => c.change(subtitleMode: v)),
         ),
         SwitchListTile(
           key: SettingsScreen.autoplaySwitch,
-          title: const Text('Play the next episode automatically'),
+          title: Text(context.l10n.autoplayNext),
           value: config.enableNextEpisodeAutoPlay,
           onChanged: (v) =>
               _save(context, ref, (c) => c.change(nextEpisodeAutoPlay: v)),
@@ -216,7 +214,8 @@ class _AppearanceSettings extends ConsumerWidget {
     final folder = catalog.userDirectory;
     final issues = [
       for (final w in shown.warnings) '${shown.fileName}: $w',
-      for (final e in broken) '${e.fileName}: not used (${e.error})',
+      for (final e in broken)
+        context.l10n.themeNotUsed(e.fileName, '${e.error}'),
     ];
 
     return Column(
@@ -224,27 +223,34 @@ class _AppearanceSettings extends ConsumerWidget {
       children: [
         _Choice<String>(
           key: SettingsScreen.themeField,
-          label: 'Theme',
-          help: 'Colours, type and shapes, from a design system.',
+          label: context.l10n.theme,
+          help: context.l10n.themeHelp,
           value: shown.id,
           options: [
             for (final e in usable)
-              (e.id, e.builtIn ? e.name : '${e.name} (your folder)'),
+              (e.id, e.builtIn ? e.name : context.l10n.themeFromFolder(e.name)),
           ],
           onChanged: (id) => controller.set(appearance.copyWith(themeId: id)),
         ),
+        _Choice<AppLanguage>(
+          key: SettingsScreen.languageField,
+          label: context.l10n.settingsLanguage,
+          help: context.l10n.settingsLanguageHelp,
+          value: ref.watch(appLanguageProvider),
+          options: [for (final l in AppLanguage.values) (l, l.name)],
+          onChanged: (language) =>
+              controller.set(appearance.copyWith(language: language)),
+        ),
         ListTile(
-          title: const Text('Mode'),
-          subtitle: twoModes
-              ? null
-              : const Text('This theme has a single mode.'),
+          title: Text(context.l10n.mode),
+          subtitle: twoModes ? null : Text(context.l10n.singleMode),
           trailing: SegmentedButton<ThemeMode>(
             showSelectedIcon: false,
             segments: [
-              for (final (mode, label) in const [
-                (ThemeMode.dark, 'Dark'),
-                (ThemeMode.light, 'Light'),
-                (ThemeMode.system, 'System'),
+              for (final (mode, label) in [
+                (ThemeMode.dark, context.l10n.modeDark),
+                (ThemeMode.light, context.l10n.modeLight),
+                (ThemeMode.system, context.l10n.modeSystem),
               ])
                 ButtonSegment(
                   value: mode,
@@ -260,16 +266,13 @@ class _AppearanceSettings extends ConsumerWidget {
         if (folder != null && folder.isNotEmpty)
           ListTile(
             key: SettingsScreen.themesFolder,
-            title: const Text('Your themes'),
-            subtitle: Text(
-              'Put a design system\'s tokens.json in $folder: it shows up '
-              'here at once, and changes to it apply as you save.',
-            ),
+            title: Text(context.l10n.yourThemes),
+            subtitle: Text(context.l10n.yourThemesHelp(folder)),
             trailing: Platform.isLinux
                 ? TextButton(
                     onPressed: () =>
                         unawaited(ref.read(folderOpenerProvider)(folder)),
-                    child: const Text('Open folder'),
+                    child: Text(context.l10n.openFolder),
                   )
                 : null,
           ),
@@ -280,11 +283,7 @@ class _AppearanceSettings extends ConsumerWidget {
               Icons.warning_amber,
               color: Theme.of(context).colorScheme.error,
             ),
-            title: Text(
-              issues.length == 1
-                  ? '1 theme issue'
-                  : '${issues.length} theme issues',
-            ),
+            title: Text(context.l10n.themeIssues(issues.length)),
             children: [
               for (final issue in issues)
                 ListTile(dense: true, title: SelectableText(issue)),

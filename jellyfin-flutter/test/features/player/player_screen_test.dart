@@ -4,6 +4,7 @@ import 'package:jellyfin_flutter/api/models/user_item_data_dto.dart';
 import 'package:jellyfin_flutter/core/failure.dart';
 import 'package:jellyfin_flutter/features/item/presentation/item_screen.dart';
 import 'package:jellyfin_flutter/features/player/presentation/player_screen.dart';
+import 'package:jellyfin_flutter/l10n/l10n.dart';
 import 'package:jellyfin_flutter/router.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -161,7 +162,10 @@ void main() {
     app.playback.failures['prepare'] = const NotPlayable('NotAllowed');
     await openMovie(tester);
     await tapAndSettle(tester, find.byKey(ItemScreen.playButton));
-    expect(find.text(const NotPlayable('NotAllowed').message), findsOneWidget);
+    expect(
+      find.text(const NotPlayable('NotAllowed').describe(en)),
+      findsOneWidget,
+    );
     expect(app.engines, isEmpty);
 
     await tapAndSettle(tester, find.byKey(PlayerScreen.backButton));

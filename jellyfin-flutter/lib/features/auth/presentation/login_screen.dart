@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../../../core/failure.dart';
+import '../../../l10n/l10n.dart';
 import '../application/auth_controller.dart';
 import 'auth_form.dart';
 
@@ -35,7 +36,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   Future<void> _submit() async {
     if (_busy) return;
     if (_username.text.trim().isEmpty) {
-      setState(() => _error = 'Enter your username.');
+      setState(() => _error = context.l10n.usernameMissing);
       return;
     }
     setState(() {
@@ -48,7 +49,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           .read(authControllerProvider.notifier)
           .login(_username.text.trim(), _password.text);
     } on Failure catch (e) {
-      if (mounted) setState(() => _error = e.message);
+      if (mounted) setState(() => _error = e.describe(context.l10n));
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -58,16 +59,18 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   Widget build(BuildContext context) {
     final server = ref.watch(authControllerProvider).value?.server;
     return AuthForm(
-      title: 'Sign in',
-      subtitle: server == null ? null : '${server.name} · ${server.url}',
+      title: context.l10n.signIn,
+      subtitle: server == null
+          ? null
+          : context.l10n.serverNameAndUrl(server.name, server.url),
       children: [
         TextField(
           key: LoginScreen.usernameField,
           controller: _username,
           autofocus: true,
           textInputAction: TextInputAction.next,
-          decoration: const InputDecoration(
-            labelText: 'Username',
+          decoration: InputDecoration(
+            labelText: context.l10n.username,
             border: OutlineInputBorder(),
           ),
           onSubmitted: (_) => _passwordFocus.requestFocus(),
@@ -79,8 +82,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           focusNode: _passwordFocus,
           obscureText: true,
           textInputAction: TextInputAction.go,
-          decoration: const InputDecoration(
-            labelText: 'Password',
+          decoration: InputDecoration(
+            labelText: context.l10n.password,
             border: OutlineInputBorder(),
           ),
           onSubmitted: (_) => _submit(),
@@ -88,7 +91,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         const SizedBox(height: 16),
         SubmitButton(
           key: LoginScreen.submitButton,
-          label: 'Sign in',
+          label: context.l10n.signIn,
           busy: _busy,
           onPressed: _submit,
         ),
@@ -99,7 +102,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           onPressed: _busy
               ? null
               : () => ref.read(authControllerProvider.notifier).changeServer(),
-          child: const Text('Change server'),
+          child: Text(context.l10n.changeServer),
         ),
       ],
     );

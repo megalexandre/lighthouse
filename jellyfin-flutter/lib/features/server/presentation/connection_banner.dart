@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
+import '../../../l10n/l10n.dart';
 import '../../auth/application/auth_controller.dart';
 import '../application/connection_controller.dart';
 
@@ -38,8 +39,9 @@ class ConnectionBanner extends ConsumerWidget {
                   const SizedBox(width: 12),
                   Expanded(
                     child: Text(
-                      "Can't reach ${server?.name ?? 'the server'}. "
-                      'Trying again…',
+                      context.l10n.offlineBanner(
+                        server?.name ?? context.l10n.theServer,
+                      ),
                       style: TextStyle(color: scheme.onErrorContainer),
                     ),
                   ),
@@ -48,7 +50,7 @@ class ConnectionBanner extends ConsumerWidget {
                     onPressed: () => unawaited(
                       ref.read(connectionProvider.notifier).retryNow(),
                     ),
-                    child: const Text('Retry now'),
+                    child: Text(context.l10n.retryNow),
                   ),
                 ],
               ),

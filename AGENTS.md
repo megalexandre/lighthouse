@@ -77,8 +77,14 @@ the bundle by hand.
 
 ## Conventions
 
-- **Language:** code, comments, identifiers, commit messages, `.feature` files and UI strings in
-  English (no i18n yet; pt-BR is planned). `docs/PLAN.md` and `docs/THEMES.md` are in Portuguese.
+- **Language:** code, comments, identifiers, commit messages and `.feature` files in English.
+  `docs/PLAN.md` and `docs/THEMES.md` are in Portuguese.
+- **UI texts (i18n):** never a string literal in a widget. Add the key to `lib/l10n/app_en.arb`
+  (with a `description`), its translation to `lib/l10n/app_pt.arb`, and use `context.l10n.<key>`.
+  Brazilian Portuguese is the app's default language; tests run in English
+  (`defaultLanguageProvider` is overridden in `TestApp` and `integration_test/support/app.dart`),
+  so `find.text` and scenarios use the English text. `tool/check.sh` fails on an untranslated key.
+  Next steps in phase I3 (`docs/PLAN.md`).
 - **Style:** `dart format`, and the strict analyzer settings in `analysis_options.yaml` (strict
   casts/inference/raw types, single quotes, trailing commas, `prefer_final_locals`,
   `unawaited_futures`, no `print`). Comments say *why*, not what.

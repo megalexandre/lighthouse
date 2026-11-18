@@ -7,6 +7,7 @@ import '../../../../api/models/media_stream.dart';
 import '../../../../api/models/playback_report.dart';
 import '../../../../core/theme/app_tokens.dart';
 import '../../../../core/ticks.dart';
+import '../../../../l10n/l10n.dart';
 import '../../../../widgets/media_badge.dart';
 import '../../../library/presentation/item_card.dart';
 import '../../application/player_controller.dart';
@@ -103,9 +104,9 @@ class _TitleBar extends StatelessWidget {
     final (title, subtitle) = switch (item) {
       BaseItemDto(type: BaseItemKind.episode, :final seriesName?) => (
         seriesName,
-        [?episodeNumber(item), item.name].join(' · '),
+        [?episodeNumber(item, context.l10n), item.name].join(' · '),
       ),
-      _ => (item.name, cardSubtitle(item)),
+      _ => (item.name, cardSubtitle(item, context.l10n)),
     };
     return DecoratedBox(
       decoration: BoxDecoration(
@@ -124,7 +125,7 @@ class _TitleBar extends StatelessWidget {
               ControlButton(
                 key: PlayerScreen.backButton,
                 icon: Icons.arrow_back,
-                label: 'Back',
+                label: context.l10n.back,
                 shortcut: 'Esc',
                 onPressed: onBack,
               ),
@@ -241,14 +242,14 @@ class _Transport extends StatelessWidget {
         ControlButton(
           key: PlayerScreen.previousButton,
           icon: Icons.skip_previous,
-          label: 'Previous',
+          label: context.l10n.previous,
           shortcut: 'Shift+P',
           onPressed: tap(osd.onPrevious),
         ),
         ControlButton(
           key: PlayerScreen.seekBackButton,
           icon: Icons.replay_10,
-          label: 'Back 10 seconds',
+          label: context.l10n.back10,
           shortcut: '←',
           onPressed: tap(() => osd.onSeekBy(const Duration(seconds: -10))),
         ),
@@ -260,8 +261,8 @@ class _Transport extends StatelessWidget {
             return ControlButton(
               key: PlayerScreen.playPauseButton,
               icon: playing ? Icons.pause : Icons.play_arrow,
-              label: playing ? 'Pause' : 'Play',
-              shortcut: 'Space',
+              label: playing ? context.l10n.pause : context.l10n.play,
+              shortcut: context.l10n.keySpace,
               size: 52,
               iconSize: 32,
               onPressed: tap(engine.playOrPause),
@@ -271,7 +272,7 @@ class _Transport extends StatelessWidget {
         ControlButton(
           key: PlayerScreen.seekForwardButton,
           icon: Icons.forward_10,
-          label: 'Forward 10 seconds',
+          label: context.l10n.forward10,
           shortcut: '→',
           onPressed: tap(() => osd.onSeekBy(const Duration(seconds: 10))),
         ),
@@ -279,7 +280,7 @@ class _Transport extends StatelessWidget {
           ControlButton(
             key: PlayerScreen.nextButton,
             icon: Icons.skip_next,
-            label: 'Next',
+            label: context.l10n.next,
             shortcut: 'Shift+N',
             onPressed: tap(next),
           ),
@@ -302,7 +303,7 @@ class _Extras extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        for (final b in qualityBadges(session))
+        for (final b in qualityBadges(session, context.l10n))
           Padding(
             padding: EdgeInsets.only(left: tokens.space(1)),
             child: MediaBadge(b, onVideo: true),
@@ -312,7 +313,7 @@ class _Extras extends StatelessWidget {
           ControlButton(
             key: PlayerScreen.subtitleMenu,
             icon: Icons.subtitles,
-            label: 'Subtitles',
+            label: context.l10n.subtitles,
             shortcut: 'S',
             active: session.subtitleStreamIndex != null,
             onPressed: () => osd.onMenu(SettingsPage.subtitles),
@@ -320,13 +321,15 @@ class _Extras extends StatelessWidget {
         ControlButton(
           key: PlayerScreen.settingsButton,
           icon: Icons.settings,
-          label: 'Settings',
+          label: context.l10n.settings,
           onPressed: () => osd.onMenu(SettingsPage.root),
         ),
         ControlButton(
           key: PlayerScreen.fullscreenButton,
           icon: osd.fullscreen ? Icons.fullscreen_exit : Icons.fullscreen,
-          label: osd.fullscreen ? 'Exit full screen' : 'Full screen',
+          label: osd.fullscreen
+              ? context.l10n.exitFullScreen
+              : context.l10n.fullScreen,
           shortcut: 'F',
           onPressed: _keepingUp(osd.onFullscreen, osd.onInteract),
         ),
@@ -359,7 +362,7 @@ class _CenterPlay extends StatelessWidget {
 
 /// What is shown over the video about the stream: its resolution, and
 /// TRANSCODING when the server converts it.
-List<String> qualityBadges(PlayerSession session) {
+List<String> qualityBadges(PlayerSession session, AppLocalizations l10n) {
   final video = session.plan.source.mediaStreams
       .where((s) => s.type == MediaStreamType.video)
       .firstOrNull;
@@ -371,7 +374,7 @@ List<String> qualityBadges(PlayerSession session) {
       '1080P'
     else if (height >= 700)
       '720P',
-    if (session.plan.method == PlayMethod.transcode) 'Transcoding',
+    if (session.plan.method == PlayMethod.transcode) l10n.transcoding,
   ];
 }
 
@@ -450,7 +453,7 @@ class _Volume extends StatelessWidget {
               icon: muted || volume == 0
                   ? Icons.volume_off
                   : (volume < 50 ? Icons.volume_down : Icons.volume_up),
-              label: muted ? 'Unmute' : 'Mute',
+              label: muted ? context.l10n.unmute : context.l10n.mute,
               shortcut: 'M',
               active: false,
               onPressed: () {

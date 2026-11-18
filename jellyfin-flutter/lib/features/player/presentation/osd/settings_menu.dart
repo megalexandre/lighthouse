@@ -1,9 +1,11 @@
 import 'dart:async';
 
+import 'package:intl/intl.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../../../../core/failure.dart';
 import '../../../../core/theme/app_tokens.dart';
+import '../../../../l10n/l10n.dart';
 
 /// A choice in a [SettingsMenu] page: [value] (null: "off"), its label and
 /// an optional detail ("SRT", "Forced").
@@ -59,10 +61,10 @@ class SettingsMenu extends StatefulWidget {
   State<SettingsMenu> createState() => SettingsMenuState();
 }
 
-/// "1×", "1.5×".
-String rateLabel(double rate) => rate == 1
-    ? 'Normal'
-    : '${rate.toString().replaceAll(RegExp(r'\.0$'), '')}×';
+/// "Normal", "1.5×" (with the language's decimal mark: "1,5×").
+String rateLabel(double rate, AppLocalizations l10n) => rate == 1
+    ? l10n.speedNormal
+    : '${NumberFormat('0.##', l10n.localeName).format(rate)}×';
 
 class SettingsMenuState extends State<SettingsMenu> {
   late SettingsPage _page = widget.initialPage;
@@ -95,24 +97,24 @@ class SettingsMenuState extends State<SettingsMenu> {
           children: switch (_page) {
             SettingsPage.root => _root(),
             SettingsPage.audio => _choices<int>(
-              'Audio',
+              context.l10n.audio,
               widget.audio,
               widget.selectedAudio ?? -1,
               widget.onAudio,
             ),
             SettingsPage.subtitles => _choices(
-              'Subtitles',
+              context.l10n.subtitles,
               widget.subtitles,
               widget.selectedSubtitle,
               widget.onSubtitle,
             ),
             SettingsPage.speed => _choices(
-              'Speed',
+              context.l10n.speed,
               [
                 for (final r in SettingsMenu.rates)
                   (
                     value: r,
-                    label: rateLabel(r),
+                    label: rateLabel(r, context.l10n),
                     detail: null,
                     key: SettingsMenu.speedItem(r),
                   ),
@@ -133,7 +135,7 @@ class SettingsMenuState extends State<SettingsMenu> {
     if (widget.audio.length > 1)
       _Row(
         key: SettingsMenu.audioRow,
-        label: 'Audio',
+        label: context.l10n.audio,
         value: _labelOf(widget.audio, widget.selectedAudio),
         autofocus: true,
         onTap: () => setState(() => _page = SettingsPage.audio),
@@ -141,15 +143,15 @@ class SettingsMenuState extends State<SettingsMenu> {
     if (widget.subtitles.length > 1)
       _Row(
         key: SettingsMenu.subtitlesRow,
-        label: 'Subtitles',
+        label: context.l10n.subtitles,
         value: _labelOf(widget.subtitles, widget.selectedSubtitle),
         autofocus: widget.audio.length <= 1,
         onTap: () => setState(() => _page = SettingsPage.subtitles),
       ),
     _Row(
       key: SettingsMenu.speedRow,
-      label: 'Speed',
-      value: rateLabel(widget.rate),
+      label: context.l10n.speed,
+      value: rateLabel(widget.rate, context.l10n),
       autofocus: widget.audio.length <= 1 && widget.subtitles.length <= 1,
       onTap: () => setState(() => _page = SettingsPage.speed),
     ),
@@ -290,11 +292,13 @@ class MenuBarrier extends StatelessWidget {
 /// own message, or [fallback]. (A track that needs a new stream can fail,
 /// the server gone: the old one keeps playing.)
 void reportFailure(BuildContext context, Future<void> future, String fallback) {
+  // Taken now: the menu may be gone when the future fails.
   final messenger = ScaffoldMessenger.maybeOf(context);
+  final l10n = context.l10n;
   unawaited(
     future.catchError((Object e) {
       messenger?.showSnackBar(
-        SnackBar(content: Text(e is Failure ? e.message : fallback)),
+        SnackBar(content: Text(e is Failure ? e.describe(l10n) : fallback)),
       );
     }),
   );

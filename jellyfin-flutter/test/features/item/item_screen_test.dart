@@ -3,6 +3,7 @@ import 'package:jellyfin_flutter/api/models/media_stream.dart';
 import 'package:jellyfin_flutter/core/failure.dart';
 import 'package:jellyfin_flutter/features/item/presentation/item_screen.dart';
 import 'package:jellyfin_flutter/features/library/presentation/item_card.dart';
+import 'package:jellyfin_flutter/l10n/l10n.dart';
 import 'package:jellyfin_flutter/router.dart';
 import 'package:jellyfin_flutter/widgets/error_retry.dart';
 import 'package:jellyfin_flutter/widgets/media_badge.dart';
@@ -75,7 +76,10 @@ void main() {
   testWidgets('an item that cannot be loaded: error and retry', (tester) async {
     app.library.failures['item'] = const ServerUnreachable(testUrl);
     await app.open(tester, Routes.item(TestItems.testMovie.id));
-    expect(find.text(const ServerUnreachable(testUrl).message), findsOneWidget);
+    expect(
+      find.text(const ServerUnreachable(testUrl).describe(en)),
+      findsOneWidget,
+    );
 
     app.library.failures.clear();
     await tester.tap(find.byKey(ErrorRetry.retryButton));

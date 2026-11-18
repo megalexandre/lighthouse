@@ -5,6 +5,7 @@ import 'package:material_ui/material_ui.dart';
 
 import '../../../../core/theme/app_tokens.dart';
 import '../../../../core/ticks.dart';
+import '../../../../l10n/l10n.dart';
 import '../../application/trickplay.dart';
 import '../../data/player_engine.dart';
 
@@ -123,8 +124,8 @@ class _SeekBarState extends State<SeekBar> {
         );
         return Semantics(
           slider: true,
-          label: 'Position',
-          value: _spoken(shown, _duration),
+          label: context.l10n.seekPosition,
+          value: _spoken(shown, _duration, context.l10n),
           child: Focus(
             onFocusChange: (f) => setState(() => _focused = f),
             child: MouseRegion(
@@ -249,19 +250,19 @@ class _SeekBarState extends State<SeekBar> {
 }
 
 /// "23 minutes 41 seconds of 1 hour 52 minutes", for screen readers.
-String _spoken(Duration at, Duration of) {
+String _spoken(Duration at, Duration of, AppLocalizations l10n) {
   String words(Duration d) {
     final h = d.inHours;
     final m = d.inMinutes % 60;
     final s = d.inSeconds % 60;
     return [
-      if (h > 0) '$h ${h == 1 ? 'hour' : 'hours'}',
-      if (m > 0) '$m ${m == 1 ? 'minute' : 'minutes'}',
-      if (h == 0 && (s > 0 || m == 0)) '$s ${s == 1 ? 'second' : 'seconds'}',
+      if (h > 0) l10n.hours(h),
+      if (m > 0) l10n.minutes(m),
+      if (h == 0 && (s > 0 || m == 0)) l10n.seconds(s),
     ].join(' ');
   }
 
-  return '${words(at)} of ${words(of)}';
+  return l10n.positionOf(words(at), words(of));
 }
 
 class _TrackPainter extends CustomPainter {

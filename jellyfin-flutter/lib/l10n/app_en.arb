@@ -1,0 +1,852 @@
+{
+  "@@locale": "en",
+  "appTitle": "Jellyfin",
+  "@appTitle": {
+    "description": "The window's title."
+  },
+  "settingsLanguage": "Language",
+  "@settingsLanguage": {
+    "description": "Settings → Appearance: the language of the app's texts."
+  },
+  "settingsLanguageHelp": "Of the app's texts. Titles and descriptions come from the server, in its language.",
+  "@settingsLanguageHelp": {
+    "description": "Under Settings → Appearance → Language."
+  },
+  "failureUnreachable": "Cannot reach {url}. Check the address and that the server is running.",
+  "@failureUnreachable": {
+    "description": "A server did not answer.",
+    "placeholders": {
+      "url": {
+        "type": "String"
+      }
+    }
+  },
+  "failureNotJellyfin": "{url} does not look like a Jellyfin server.",
+  "@failureNotJellyfin": {
+    "description": "Something answered at the address, but not Jellyfin.",
+    "placeholders": {
+      "url": {
+        "type": "String"
+      }
+    }
+  },
+  "failureNotSetUp": "The server at {url} is not set up yet. Open it in a browser and finish the setup wizard first.",
+  "@failureNotSetUp": {
+    "description": "The server's setup wizard was never finished.",
+    "placeholders": {
+      "url": {
+        "type": "String"
+      }
+    }
+  },
+  "failureUnauthorized": "Wrong username or password.",
+  "@failureUnauthorized": {
+    "description": "Sign-in refused (also shown when a session ends)."
+  },
+  "failureServerBadCertificate": "The server's security certificate is not valid.",
+  "@failureServerBadCertificate": {
+    "description": "HTTPS certificate rejected."
+  },
+  "failureServerUnexpected": "Unexpected response from the server.",
+  "@failureServerUnexpected": {
+    "description": "The server sent something the app cannot read."
+  },
+  "failureServerStatus": "The server answered with error {status}.",
+  "@failureServerStatus": {
+    "description": "An HTTP error status, e.g. 500.",
+    "placeholders": {
+      "status": {
+        "type": "int"
+      }
+    }
+  },
+  "failureStorageKeyring": "Could not save the login in the system keyring.",
+  "@failureStorageKeyring": {
+    "description": "The system keyring refused the session."
+  },
+  "failureStorageDisk": "Could not save to disk.",
+  "@failureStorageDisk": {
+    "description": "A file of the app could not be written."
+  },
+  "failureNotPlayable": "This item cannot be played ({reason}).",
+  "@failureNotPlayable": {
+    "description": "reason: the server's code, e.g. NotAllowed.",
+    "placeholders": {
+      "reason": {
+        "type": "String"
+      }
+    }
+  },
+  "failurePlayer": "Playback failed: the stream could not be opened.",
+  "@failurePlayer": {
+    "description": "mpv could not open the stream."
+  },
+  "failureNotReadable": "This book's format is not supported yet.",
+  "@failureNotReadable": {
+    "description": "A book the reader cannot open."
+  },
+  "errorUnknown": "Something went wrong.",
+  "@errorUnknown": {
+    "description": "An error with no better description."
+  },
+  "retry": "Retry",
+  "@retry": {
+    "description": "Button after an error."
+  },
+  "back": "Back",
+  "@back": {
+    "description": "Back button / tooltip."
+  },
+  "more": "More",
+  "@more": {
+    "description": "Tooltip of a row's forward arrow."
+  },
+  "runtimeHoursMinutes": "{hours}h {minutes}m",
+  "@runtimeHoursMinutes": {
+    "description": "A length, e.g. 1h 52m.",
+    "placeholders": {
+      "hours": {
+        "type": "int"
+      },
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "runtimeHours": "{hours}h",
+  "@runtimeHours": {
+    "description": "A length in whole hours.",
+    "placeholders": {
+      "hours": {
+        "type": "int"
+      }
+    }
+  },
+  "runtimeMinutes": "{minutes}m",
+  "@runtimeMinutes": {
+    "description": "A length under an hour.",
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "runtimeSeconds": "{seconds}s",
+  "@runtimeSeconds": {
+    "description": "A length under a minute.",
+    "placeholders": {
+      "seconds": {
+        "type": "int"
+      }
+    }
+  },
+  "episodeNumber": "S{season}:E{episode}",
+  "@episodeNumber": {
+    "description": "Season and episode, e.g. S1:E2.",
+    "placeholders": {
+      "season": {
+        "type": "int"
+      },
+      "episode": {
+        "type": "int"
+      }
+    }
+  },
+  "episodeOnly": "E{episode}",
+  "@episodeOnly": {
+    "description": "An episode number without a season.",
+    "placeholders": {
+      "episode": {
+        "type": "int"
+      }
+    }
+  },
+  "bookRead": "Read",
+  "@bookRead": {
+    "description": "Under a book's cover: finished."
+  },
+  "bookPercentRead": "{percent}% read",
+  "@bookPercentRead": {
+    "description": "Under a book's cover: how far along.",
+    "placeholders": {
+      "percent": {
+        "type": "int"
+      }
+    }
+  },
+  "signIn": "Sign in",
+  "@signIn": {
+    "description": "Title of the login screen and its button."
+  },
+  "serverNameAndUrl": "{name} · {url}",
+  "@serverNameAndUrl": {
+    "description": "Under the login title: the server.",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "url": {
+        "type": "String"
+      }
+    }
+  },
+  "username": "Username",
+  "@username": {
+    "description": "Login field."
+  },
+  "usernameMissing": "Enter your username.",
+  "@usernameMissing": {
+    "description": "Login without a username."
+  },
+  "password": "Password",
+  "@password": {
+    "description": "Login field."
+  },
+  "changeServer": "Change server",
+  "@changeServer": {
+    "description": "Login screen: back to the server choice."
+  },
+  "connectTitle": "Connect to a server",
+  "@connectTitle": {
+    "description": "Title of the first screen."
+  },
+  "connectSubtitle": "Enter the address of your Jellyfin server.",
+  "@connectSubtitle": {
+    "description": "Under the connect title."
+  },
+  "serverAddress": "Server address",
+  "@serverAddress": {
+    "description": "Connect screen field."
+  },
+  "serverAddressMissing": "Enter the server address.",
+  "@serverAddressMissing": {
+    "description": "Connect without an address."
+  },
+  "connect": "Connect",
+  "@connect": {
+    "description": "Connect screen button."
+  },
+  "offlineBanner": "Can't reach {server}. Trying again…",
+  "@offlineBanner": {
+    "description": "Banner while the server is down.",
+    "placeholders": {
+      "server": {
+        "type": "String"
+      }
+    }
+  },
+  "theServer": "the server",
+  "@theServer": {
+    "description": "In the offline banner when the server has no name."
+  },
+  "retryNow": "Retry now",
+  "@retryNow": {
+    "description": "Offline banner button."
+  },
+  "home": "Home",
+  "@home": {
+    "description": "Top bar tab and the app mark's label."
+  },
+  "searchTooltip": "Search (Ctrl+F)",
+  "@searchTooltip": {
+    "description": "Search button tooltip, with its shortcut."
+  },
+  "searchHintShort": "Titles, people, genres",
+  "@searchHintShort": {
+    "description": "Hint in the top bar's search field."
+  },
+  "darkTheme": "Dark theme",
+  "@darkTheme": {
+    "description": "Profile menu: switch to the dark mode."
+  },
+  "lightTheme": "Light theme",
+  "@lightTheme": {
+    "description": "Profile menu: switch to the light mode."
+  },
+  "settings": "Settings",
+  "@settings": {
+    "description": "Settings screen title, menu item and tooltip."
+  },
+  "signOut": "Sign out",
+  "@signOut": {
+    "description": "Sign-out button and menu item."
+  },
+  "profile": "Profile",
+  "@profile": {
+    "description": "Tooltip of the profile disc when the user has no name."
+  },
+  "heroMovie": "MOVIE",
+  "@heroMovie": {
+    "description": "Carousel label over a movie (capitals)."
+  },
+  "heroSeries": "SERIES",
+  "@heroSeries": {
+    "description": "Carousel label over a series (capitals)."
+  },
+  "play": "Play",
+  "@play": {
+    "description": "Play button."
+  },
+  "episodes": "Episodes",
+  "@episodes": {
+    "description": "Episodes: a series' button, a section, a search group."
+  },
+  "moreInfo": "More info",
+  "@moreInfo": {
+    "description": "Carousel button to the item's page."
+  },
+  "next": "Next",
+  "@next": {
+    "description": "Next item / slide."
+  },
+  "previous": "Previous",
+  "@previous": {
+    "description": "Previous item / slide."
+  },
+  "slide": "Slide",
+  "@slide": {
+    "description": "A carousel dot, for screen readers."
+  },
+  "noLibraries": "No libraries yet. Add one on the server, or ask its administrator for access.",
+  "@noLibraries": {
+    "description": "Home with no library."
+  },
+  "continueWatching": "Continue watching",
+  "@continueWatching": {
+    "description": "Home row."
+  },
+  "nextUp": "Next up",
+  "@nextUp": {
+    "description": "Home row: next episodes of shows in progress."
+  },
+  "continueReading": "Continue reading",
+  "@continueReading": {
+    "description": "Home row; a book's button once started."
+  },
+  "latestIn": "Latest in {library}",
+  "@latestIn": {
+    "description": "Home row per library.",
+    "placeholders": {
+      "library": {
+        "type": "String"
+      }
+    }
+  },
+  "myMedia": "My media",
+  "@myMedia": {
+    "description": "Home row with the libraries."
+  },
+  "read": "Read",
+  "@read": {
+    "description": "Button that opens a book."
+  },
+  "resume": "Resume",
+  "@resume": {
+    "description": "Card panel: play from where it stopped."
+  },
+  "seasonCount": "{count, plural, =1{1 season} other{{count} seasons}}",
+  "@seasonCount": {
+    "description": "How many seasons a series has.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "markUnwatched": "Mark as unwatched",
+  "@markUnwatched": {
+    "description": "Watched toggle, on."
+  },
+  "markWatched": "Mark as watched",
+  "@markWatched": {
+    "description": "Watched toggle, off."
+  },
+  "details": "Details",
+  "@details": {
+    "description": "Card panel: open the item's page."
+  },
+  "nothingHere": "Nothing here yet.",
+  "@nothingHere": {
+    "description": "An empty library or section."
+  },
+  "searchHint": "Search movies, shows, music",
+  "@searchHint": {
+    "description": "Hint in the search screen's field."
+  },
+  "nothingFound": "Nothing found for \"{term}\".",
+  "@nothingFound": {
+    "description": "Search without results.",
+    "placeholders": {
+      "term": {
+        "type": "String"
+      }
+    }
+  },
+  "movies": "Movies",
+  "@movies": {
+    "description": "Search results group."
+  },
+  "shows": "Shows",
+  "@shows": {
+    "description": "Search results group."
+  },
+  "albums": "Albums",
+  "@albums": {
+    "description": "Search results group."
+  },
+  "songs": "Songs",
+  "@songs": {
+    "description": "Search results group."
+  },
+  "books": "Books",
+  "@books": {
+    "description": "Search results group."
+  },
+  "resumeFrom": "Resume from {position}",
+  "@resumeFrom": {
+    "description": "Item page: play from the saved place, e.g. 12:34.",
+    "placeholders": {
+      "position": {
+        "type": "String"
+      }
+    }
+  },
+  "startOver": "Start over",
+  "@startOver": {
+    "description": "Item page: play from the start."
+  },
+  "continueReadingPercent": "Continue reading · {percent}%",
+  "@continueReadingPercent": {
+    "description": "A started book's button.",
+    "placeholders": {
+      "percent": {
+        "type": "int"
+      }
+    }
+  },
+  "markUnread": "Mark as unread",
+  "@markUnread": {
+    "description": "Read toggle on a book, on."
+  },
+  "markRead": "Mark as read",
+  "@markRead": {
+    "description": "Read toggle on a book, off."
+  },
+  "watched": "Watched",
+  "@watched": {
+    "description": "Item page: already watched."
+  },
+  "seasons": "Seasons",
+  "@seasons": {
+    "description": "Series page section."
+  },
+  "tracks": "Tracks",
+  "@tracks": {
+    "description": "Album page section."
+  },
+  "playback": "Playback",
+  "@playback": {
+    "description": "Settings heading."
+  },
+  "maxQuality": "Maximum quality",
+  "@maxQuality": {
+    "description": "Settings: streaming bitrate limit."
+  },
+  "maxQualityHelp": "On this device. Above it the server converts the video down; lower it on a slow network.",
+  "@maxQualityHelp": {
+    "description": "Under Maximum quality."
+  },
+  "qualityMaximum": "Maximum",
+  "@qualityMaximum": {
+    "description": "Maximum quality: no limit."
+  },
+  "appearance": "Appearance",
+  "@appearance": {
+    "description": "Settings heading."
+  },
+  "account": "Account",
+  "@account": {
+    "description": "Settings heading."
+  },
+  "audioLanguage": "Audio language",
+  "@audioLanguage": {
+    "description": "Settings: preferred audio language."
+  },
+  "audioLanguageHelp": "Played when a file has it. Saved for your account on the server.",
+  "@audioLanguageHelp": {
+    "description": "Under Audio language."
+  },
+  "fileDefault": "The file's default",
+  "@fileDefault": {
+    "description": "Audio language: none preferred."
+  },
+  "subtitleLanguage": "Subtitle language",
+  "@subtitleLanguage": {
+    "description": "Settings: preferred subtitle language."
+  },
+  "anyLanguage": "Any",
+  "@anyLanguage": {
+    "description": "Subtitle language: none preferred."
+  },
+  "showSubtitles": "Show subtitles",
+  "@showSubtitles": {
+    "description": "Settings: when subtitles show."
+  },
+  "subtitlesDefault": "When the file says so",
+  "@subtitlesDefault": {
+    "description": "Show subtitles: the file's default."
+  },
+  "subtitlesSmart": "When the audio is in another language",
+  "@subtitlesSmart": {
+    "description": "Show subtitles: smart."
+  },
+  "subtitlesAlways": "Always",
+  "@subtitlesAlways": {
+    "description": "Show subtitles."
+  },
+  "subtitlesForced": "Only forced subtitles",
+  "@subtitlesForced": {
+    "description": "Show subtitles."
+  },
+  "subtitlesNever": "Never",
+  "@subtitlesNever": {
+    "description": "Show subtitles."
+  },
+  "autoplayNext": "Play the next episode automatically",
+  "@autoplayNext": {
+    "description": "Settings switch."
+  },
+  "themeNotUsed": "{file}: not used ({error})",
+  "@themeNotUsed": {
+    "description": "A theme file that could not be read; error is technical.",
+    "placeholders": {
+      "file": {
+        "type": "String"
+      },
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "theme": "Theme",
+  "@theme": {
+    "description": "Settings: the theme."
+  },
+  "themeHelp": "Colours, type and shapes, from a design system.",
+  "@themeHelp": {
+    "description": "Under Theme."
+  },
+  "themeFromFolder": "{name} (your folder)",
+  "@themeFromFolder": {
+    "description": "A theme from the user's themes folder.",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "mode": "Mode",
+  "@mode": {
+    "description": "Settings: light, dark or system."
+  },
+  "singleMode": "This theme has a single mode.",
+  "@singleMode": {
+    "description": "Under Mode when the theme has one."
+  },
+  "modeDark": "Dark",
+  "@modeDark": {
+    "description": "Mode choice."
+  },
+  "modeLight": "Light",
+  "@modeLight": {
+    "description": "Mode choice."
+  },
+  "modeSystem": "System",
+  "@modeSystem": {
+    "description": "Mode choice: follow the system."
+  },
+  "yourThemes": "Your themes",
+  "@yourThemes": {
+    "description": "Settings: the user's themes folder."
+  },
+  "yourThemesHelp": "Put a design system's tokens.json in {folder}: it shows up here at once, and changes to it apply as you save.",
+  "@yourThemesHelp": {
+    "description": "Under Your themes.",
+    "placeholders": {
+      "folder": {
+        "type": "String"
+      }
+    }
+  },
+  "openFolder": "Open folder",
+  "@openFolder": {
+    "description": "Opens the themes folder."
+  },
+  "themeIssues": "{count, plural, =1{1 theme issue} other{{count} theme issues}}",
+  "@themeIssues": {
+    "description": "Theme files with problems.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "playbackStopped": "Playback stopped at {position}: the connection to the server was lost.",
+  "@playbackStopped": {
+    "description": "The stream broke off; position e.g. 12:34.",
+    "placeholders": {
+      "position": {
+        "type": "String"
+      }
+    }
+  },
+  "trackChangeFailed": "Could not change the track.",
+  "@trackChangeFailed": {
+    "description": "Snack bar when an audio or subtitle change fails."
+  },
+  "subtitlesOff": "Off",
+  "@subtitlesOff": {
+    "description": "Subtitle menu: no subtitles."
+  },
+  "withShortcut": "{label} ({shortcut})",
+  "@withShortcut": {
+    "description": "A button's tooltip with its key, e.g. Pause (Space).",
+    "placeholders": {
+      "label": {
+        "type": "String"
+      },
+      "shortcut": {
+        "type": "String"
+      }
+    }
+  },
+  "keySpace": "Space",
+  "@keySpace": {
+    "description": "The space bar, in tooltips."
+  },
+  "back10": "Back 10 seconds",
+  "@back10": {
+    "description": "Player button."
+  },
+  "pause": "Pause",
+  "@pause": {
+    "description": "Player button."
+  },
+  "forward10": "Forward 10 seconds",
+  "@forward10": {
+    "description": "Player button."
+  },
+  "subtitles": "Subtitles",
+  "@subtitles": {
+    "description": "Player button and menu."
+  },
+  "fullScreen": "Full screen",
+  "@fullScreen": {
+    "description": "Player button."
+  },
+  "exitFullScreen": "Exit full screen",
+  "@exitFullScreen": {
+    "description": "Player button."
+  },
+  "mute": "Mute",
+  "@mute": {
+    "description": "Player button."
+  },
+  "unmute": "Unmute",
+  "@unmute": {
+    "description": "Player button."
+  },
+  "transcoding": "Transcoding",
+  "@transcoding": {
+    "description": "Badge: the server converts the stream."
+  },
+  "seekPosition": "Position",
+  "@seekPosition": {
+    "description": "Seek bar, for screen readers."
+  },
+  "hours": "{count, plural, =1{1 hour} other{{count} hours}}",
+  "@hours": {
+    "description": "For screen readers.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "minutes": "{count, plural, =1{1 minute} other{{count} minutes}}",
+  "@minutes": {
+    "description": "For screen readers.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "seconds": "{count, plural, =1{1 second} other{{count} seconds}}",
+  "@seconds": {
+    "description": "For screen readers.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "positionOf": "{position} of {length}",
+  "@positionOf": {
+    "description": "Seek bar for screen readers: 3 minutes of 1 hour.",
+    "placeholders": {
+      "position": {
+        "type": "String"
+      },
+      "length": {
+        "type": "String"
+      }
+    }
+  },
+  "speedNormal": "Normal",
+  "@speedNormal": {
+    "description": "Playback speed 1×."
+  },
+  "audio": "Audio",
+  "@audio": {
+    "description": "Player menu."
+  },
+  "speed": "Speed",
+  "@speed": {
+    "description": "Player menu."
+  },
+  "endsAt": "Ends at {time}",
+  "@endsAt": {
+    "description": "Up next card: when the next episode would end.",
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "watchNow": "Watch now",
+  "@watchNow": {
+    "description": "Up next card button."
+  },
+  "hide": "Hide",
+  "@hide": {
+    "description": "Up next card button."
+  },
+  "upNextIn": "UP NEXT · IN {seconds} S",
+  "@upNextIn": {
+    "description": "Up next card countdown (capitals).",
+    "placeholders": {
+      "seconds": {
+        "type": "int"
+      }
+    }
+  },
+  "trackNumber": "Track {number}",
+  "@trackNumber": {
+    "description": "A track with no title or language.",
+    "placeholders": {
+      "number": {
+        "type": "int"
+      }
+    }
+  },
+  "backToPage": "Back to page {page}",
+  "@backToPage": {
+    "description": "After following a link in a book.",
+    "placeholders": {
+      "page": {
+        "type": "int"
+      }
+    }
+  },
+  "contentsAndBookmarks": "Contents and bookmarks",
+  "@contentsAndBookmarks": {
+    "description": "Reader button."
+  },
+  "removeBookmark": "Remove bookmark",
+  "@removeBookmark": {
+    "description": "Reader: bookmark on this page."
+  },
+  "bookmarkPage": "Bookmark this page",
+  "@bookmarkPage": {
+    "description": "Reader: no bookmark here."
+  },
+  "display": "Display",
+  "@display": {
+    "description": "Reader button: type size, typeface, theme."
+  },
+  "pageOf": "Page {page} of {count}",
+  "@pageOf": {
+    "description": "Reader page counter.",
+    "placeholders": {
+      "page": {
+        "type": "int"
+      },
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "contents": "Contents",
+  "@contents": {
+    "description": "Reader tab."
+  },
+  "bookmarks": "Bookmarks",
+  "@bookmarks": {
+    "description": "Reader tab."
+  },
+  "noContents": "This book has no table of contents.",
+  "@noContents": {
+    "description": "Contents tab, empty."
+  },
+  "noBookmarks": "No bookmarks yet. The bookmark button at the top marks the page you are on.",
+  "@noBookmarks": {
+    "description": "Bookmarks tab, empty."
+  },
+  "page": "Page {page}",
+  "@page": {
+    "description": "A bookmark's page.",
+    "placeholders": {
+      "page": {
+        "type": "int"
+      }
+    }
+  },
+  "smallerText": "Smaller text",
+  "@smallerText": {
+    "description": "Reader display."
+  },
+  "fontSizePx": "{size} px",
+  "@fontSizePx": {
+    "description": "The type size, e.g. 18 px.",
+    "placeholders": {
+      "size": {
+        "type": "int"
+      }
+    }
+  },
+  "largerText": "Larger text",
+  "@largerText": {
+    "description": "Reader display."
+  },
+  "serif": "Serif",
+  "@serif": {
+    "description": "Reader typeface."
+  },
+  "sans": "Sans",
+  "@sans": {
+    "description": "Reader typeface."
+  },
+  "readerLight": "Light",
+  "@readerLight": {
+    "description": "Reader theme."
+  },
+  "readerSepia": "Sepia",
+  "@readerSepia": {
+    "description": "Reader theme."
+  },
+  "readerDark": "Dark",
+  "@readerDark": {
+    "description": "Reader theme."
+  }
+}

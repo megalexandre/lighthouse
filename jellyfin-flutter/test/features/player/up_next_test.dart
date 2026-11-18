@@ -34,13 +34,17 @@ void main() {
       await Hooks.beforeEach(title, tags);
     }
 
-    Future<void> afterEach(String title, bool success,
-        [List<String>? tags]) async {
+    Future<void> afterEach(
+      String title,
+      bool success, [
+      List<String>? tags,
+    ]) async {
       await Hooks.afterEach(title, success, tags);
     }
 
-    testWidgets('''The next episode is offered in the last seconds''',
-        (tester) async {
+    testWidgets('''The next episode is offered in the last seconds''', (
+      tester,
+    ) async {
       var success = true;
       try {
         await beforeEach('''The next episode is offered in the last seconds''');
@@ -79,8 +83,9 @@ void main() {
         );
       }
     });
-    testWidgets('''Hidden, the next episode still plays at the end''',
-        (tester) async {
+    testWidgets('''Hidden, the next episode still plays at the end''', (
+      tester,
+    ) async {
       var success = true;
       try {
         await beforeEach('''Hidden, the next episode still plays at the end''');
@@ -113,10 +118,7 @@ void main() {
         success = false;
         rethrow;
       } finally {
-        await afterEach(
-          '''With autoplay off, nothing is offered''',
-          success,
-        );
+        await afterEach('''With autoplay off, nothing is offered''', success);
       }
     });
   });

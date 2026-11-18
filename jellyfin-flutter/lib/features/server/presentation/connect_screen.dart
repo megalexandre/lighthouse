@@ -3,6 +3,7 @@ import 'package:material_ui/material_ui.dart';
 
 import '../../../core/config.dart';
 import '../../../core/failure.dart';
+import '../../../l10n/l10n.dart';
 import '../../auth/application/auth_controller.dart';
 import '../../auth/presentation/auth_form.dart';
 
@@ -37,7 +38,7 @@ class _ConnectScreenState extends ConsumerState<ConnectScreen> {
   Future<void> _submit() async {
     if (_busy) return;
     if (_url.text.trim().isEmpty) {
-      setState(() => _error = 'Enter the server address.');
+      setState(() => _error = context.l10n.serverAddressMissing);
       return;
     }
     setState(() {
@@ -48,7 +49,7 @@ class _ConnectScreenState extends ConsumerState<ConnectScreen> {
       // On success the router moves on to the login screen.
       await ref.read(authControllerProvider.notifier).connect(_url.text);
     } on Failure catch (e) {
-      if (mounted) setState(() => _error = e.message);
+      if (mounted) setState(() => _error = e.describe(context.l10n));
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -57,8 +58,8 @@ class _ConnectScreenState extends ConsumerState<ConnectScreen> {
   @override
   Widget build(BuildContext context) {
     return AuthForm(
-      title: 'Connect to a server',
-      subtitle: 'Enter the address of your Jellyfin server.',
+      title: context.l10n.connectTitle,
+      subtitle: context.l10n.connectSubtitle,
       children: [
         TextField(
           key: ConnectScreen.urlField,
@@ -66,8 +67,8 @@ class _ConnectScreenState extends ConsumerState<ConnectScreen> {
           autofocus: true,
           keyboardType: TextInputType.url,
           textInputAction: TextInputAction.go,
-          decoration: const InputDecoration(
-            labelText: 'Server address',
+          decoration: InputDecoration(
+            labelText: context.l10n.serverAddress,
             hintText: 'http://192.168.1.10:8096',
             border: OutlineInputBorder(),
           ),
@@ -76,7 +77,7 @@ class _ConnectScreenState extends ConsumerState<ConnectScreen> {
         const SizedBox(height: 16),
         SubmitButton(
           key: ConnectScreen.submitButton,
-          label: 'Connect',
+          label: context.l10n.connect,
           busy: _busy,
           onPressed: _submit,
         ),

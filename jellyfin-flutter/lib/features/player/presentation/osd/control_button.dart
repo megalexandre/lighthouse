@@ -1,6 +1,7 @@
 import 'package:material_ui/material_ui.dart';
 
 import '../../../../core/theme/app_tokens.dart';
+import '../../../../l10n/l10n.dart';
 import '../../../../widgets/focus_ring.dart';
 
 /// A round icon button over the video (the design system's ControlButton):
@@ -40,7 +41,9 @@ class ControlButton extends StatelessWidget {
       borderRadius: pill,
       color: tokens.osdAccent,
       child: IconButton(
-        tooltip: shortcut == null ? label : '$label ($shortcut)',
+        tooltip: shortcut == null
+            ? label
+            : context.l10n.withShortcut(label, shortcut!),
         onPressed: onPressed,
         iconSize: iconSize,
         icon: Icon(icon),
@@ -85,7 +88,10 @@ class CenterPlayButton extends StatelessWidget {
       borderRadius: pill,
       color: tokens.osdInk,
       child: IconButton(
-        tooltip: 'Play (Space)',
+        tooltip: context.l10n.withShortcut(
+          context.l10n.play,
+          context.l10n.keySpace,
+        ),
         onPressed: onPressed,
         iconSize: 40,
         icon: const Icon(Icons.play_arrow),

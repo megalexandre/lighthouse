@@ -38,6 +38,7 @@ import 'package:jellyfin_flutter/features/server/data/server_info.dart';
 import 'package:jellyfin_flutter/features/server/data/server_repository.dart';
 import 'package:jellyfin_flutter/features/server/presentation/connect_screen.dart';
 import 'package:jellyfin_flutter/features/settings/data/settings_repository.dart';
+import 'package:jellyfin_flutter/l10n/l10n.dart';
 import 'package:jellyfin_flutter/router.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -844,18 +845,29 @@ class FakeAppWindow implements AppWindow {
   bool isFullScreen = false;
 }
 
+/// The app's texts in English, the language the tests run in: to find
+/// a text the app shows (`find.text(failure.describe(en))`).
+final en = lookupAppLocalizations(const Locale('en'));
+
 /// The app with fake server/auth repositories and an in-memory keyring.
 class TestApp {
   /// [theme]: the built-in theme the app opens with. Lanterna by default:
   /// the screens' tests use its plain layout (an app bar, the libraries
   /// row); Prime, the app's default, has the floating top bar and the
   /// carousel, tested on their own (test/features/home/prime_layout_test).
-  TestApp({MemoryKeyValueStore? store, String theme = 'builtin:lanterna.json'})
-    : store = store ?? MemoryKeyValueStore() {
+  ///
+  /// [asInstalled]: the app's own default language (Brazilian Portuguese)
+  /// instead of the English the tests are written in.
+  TestApp({
+    MemoryKeyValueStore? store,
+    String theme = 'builtin:lanterna.json',
+    this.asInstalled = false,
+  }) : store = store ?? MemoryKeyValueStore() {
     appFiles.values['appearance'] = '{"chosenTheme":"$theme"}';
   }
 
   final MemoryKeyValueStore store;
+  final bool asInstalled;
 
   /// The reader's preferences and bookmarks file store.
   final readerStore = MemoryKeyValueStore();
@@ -896,6 +908,8 @@ class TestApp {
   String defaultServerAddress = '';
 
   List<Override> get overrides => [
+    // The tests' texts are English.
+    if (!asInstalled) defaultLanguageProvider.overrideWithValue(AppLanguage.en),
     keyValueStoreProvider.overrideWithValue(store),
     readerStoreProvider.overrideWithValue(readerStore),
     appFilesStoreProvider.overrideWithValue(appFiles),

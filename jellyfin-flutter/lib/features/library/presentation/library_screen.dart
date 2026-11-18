@@ -4,6 +4,7 @@ import 'package:material_ui/material_ui.dart';
 import '../../../core/failure.dart';
 import '../../../core/theme/app_tokens.dart';
 import '../../../core/theme/design_tokens.dart';
+import '../../../l10n/l10n.dart';
 import '../../../widgets/error_retry.dart';
 import '../../home/presentation/floating_top_bar.dart';
 import '../application/library_providers.dart';
@@ -33,8 +34,8 @@ class LibraryScreen extends ConsumerWidget {
         );
 
     final body = switch (page) {
-      AsyncData(value: final page) when page.items.isEmpty => const Center(
-        child: Text('Nothing here yet.', key: emptyText),
+      AsyncData(value: final page) when page.items.isEmpty => Center(
+        child: Text(context.l10n.nothingHere, key: emptyText),
       ),
       AsyncData(value: final page) => _Grid(
         page: page,

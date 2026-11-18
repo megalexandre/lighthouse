@@ -132,7 +132,7 @@ class JellyfinApi {
       case DioExceptionType.badCertificate:
         return const ServerError(
           'invalid TLS certificate',
-          hint: "The server's security certificate is not valid.",
+          badCertificate: true,
         );
       case DioExceptionType.cancel:
         return ServerError('request cancelled');

@@ -8,6 +8,7 @@ import 'package:jellyfin_flutter/core/theme/theme_catalog.dart';
 import 'package:jellyfin_flutter/core/window.dart';
 import 'package:jellyfin_flutter/features/player/data/player_engine.dart';
 import 'package:jellyfin_flutter/features/reader/data/book_repository.dart';
+import 'package:jellyfin_flutter/l10n/l10n.dart';
 import 'package:material_ui/material_ui.dart';
 
 /// Stands in for the window: Xvfb has no window manager to go full
@@ -37,6 +38,8 @@ Future<void> launch(
       key: UniqueKey(),
       retry: noAutomaticRetry,
       overrides: [
+        // The tests' texts are English.
+        defaultLanguageProvider.overrideWithValue(AppLanguage.en),
         keyValueStoreProvider.overrideWithValue(store),
         readerStoreProvider.overrideWithValue(
           readerStore ?? MemoryKeyValueStore(),

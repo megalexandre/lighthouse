@@ -1,6 +1,7 @@
 import '../../../api/models/media_stream.dart';
 import '../../../api/models/playback_report.dart';
 import '../../../api/playback.dart';
+import '../../../l10n/l10n.dart';
 import 'playback_plan.dart';
 
 /// What the player has to do to show a chosen audio or subtitle track.
@@ -121,8 +122,8 @@ int? cycleBack(List<int> indexes, int? current, {bool includeNone = false}) {
 }
 
 /// Label of a track in the menus.
-String trackLabel(MediaStream stream) =>
+String trackLabel(MediaStream stream, AppLocalizations l10n) =>
     stream.displayTitle ??
     stream.title ??
     stream.language ??
-    'Track ${stream.index}';
+    l10n.trackNumber(stream.index);

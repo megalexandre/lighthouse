@@ -1,6 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:jellyfin_flutter/core/ticks.dart';
 
+import '../support/fakes.dart';
+
 void main() {
   test('ticks are 100 ns', () {
     expect(ticksToDuration(10000000), const Duration(seconds: 1));
@@ -17,6 +19,6 @@ void main() {
     (Duration.zero, '0s'),
   ];
   for (final (duration, text) in cases) {
-    test('$duration → $text', () => expect(formatRuntime(duration), text));
+    test('$duration → $text', () => expect(formatRuntime(duration, en), text));
   }
 }

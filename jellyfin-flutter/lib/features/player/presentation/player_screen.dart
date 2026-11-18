@@ -9,6 +9,7 @@ import '../../../api/models/base_item_dto.dart';
 import '../../../core/theme/app_tokens.dart';
 import '../../../core/theme/appearance.dart';
 import '../../../core/ticks.dart';
+import '../../../l10n/l10n.dart';
 import '../../../router.dart';
 import '../../../widgets/error_retry.dart';
 import '../../settings/application/settings_providers.dart';
@@ -550,7 +551,7 @@ class _TrackMenu extends StatelessWidget {
         for (final s in session.plan.audioStreams)
           (
             value: s.index,
-            label: trackLabel(s),
+            label: trackLabel(s, context.l10n),
             detail: null,
             key: PlayerScreen.audioItem(s.index),
           ),
@@ -559,19 +560,19 @@ class _TrackMenu extends StatelessWidget {
       onAudio: (i) => reportFailure(
         context,
         controller.selectAudio(i),
-        'Could not change the track.',
+        context.l10n.trackChangeFailed,
       ),
       subtitles: [
         (
           value: null,
-          label: 'Off',
+          label: context.l10n.subtitlesOff,
           detail: null,
           key: PlayerScreen.subtitleOff,
         ),
         for (final s in session.plan.subtitleStreams)
           (
             value: s.index,
-            label: trackLabel(s),
+            label: trackLabel(s, context.l10n),
             detail: s.codec?.toUpperCase(),
             key: PlayerScreen.subtitleItem(s.index),
           ),
@@ -580,7 +581,7 @@ class _TrackMenu extends StatelessWidget {
       onSubtitle: (i) => reportFailure(
         context,
         controller.selectSubtitle(i),
-        'Could not change the track.',
+        context.l10n.trackChangeFailed,
       ),
       rate: engine.rate,
       onRate: (r) => unawaited(engine.setRate(r)),

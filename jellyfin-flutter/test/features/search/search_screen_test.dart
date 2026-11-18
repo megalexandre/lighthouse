@@ -6,6 +6,7 @@ import 'package:jellyfin_flutter/features/home/presentation/home_screen.dart';
 import 'package:jellyfin_flutter/features/item/presentation/item_screen.dart';
 import 'package:jellyfin_flutter/features/library/presentation/item_card.dart';
 import 'package:jellyfin_flutter/features/search/presentation/search_screen.dart';
+import 'package:jellyfin_flutter/l10n/l10n.dart';
 import 'package:jellyfin_flutter/router.dart';
 import 'package:jellyfin_flutter/widgets/error_retry.dart';
 
@@ -76,7 +77,10 @@ void main() {
     app.library.failures['search'] = const ServerUnreachable(testUrl);
     await app.open(tester, Routes.search);
     await search(tester, 'test');
-    expect(find.text(const ServerUnreachable(testUrl).message), findsOneWidget);
+    expect(
+      find.text(const ServerUnreachable(testUrl).describe(en)),
+      findsOneWidget,
+    );
 
     app.library.failures.clear();
     await tester.tap(find.byKey(ErrorRetry.retryButton));

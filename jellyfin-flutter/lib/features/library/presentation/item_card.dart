@@ -9,6 +9,7 @@ import '../../../api/models/base_item_dto.dart';
 import '../../../api/models/user_item_data_dto.dart';
 import '../../../core/theme/app_tokens.dart';
 import '../../../core/theme/design_tokens.dart';
+import '../../../l10n/l10n.dart';
 import '../../../router.dart';
 import '../data/library_repository.dart';
 import 'card_popover.dart';
@@ -358,7 +359,7 @@ class _Picture extends StatelessWidget {
                     child: _Disc(
                       key: ItemCard.playKeyFor(item.id),
                       size: 48,
-                      tooltip: book ? 'Read' : 'Play',
+                      tooltip: book ? context.l10n.read : context.l10n.play,
                       onTap: () => context.push(route),
                       child: Icon(
                         book ? Icons.auto_stories : Icons.play_arrow,
@@ -413,7 +414,7 @@ class _Caption extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final subtitle = cardSubtitle(item);
+    final subtitle = cardSubtitle(item, context.l10n);
     return SizedBox(
       height: ItemCard.textHeight,
       child: Padding(
@@ -443,23 +444,29 @@ class _Caption extends StatelessWidget {
 
 /// "Test Show · S1:E2" for an episode, the artist for an album, how much
 /// is read for a book, the year otherwise.
-String? cardSubtitle(BaseItemDto item) => switch (item.type) {
-  BaseItemKind.episode => [?item.seriesName, ?episodeNumber(item)].join(' · '),
-  BaseItemKind.musicAlbum || BaseItemKind.audio => item.albumArtist,
-  BaseItemKind.book => switch (item.userData) {
-    UserItemDataDto(played: true) => 'Read',
-    UserItemDataDto(playedPercentage: final double p) when p > 0 =>
-      '${p.round()}% read',
-    _ => item.productionYear?.toString(),
-  },
-  _ => item.productionYear?.toString(),
-};
+String? cardSubtitle(BaseItemDto item, AppLocalizations l10n) =>
+    switch (item.type) {
+      BaseItemKind.episode => [
+        ?item.seriesName,
+        ?episodeNumber(item, l10n),
+      ].join(' · '),
+      BaseItemKind.musicAlbum || BaseItemKind.audio => item.albumArtist,
+      BaseItemKind.book => switch (item.userData) {
+        UserItemDataDto(played: true) => l10n.bookRead,
+        UserItemDataDto(playedPercentage: final double p) when p > 0 =>
+          l10n.bookPercentRead(p.round()),
+        _ => item.productionYear?.toString(),
+      },
+      _ => item.productionYear?.toString(),
+    };
 
 /// "S1:E2", or null when the numbers are unknown.
-String? episodeNumber(BaseItemDto item) {
+String? episodeNumber(BaseItemDto item, AppLocalizations l10n) {
   final (season, episode) = (item.parentIndexNumber, item.indexNumber);
   if (episode == null) return null;
-  return season == null ? 'E$episode' : 'S$season:E$episode';
+  return season == null
+      ? l10n.episodeOnly(episode)
+      : l10n.episodeNumber(season, episode);
 }
 
 /// A round accent disc: the watched check, the unwatched count, the play

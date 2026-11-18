@@ -7,6 +7,7 @@ import 'package:material_ui/material_ui.dart';
 
 import '../../../core/theme/app_tokens.dart';
 import '../../../core/theme/appearance.dart';
+import '../../../l10n/l10n.dart';
 import '../../../router.dart';
 import '../../auth/application/auth_controller.dart';
 import '../../library/application/library_providers.dart';
@@ -108,7 +109,7 @@ class _FloatingTopBarState extends ConsumerState<FloatingTopBar> {
               children: [
                 _Tab(
                   key: FloatingTopBar.homeTab,
-                  label: 'Home',
+                  label: context.l10n.home,
                   on: widget.activeView == null,
                   onTap: () => context.go(Routes.home),
                 ),
@@ -201,7 +202,7 @@ class _FloatingTopBarState extends ConsumerState<FloatingTopBar> {
         children: [
           IconButton(
             key: FloatingTopBar.searchButton,
-            tooltip: 'Search (Ctrl+F)',
+            tooltip: context.l10n.searchTooltip,
             icon: const Icon(Icons.search),
             onPressed: _searching ? () => _search(_query.text) : _openSearch,
           ),
@@ -225,13 +226,13 @@ class _FloatingTopBarState extends ConsumerState<FloatingTopBar> {
                           if (_query.text.isEmpty) _closeSearch();
                         },
                         style: TextStyle(color: tokens.osdInk),
-                        decoration: const InputDecoration(
+                        decoration: InputDecoration(
                           isDense: true,
                           filled: false,
                           border: InputBorder.none,
                           enabledBorder: InputBorder.none,
                           focusedBorder: InputBorder.none,
-                          hintText: 'Titles, people, genres',
+                          hintText: context.l10n.searchHintShort,
                         ),
                       ),
                     )
@@ -255,7 +256,7 @@ class _Mark extends StatelessWidget {
     final accent = Theme.of(context).colorScheme.primary;
     return Semantics(
       button: true,
-      label: 'Home',
+      label: context.l10n.home,
       child: GestureDetector(
         onTap: onTap,
         child: Row(
@@ -415,23 +416,25 @@ class _Profile extends ConsumerWidget {
                     mode: light ? ThemeMode.dark : ThemeMode.light,
                   ),
                 ),
-            child: Text(light ? 'Dark theme' : 'Light theme'),
+            child: Text(
+              light ? context.l10n.darkTheme : context.l10n.lightTheme,
+            ),
           ),
         MenuItemButton(
           key: FloatingTopBar.settingsItem,
           leadingIcon: const Icon(Icons.settings_outlined),
           onPressed: () => context.push(Routes.settings),
-          child: const Text('Settings'),
+          child: Text(context.l10n.settings),
         ),
         MenuItemButton(
           key: FloatingTopBar.signOutItem,
           leadingIcon: const Icon(Icons.logout),
           onPressed: onSignOut,
-          child: const Text('Sign out'),
+          child: Text(context.l10n.signOut),
         ),
       ],
       builder: (context, controller, _) => Tooltip(
-        message: name.isEmpty ? 'Profile' : name,
+        message: name.isEmpty ? context.l10n.profile : name,
         child: InkWell(
           key: FloatingTopBar.profileButton,
           customBorder: const CircleBorder(),

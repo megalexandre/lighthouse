@@ -1,0 +1,13 @@
+# The app's texts (flutter gen-l10n): one ARB file per language in
+# lib/l10n. English is the template (keys, descriptions, placeholders);
+# Brazilian Portuguese is the app's default language (AppLanguage).
+arb-dir: lib/l10n
+template-arb-file: app_en.arb
+output-dir: lib/l10n/generated
+output-localization-file: app_localizations.dart
+output-class: AppLocalizations
+nullable-getter: false
+format: true
+# Keys missing from a translation are listed here (tool/check.sh fails on
+# any).
+untranslated-messages-file: build/untranslated_messages.json

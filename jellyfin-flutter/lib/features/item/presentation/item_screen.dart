@@ -7,6 +7,7 @@ import '../../../api/models/media_stream.dart';
 import '../../../core/failure.dart';
 import '../../../core/theme/app_tokens.dart';
 import '../../../core/ticks.dart';
+import '../../../l10n/l10n.dart';
 import '../../../router.dart';
 import '../../../widgets/app_button.dart';
 import '../../../widgets/error_retry.dart';
@@ -116,7 +117,7 @@ class _PlayButtonsState extends ConsumerState<_PlayButtons> {
     } on Failure catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text(e.message)));
+            .showSnackBar(SnackBar(content: Text(e.describe(context.l10n))));
       }
     } finally {
       if (mounted) setState(() => _saving = false);
@@ -140,25 +141,27 @@ class _PlayButtonsState extends ConsumerState<_PlayButtons> {
           AppButton(
             key: ItemScreen.resumeButton,
             icon: Icons.play_arrow,
-            label: 'Resume from ${formatPosition(position)}',
+            label: context.l10n.resumeFrom(formatPosition(position)),
             onPressed: () => _play(position),
           ),
           AppButton.secondary(
             key: ItemScreen.playButton,
             icon: Icons.replay,
-            label: 'Start over',
+            label: context.l10n.startOver,
             onPressed: () => _play(Duration.zero),
           ),
         ] else
           AppButton(
             key: ItemScreen.playButton,
             icon: Icons.play_arrow,
-            label: 'Play',
+            label: context.l10n.play,
             onPressed: () => _play(Duration.zero),
           ),
         AppIconButton(
           key: ItemScreen.watchedButton,
-          tooltip: played ? 'Mark as unwatched' : 'Mark as watched',
+          tooltip: played
+              ? context.l10n.markUnwatched
+              : context.l10n.markWatched,
           selected: played,
           icon: Icons.check,
           onPressed: _saving ? null : () => _toggleWatched(played),
@@ -193,7 +196,7 @@ class _ReadButtonsState extends ConsumerState<_ReadButtons> {
     } on Failure catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text(e.message)));
+            .showSnackBar(SnackBar(content: Text(e.describe(context.l10n))));
       }
     } finally {
       if (mounted) setState(() => _saving = false);
@@ -214,12 +217,14 @@ class _ReadButtonsState extends ConsumerState<_ReadButtons> {
         AppButton(
           key: ItemScreen.readButton,
           icon: Icons.auto_stories,
-          label: started ? 'Continue reading · $percent%' : 'Read',
+          label: started
+              ? context.l10n.continueReadingPercent(percent)
+              : context.l10n.read,
           onPressed: () => context.push(Routes.read(item.id)),
         ),
         AppIconButton(
           key: ItemScreen.watchedButton,
-          tooltip: read ? 'Mark as unread' : 'Mark as read',
+          tooltip: read ? context.l10n.markUnread : context.l10n.markRead,
           selected: read,
           icon: Icons.check,
           onPressed: _saving ? null : () => _toggleRead(read),
@@ -262,13 +267,13 @@ List<String> technicalBadges(BaseItemDto item) {
 }
 
 /// Year · 1h 32m · rating, whichever are known.
-String itemFacts(BaseItemDto item) => [
-  ?episodeNumber(item),
+String itemFacts(BaseItemDto item, AppLocalizations l10n) => [
+  ?episodeNumber(item, l10n),
   ?item.productionYear?.toString(),
   // A book's "length" is its page count in server units, not a time.
   if (item.runTimeTicks case final int ticks
       when ticks > 0 && item.type != BaseItemKind.book)
-    formatRuntime(ticksToDuration(ticks)),
+    formatRuntime(ticksToDuration(ticks), l10n),
   ?item.officialRating,
 ].join(' · ');
 
@@ -280,7 +285,7 @@ class _Header extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final facts = itemFacts(item);
+    final facts = itemFacts(item, context.l10n);
     final seriesId = item.seriesId;
 
     final text = Column(
@@ -320,13 +325,13 @@ class _Header extends StatelessWidget {
             ),
           ),
         if (item.userData?.played ?? false)
-          const Padding(
-            padding: EdgeInsets.only(top: 8),
+          Padding(
+            padding: const EdgeInsets.only(top: 8),
             child: Row(
               children: [
-                Icon(Icons.check_circle_outline, size: 18),
-                SizedBox(width: 6),
-                Text('Watched'),
+                const Icon(Icons.check_circle_outline, size: 18),
+                const SizedBox(width: 6),
+                Text(context.l10n.watched),
               ],
             ),
           ),
@@ -396,8 +401,8 @@ class _Section extends StatelessWidget {
       Text(title, style: Theme.of(context).textTheme.titleLarge),
       const SizedBox(height: 12),
       switch (items) {
-        AsyncData(value: final items) when items.isEmpty => const Text(
-          'Nothing here yet.',
+        AsyncData(value: final items) when items.isEmpty => Text(
+          context.l10n.nothingHere,
         ),
         AsyncData(value: final items) => builder(items),
         AsyncError(:final error) => ErrorRetry(error: error, onRetry: onRetry),
@@ -414,7 +419,7 @@ class _Seasons extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) => _Section(
-    title: 'Seasons',
+    title: context.l10n.seasons,
     items: ref.watch(seasonsProvider(seriesId)),
     onRetry: () => ref.invalidate(seasonsProvider(seriesId)),
     builder: (seasons) => Wrap(
@@ -437,7 +442,7 @@ class _Episodes extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final provider = episodesProvider((seriesId: seriesId, seasonId: seasonId));
     return _Section(
-      title: 'Episodes',
+      title: context.l10n.episodes,
       items: ref.watch(provider),
       onRetry: () => ref.invalidate(provider),
       builder: (episodes) => Column(
@@ -509,7 +514,7 @@ class _EpisodeTile extends StatelessWidget {
                   ),
                   if (episode.runTimeTicks case final int ticks when ticks > 0)
                     Text(
-                      formatRuntime(ticksToDuration(ticks)),
+                      formatRuntime(ticksToDuration(ticks), context.l10n),
                       style: theme.textTheme.bodySmall,
                     ),
                   if (episode.overview case final String overview
@@ -536,7 +541,7 @@ class _Tracks extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) => _Section(
-    title: 'Tracks',
+    title: context.l10n.tracks,
     items: ref.watch(tracksProvider(albumId)),
     onRetry: () => ref.invalidate(tracksProvider(albumId)),
     builder: (tracks) => Column(
@@ -548,7 +553,7 @@ class _Tracks extends ConsumerWidget {
           child: AppButton(
             key: ItemScreen.playButton,
             icon: Icons.play_arrow,
-            label: 'Play',
+            label: context.l10n.play,
             onPressed: () => context.push(Routes.play(tracks.first.id)),
           ),
         ),
@@ -567,7 +572,12 @@ class _Tracks extends ConsumerWidget {
             title: Text(track.name),
             trailing: track.runTimeTicks == null
                 ? null
-                : Text(formatRuntime(ticksToDuration(track.runTimeTicks!))),
+                : Text(
+                    formatRuntime(
+                      ticksToDuration(track.runTimeTicks!),
+                      context.l10n,
+                    ),
+                  ),
           ),
       ],
     ),

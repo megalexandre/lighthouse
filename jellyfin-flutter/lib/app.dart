@@ -3,6 +3,7 @@ import 'package:material_ui/material_ui.dart';
 
 import 'core/theme/appearance.dart';
 import 'features/server/presentation/connection_banner.dart';
+import 'l10n/l10n.dart';
 import 'router.dart';
 
 /// Retry policy of the app's ProviderScope: none. Riverpod would otherwise
@@ -19,7 +20,10 @@ class JellyfinApp extends ConsumerWidget {
     // The look comes from a design system's tokens (docs/THEMES.md).
     final theme = ref.watch(appThemeProvider);
     return MaterialApp.router(
-      title: 'Jellyfin',
+      onGenerateTitle: (context) => context.l10n.appTitle,
+      locale: ref.watch(appLanguageProvider).locale,
+      supportedLocales: AppLocalizations.supportedLocales,
+      localizationsDelegates: appLocalizationsDelegates,
       debugShowCheckedModeBanner: false,
       theme: theme.light,
       darkTheme: theme.dark,

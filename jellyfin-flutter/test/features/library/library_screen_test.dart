@@ -5,6 +5,7 @@ import 'package:jellyfin_flutter/features/item/presentation/item_screen.dart';
 import 'package:jellyfin_flutter/features/library/application/library_providers.dart';
 import 'package:jellyfin_flutter/features/library/presentation/item_card.dart';
 import 'package:jellyfin_flutter/features/library/presentation/library_screen.dart';
+import 'package:jellyfin_flutter/l10n/l10n.dart';
 import 'package:jellyfin_flutter/router.dart';
 import 'package:jellyfin_flutter/widgets/error_retry.dart';
 import 'package:material_ui/material_ui.dart';
@@ -83,7 +84,10 @@ void main() {
   testWidgets('failing to open: error and retry', (tester) async {
     app.library.failures['children'] = const ServerUnreachable(testUrl);
     await app.open(tester, movies);
-    expect(find.text(const ServerUnreachable(testUrl).message), findsOneWidget);
+    expect(
+      find.text(const ServerUnreachable(testUrl).describe(en)),
+      findsOneWidget,
+    );
 
     app.library.failures.clear();
     await tester.tap(find.byKey(ErrorRetry.retryButton));

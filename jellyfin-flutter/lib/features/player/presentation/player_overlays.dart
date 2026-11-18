@@ -4,6 +4,7 @@ import '../../../api/models/base_item_dto.dart';
 import '../../../core/failure.dart';
 import '../../../core/theme/app_tokens.dart';
 import '../../../core/ticks.dart';
+import '../../../l10n/l10n.dart';
 import '../../library/presentation/item_card.dart';
 import 'player_screen.dart';
 
@@ -109,7 +110,7 @@ class _InterruptedNoticeState extends State<InterruptedNotice> {
     try {
       await widget.onResume();
     } on Failure catch (e) {
-      if (mounted) setState(() => _error = e.message);
+      if (mounted) setState(() => _error = e.describe(context.l10n));
     } finally {
       if (mounted) setState(() => _resuming = false);
     }
@@ -127,10 +128,7 @@ class _InterruptedNoticeState extends State<InterruptedNotice> {
             children: [
               const Icon(Icons.wifi_off, size: 40),
               const SizedBox(height: 12),
-              Text(
-                'Playback stopped at ${formatPosition(widget.at)}: the '
-                'connection to the server was lost.',
-              ),
+              Text(context.l10n.playbackStopped(formatPosition(widget.at))),
               if (_error != null) ...[
                 const SizedBox(height: 8),
                 Text(
@@ -144,14 +142,16 @@ class _InterruptedNoticeState extends State<InterruptedNotice> {
                 children: [
                   TextButton(
                     onPressed: widget.onBack,
-                    child: const Text('Back'),
+                    child: Text(context.l10n.back),
                   ),
                   const SizedBox(width: 8),
                   FilledButton.icon(
                     key: PlayerScreen.resumeAfterBreak,
                     onPressed: _resuming ? null : _resume,
                     icon: const Icon(Icons.play_arrow),
-                    label: Text('Resume from ${formatPosition(widget.at)}'),
+                    label: Text(
+                      context.l10n.resumeFrom(formatPosition(widget.at)),
+                    ),
                   ),
                 ],
               ),

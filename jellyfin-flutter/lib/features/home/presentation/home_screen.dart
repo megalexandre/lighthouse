@@ -6,6 +6,7 @@ import 'package:material_ui/material_ui.dart';
 import '../../../api/models/base_item_dto.dart';
 import '../../../core/theme/app_tokens.dart';
 import '../../../core/theme/design_tokens.dart';
+import '../../../l10n/l10n.dart';
 import '../../../router.dart';
 import '../../../widgets/error_retry.dart';
 import '../../../widgets/row_arrows.dart';
@@ -138,12 +139,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     ..invalidate(nextUpProvider)
     ..invalidate(latestProvider);
 
-  static const _noLibraries = Padding(
-    padding: EdgeInsets.all(24),
-    child: Text(
-      'No libraries yet. Add one on the server, or ask its '
-      'administrator for access.',
-    ),
+  Widget get _noLibraries => Padding(
+    padding: const EdgeInsets.all(24),
+    child: Text(context.l10n.noLibraries),
   );
 
   /// Continue watching, Next up, Continue reading, then each library's
@@ -151,7 +149,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   List<Widget> _rows(List<BaseItemDto> views) => [
     ItemRow(
       key: HomeScreen.resumeRow,
-      title: 'Continue watching',
+      title: context.l10n.continueWatching,
       items: ref.watch(resumeProvider),
       onRetry: () => ref.invalidate(resumeProvider),
       cardWidth: 240,
@@ -159,7 +157,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     ),
     ItemRow(
       key: HomeScreen.nextUpRow,
-      title: 'Next up',
+      title: context.l10n.nextUp,
       items: ref.watch(nextUpProvider),
       onRetry: () => ref.invalidate(nextUpProvider),
       cardWidth: 240,
@@ -167,7 +165,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     ),
     ItemRow(
       key: HomeScreen.resumeBooksRow,
-      title: 'Continue reading',
+      title: context.l10n.continueReading,
       items: ref.watch(resumeBooksProvider),
       onRetry: () => ref.invalidate(resumeBooksProvider),
       aspectRatio: 2 / 3,
@@ -175,7 +173,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     for (final view in views)
       ItemRow(
         key: HomeScreen.latestRow(view.id),
-        title: 'Latest in ${view.name}',
+        title: context.l10n.latestIn(view.name),
         items: ref.watch(latestProvider(view.id)),
         onRetry: () => ref.invalidate(latestProvider(view.id)),
         aspectRatio: view.collectionType == 'music' ? 1 : 2 / 3,
@@ -191,11 +189,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   ) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(session?.server.name ?? 'Jellyfin'),
+        title: Text(session?.server.name ?? context.l10n.appTitle),
         actions: [
           IconButton(
             key: HomeScreen.searchButton,
-            tooltip: 'Search (Ctrl+F)',
+            tooltip: context.l10n.searchTooltip,
             icon: const Icon(Icons.search),
             onPressed: openSearch,
           ),
@@ -206,13 +204,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             ),
           IconButton(
             key: HomeScreen.settingsButton,
-            tooltip: 'Settings',
+            tooltip: context.l10n.settings,
             icon: const Icon(Icons.settings_outlined),
             onPressed: () => context.push(Routes.settings),
           ),
           IconButton(
             key: HomeScreen.signOutButton,
-            tooltip: 'Sign out',
+            tooltip: context.l10n.signOut,
             icon: const Icon(Icons.logout),
             onPressed: () => ref.read(authControllerProvider.notifier).logout(),
           ),
@@ -229,7 +227,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               else
                 ItemRow(
                   key: HomeScreen.viewsRow,
-                  title: 'My media',
+                  title: context.l10n.myMedia,
                   items: AsyncData(views),
                   cardWidth: 240,
                 ),

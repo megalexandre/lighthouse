@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../../../api/models/base_item_dto.dart';
+import '../../../l10n/l10n.dart';
 import '../../../widgets/error_retry.dart';
 import '../../home/presentation/home_screen.dart';
 import '../../library/data/library_repository.dart';
@@ -60,8 +61,8 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
           key: SearchScreen.field,
           controller: _text,
           autofocus: true,
-          decoration: const InputDecoration(
-            hintText: 'Search movies, shows, music',
+          decoration: InputDecoration(
+            hintText: context.l10n.searchHint,
             border: InputBorder.none,
           ),
           onChanged: _changed,
@@ -76,7 +77,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
           : switch (ref.watch(searchResultsProvider(_term))) {
               AsyncData(value: final items) when items.isEmpty => Center(
                 child: Text(
-                  'Nothing found for "$_term".',
+                  context.l10n.nothingFound(_term),
                   key: SearchScreen.noResults,
                 ),
               ),
@@ -98,14 +99,15 @@ class _Results extends StatelessWidget {
 
   final List<BaseItemDto> items;
 
-  static const _titles = {
-    BaseItemKind.movie: 'Movies',
-    BaseItemKind.series: 'Shows',
-    BaseItemKind.episode: 'Episodes',
-    BaseItemKind.musicAlbum: 'Albums',
-    BaseItemKind.audio: 'Songs',
-    BaseItemKind.book: 'Books',
-  };
+  static String _title(BaseItemKind kind, AppLocalizations l10n) =>
+      switch (kind) {
+        BaseItemKind.movie => l10n.movies,
+        BaseItemKind.series => l10n.shows,
+        BaseItemKind.episode => l10n.episodes,
+        BaseItemKind.musicAlbum => l10n.albums,
+        BaseItemKind.audio => l10n.songs,
+        _ => l10n.books,
+      };
 
   @override
   Widget build(BuildContext context) => ListView(
@@ -116,7 +118,7 @@ class _Results extends StatelessWidget {
             when group.isNotEmpty)
           ItemRow(
             key: SearchScreen.row(kind),
-            title: _titles[kind]!,
+            title: _title(kind, context.l10n),
             items: AsyncData(group),
             cardWidth: kind == BaseItemKind.episode ? 240 : 140,
           ),

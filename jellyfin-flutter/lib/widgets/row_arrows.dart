@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:material_ui/material_ui.dart';
 
 import '../core/theme/app_tokens.dart';
+import '../l10n/l10n.dart';
 
 /// A horizontal row (built by [builder] with the [ScrollController] it is
 /// given) with arrows at its ends that page through it, when the theme
@@ -139,7 +140,7 @@ class _Arrow extends StatelessWidget {
       right: forward ? 0 : null,
       width: 64,
       child: Tooltip(
-        message: forward ? 'More' : 'Back',
+        message: forward ? context.l10n.more : context.l10n.back,
         child: Material(
           type: MaterialType.transparency,
           child: InkWell(

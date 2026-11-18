@@ -227,8 +227,27 @@ modo fica em Settings, e o player é sempre escuro. Detalhes, fluxo de modifica�
 [THEMES.md](THEMES.md). 
 **T2 — Componentes do Lanterna (feita).** Button, foco, Badge, MediaCard e o player completo (ControlButton,
 SeekBar com buffer, capítulos e prévia por trickplay, SettingsMenu com velocidade, UpNext, ±10 s). O vídeo de teste
-ganhou capítulos, e o servidor de teste gera trickplay. Os detalhes estão em [THEMES.md](THEMES.md). Pendente: textos
-em pt-BR (i18n).
+ganhou capítulos, e o servidor de teste gera trickplay. Os detalhes estão em [THEMES.md](THEMES.md).
+
+**I — Internacionalização.** Textos do app em português do Brasil (o padrão) e inglês, com o
+`flutter gen-l10n` oficial: um arquivo ARB por idioma em `lib/l10n/` (`app_en.arb` é o modelo, com as chaves, as
+descrições e os parâmetros; `app_pt.arb` tem as traduções, e `app_pt_BR.arb` só declara o locale, porque o
+gen-l10n exige o idioma base). O código usa `context.l10n.<chave>`; a classe gerada fica em `lib/l10n/generated/`
+(commitada, fora da análise). As traduções do próprio Material vêm do `material_ui`.
+- **I1 (feita):** a base. O idioma fica no `Appearance` (Settings → Appearance → Language), guardado só depois de
+  escolhido; até lá vale `defaultLanguageProvider` (pt_BR). Os testes sobrescrevem esse padrão com inglês, então os
+  `find.text` e os `.feature` seguem em inglês. O `check.sh` roda o gen-l10n e falha se alguma chave do inglês não
+  tiver tradução. Cenário `test/features/settings/language.feature`.
+- **I2 (feita):** os textos de todas as telas nos ARBs (~165 chaves). Os `Failure` não têm mais texto de tela: a
+  tela os descreve pelo tipo (`describe(l10n)` em `lib/l10n/failure_text.dart`, um `switch` sobre a sealed class, então
+  um tipo novo sem tradução não compila); o `detail` segue só no log. `formatRuntime`, `cardSubtitle`,
+  `episodeNumber`, `trackLabel`, `qualityBadges` e `rateLabel` recebem o `AppLocalizations`. Plurais no ICU
+  (temporadas, horas/minutos/segundos do leitor de tela, problemas de tema); "S1:E2" vira "T1:E2", "1.5×" vira "1,5×".
+  Nos testes, `en` (test/support/fakes.dart) é o inglês para comparar com a tela: `find.text(failure.describe(en))`.
+  Ficam fora: nomes de teclas (Esc, Shift+P), textos de protocolo e de log.
+- **I3:** um cenário rodando em português de ponta a ponta; nomes dos idiomas de áudio e legenda (o servidor manda em
+  inglês) a decidir.
+Títulos, sinopses e gêneros vêm do servidor, no idioma dos metadados do Jellyfin: não são do app.
 
 **F5+ — Pós-MVP (planejar em detalhe ao chegar)**
 MPRIS (D-Bus), gamepads/remotes (demais inputmaps), WebSocket de sessão (controle remoto a partir de outro cliente),

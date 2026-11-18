@@ -116,7 +116,7 @@ class FileKeyValueStore implements KeyValueStore {
       await part.writeAsString(value, flush: true);
       await part.rename(file.path);
     } on FileSystemException catch (e) {
-      throw StorageFailure(e.message, what: 'to disk');
+      throw StorageFailure(e.message, target: StorageTarget.disk);
     }
   }
 

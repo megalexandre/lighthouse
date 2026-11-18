@@ -8,6 +8,7 @@ import 'package:material_ui/material_ui.dart';
 import '../../../api/models/base_item_dto.dart';
 import '../../../core/theme/app_tokens.dart';
 import '../../../core/ticks.dart';
+import '../../../l10n/l10n.dart';
 import '../../../router.dart';
 import '../../../widgets/focus_ring.dart';
 import '../../library/data/library_repository.dart';
@@ -308,7 +309,7 @@ class _Caption extends StatelessWidget {
     final facts = [
       ?item.productionYear?.toString(),
       if (item.runTimeTicks case final int t when t > 0 && movie)
-        formatRuntime(ticksToDuration(t)),
+        formatRuntime(ticksToDuration(t), context.l10n),
       ?item.officialRating,
     ].join(' · ');
     final titleSize = narrow
@@ -321,7 +322,7 @@ class _Caption extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           Text(
-            movie ? 'MOVIE' : 'SERIES',
+            movie ? context.l10n.heroMovie : context.l10n.heroSeries,
             style: tokens.overline.copyWith(
               color: theme.colorScheme.inversePrimary,
               letterSpacing: 2,
@@ -377,7 +378,7 @@ class _Caption extends StatelessWidget {
             children: [
               _WhiteButton(
                 key: HeroCarousel.playButton,
-                label: movie ? 'Play' : 'Episodes',
+                label: movie ? context.l10n.play : context.l10n.episodes,
                 icon: movie ? Icons.play_arrow : Icons.list,
                 big: !narrow,
                 onPressed: () => context.push(
@@ -387,7 +388,7 @@ class _Caption extends StatelessWidget {
               SizedBox(width: tokens.space(4)),
               _RoundButton(
                 key: HeroCarousel.infoButton,
-                tooltip: 'More info',
+                tooltip: context.l10n.moreInfo,
                 icon: Icons.info_outline,
                 big: !narrow,
                 onPressed: () => context.push(Routes.item(item.id)),
@@ -514,7 +515,7 @@ class _Arrow extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 8),
       child: IconButton(
         key: buttonKey,
-        tooltip: forward ? 'Next' : 'Previous',
+        tooltip: forward ? context.l10n.next : context.l10n.previous,
         onPressed: onTap,
         iconSize: 44,
         color: context.tokens.osdInk,
@@ -538,7 +539,7 @@ class _Dot extends StatelessWidget {
   Widget build(BuildContext context) => Semantics(
     button: true,
     selected: on,
-    label: 'Slide',
+    label: context.l10n.slide,
     child: GestureDetector(
       onTap: onTap,
       behavior: HitTestBehavior.opaque,

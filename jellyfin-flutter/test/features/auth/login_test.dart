@@ -28,17 +28,22 @@ void main() {
       await Hooks.beforeEach(title, tags);
     }
 
-    Future<void> afterEach(String title, bool success,
-        [List<String>? tags]) async {
+    Future<void> afterEach(
+      String title,
+      bool success, [
+      List<String>? tags,
+    ]) async {
       await Hooks.afterEach(title, success, tags);
     }
 
-    testWidgets('''The right username and password open the home screen''',
-        (tester) async {
+    testWidgets('''The right username and password open the home screen''', (
+      tester,
+    ) async {
       var success = true;
       try {
         await beforeEach(
-            '''The right username and password open the home screen''');
+          '''The right username and password open the home screen''',
+        );
         await bddSetUp(tester);
         await iSignInAsWithPassword(tester, 'alice', 'secret');
         await iSeeTheHomeScreenSignedInAs(tester, 'alice');
@@ -64,10 +69,7 @@ void main() {
         success = false;
         rethrow;
       } finally {
-        await afterEach(
-          '''A wrong password shows an error''',
-          success,
-        );
+        await afterEach('''A wrong password shows an error''', success);
       }
     });
   });

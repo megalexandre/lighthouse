@@ -6,6 +6,7 @@ import 'package:jellyfin_flutter/api/models/playback_report.dart';
 import 'package:jellyfin_flutter/core/failure.dart';
 import 'package:jellyfin_flutter/features/item/presentation/item_screen.dart';
 import 'package:jellyfin_flutter/features/player/presentation/player_screen.dart';
+import 'package:jellyfin_flutter/l10n/l10n.dart';
 import 'package:jellyfin_flutter/router.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -225,7 +226,10 @@ void main() {
     await pick(tester, PlayerScreen.audioMenu, PlayerScreen.audioItem(3));
     expect(app.engine.opened, hasLength(1));
     expect(app.playback.stopped, isEmpty);
-    expect(find.text(const ServerUnreachable(testUrl).message), findsOneWidget);
+    expect(
+      find.text(const ServerUnreachable(testUrl).describe(en)),
+      findsOneWidget,
+    );
 
     // Leaving still saves the place, from the reporter of the old stream.
     app.engine.advance(const Duration(seconds: 10));

@@ -14,6 +14,17 @@ step() { printf '\n\033[1;35m== %s\033[0m\n' "$*"; }
 step "Code generation (freezed, json_serializable)"
 dart run build_runner build
 
+step "Texts (flutter gen-l10n): every key translated"
+rm -f build/untranslated_messages.json
+flutter gen-l10n
+# gen-l10n lists, per language, the keys of app_en.arb that a translation
+# lacks; the app would show them in English.
+if [[ -s build/untranslated_messages.json ]] && [[ "$(tr -d ' \n' < build/untranslated_messages.json)" != "{}" ]]; then
+  echo "Keys without a translation (lib/l10n/app_pt.arb):" >&2
+  cat build/untranslated_messages.json >&2
+  exit 1
+fi
+
 step "Format"
 # Generated files are left as the generators write them: *.g.dart,
 # *.freezed.dart, and the tests bdd_widget_test makes from a .feature

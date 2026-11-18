@@ -9,6 +9,7 @@ import 'package:jellyfin_flutter/features/home/presentation/home_screen.dart';
 import 'package:jellyfin_flutter/features/item/presentation/item_screen.dart';
 import 'package:jellyfin_flutter/features/player/presentation/player_screen.dart';
 import 'package:jellyfin_flutter/features/settings/presentation/settings_screen.dart';
+import 'package:jellyfin_flutter/l10n/l10n.dart';
 import 'package:jellyfin_flutter/router.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -122,7 +123,10 @@ void main() {
       'port',
       'Portuguese',
     );
-    expect(find.text(const ServerUnreachable(testUrl).message), findsOneWidget);
+    expect(
+      find.text(const ServerUnreachable(testUrl).describe(en)),
+      findsOneWidget,
+    );
   });
 
   testWidgets('autoplay off: an episode ends, the player closes', (

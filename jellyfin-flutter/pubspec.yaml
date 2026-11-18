@@ -9,6 +9,10 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  # The app's texts in English and Brazilian Portuguese (l10n.yaml, lib/l10n).
+  flutter_localizations:
+    sdk: flutter
+  intl: ^0.20.2
   material_ui: ^1.1.0
 
   # State and dependency injection; tests swap real services for fakes
@@ -57,6 +61,8 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  # flutter gen-l10n on every build (l10n.yaml).
+  generate: true
   shaders:
     - shaders/page_curl.frag
   # Built-in themes: design-system tokens.json files (docs/THEMES.md).

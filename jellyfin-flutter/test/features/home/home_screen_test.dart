@@ -4,6 +4,7 @@ import 'package:jellyfin_flutter/core/failure.dart';
 import 'package:jellyfin_flutter/features/home/presentation/home_screen.dart';
 import 'package:jellyfin_flutter/features/library/presentation/item_card.dart';
 import 'package:jellyfin_flutter/features/library/presentation/library_screen.dart';
+import 'package:jellyfin_flutter/l10n/l10n.dart';
 import 'package:jellyfin_flutter/router.dart';
 import 'package:jellyfin_flutter/widgets/error_retry.dart';
 import 'package:material_ui/material_ui.dart';
@@ -76,7 +77,10 @@ void main() {
     await app.open(tester, Routes.home);
 
     expect(find.byKey(HomeScreen.viewsRow), findsOneWidget);
-    expect(find.text(const ServerUnreachable(testUrl).message), findsWidgets);
+    expect(
+      find.text(const ServerUnreachable(testUrl).describe(en)),
+      findsWidgets,
+    );
 
     app.library.failures.clear();
     await tester.tap(

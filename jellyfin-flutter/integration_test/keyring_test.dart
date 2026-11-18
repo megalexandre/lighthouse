@@ -26,7 +26,7 @@ void main() {
       expect(await store.read(key), 'value');
     } on StorageFailure catch (e) {
       // No keyring here: reported, not fatal.
-      expect(e.message, contains('keyring'));
+      expect(e.target, StorageTarget.keyring);
     } finally {
       await store.delete(key);
     }

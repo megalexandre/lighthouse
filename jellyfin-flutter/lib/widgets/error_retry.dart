@@ -1,6 +1,6 @@
 import 'package:material_ui/material_ui.dart';
 
-import '../core/failure.dart';
+import '../l10n/l10n.dart';
 
 /// An error message with a Retry button.
 class ErrorRetry extends StatelessWidget {
@@ -14,7 +14,7 @@ class ErrorRetry extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final error = this.error;
-    final text = error is Failure ? error.message : 'Something went wrong.';
+    final text = describeError(error, context.l10n);
     return Padding(
       padding: const EdgeInsets.all(16),
       child: Row(
@@ -27,7 +27,7 @@ class ErrorRetry extends StatelessWidget {
           TextButton(
             key: retryButton,
             onPressed: onRetry,
-            child: const Text('Retry'),
+            child: Text(context.l10n.retry),
           ),
         ],
       ),
