@@ -6,6 +6,7 @@ Feature: Play on
     Given I am signed in as a new user
 
   Scenario: An episode played to its end starts the next one
+  
     When I play episode {'Test Show S01E01'} of {'Test Show'}
     And I skip to the end
     Then {'Test Show S01E02'} is playing
