@@ -1,5 +1,5 @@
-// The real app reads the fixture books: a comic page by page, the place
-// kept on the server and found again; a PDF drawn by PDFium.
+// The real app draws PDFs with PDFium (the place kept on the server, for a
+// comic and an EPUB, is in features/reading.feature).
 // Run: xvfb-run -a flutter test integration_test -d linux
 import 'dart:convert';
 
@@ -64,48 +64,6 @@ void main() {
     );
   }
 
-  testWidgets('a comic: swipe, then a key, back; the server keeps page 3 '
-      'and the book opens there again', (tester) async {
-    await launch(tester, store);
-    await openBook(tester, Fixtures.testComic);
-    expect(find.text('Read'), findsOneWidget);
-    await tapOn(tester, find.byKey(ItemScreen.readButton));
-
-    await waitFor(tester, find.byKey(ReaderScreen.pageText));
-    expect(pageText(tester), 'Page 1 of ${Fixtures.bookPages}');
-    // Lifted from the right half, as one turns a page.
-    final sheet = tester.getRect(find.byKey(ReaderScreen.pages));
-    await tester.flingFrom(
-      Offset(sheet.left + sheet.width * 0.85, sheet.center.dy),
-      Offset(-sheet.width * 0.7, 0),
-      1500,
-    );
-    await waitUntil(
-      tester,
-      () => pageText(tester) == 'Page 2 of 5',
-      reason: 'the swipe to turn the page',
-    );
-    await pressKey(tester, LogicalKeyboardKey.arrowRight);
-    await waitUntil(
-      tester,
-      () => pageText(tester) == 'Page 3 of 5',
-      reason: 'the key to turn the page',
-    );
-
-    await tapOn(tester, find.byKey(ReaderScreen.backButton));
-    await waitFor(tester, find.text('Continue reading · 40%'));
-
-    final saved = await server.findItem(user, Fixtures.testComic, type: 'Book');
-    final data = saved['UserData'] as Map<String, dynamic>;
-    expect(data['PlaybackPositionTicks'], 20000);
-
-    await tapOn(tester, find.byKey(ItemScreen.readButton));
-    await waitFor(tester, find.byKey(ReaderScreen.pageText));
-    expect(pageText(tester), 'Page 3 of 5');
-    await tapOn(tester, find.byKey(ReaderScreen.backButton));
-    await waitFor(tester, find.byKey(ItemScreen.readButton));
-  });
-
   testWidgets('a PDF: PDFium draws its pages, and they turn', (tester) async {
     await launch(tester, store);
     await openBook(tester, Fixtures.testBook);
@@ -168,38 +126,6 @@ void main() {
     image.dispose();
     await tapOn(tester, find.byKey(ReaderScreen.backButton));
     await waitFor(tester, find.byKey(ItemScreen.readButton));
-  });
-
-  testWidgets('an EPUB: laid out in pages, turned; the server keeps the '
-      'fraction read on its 10^7 scale', (tester) async {
-    await launch(tester, store);
-    await openBook(tester, Fixtures.testNovel);
-    await tapOn(tester, find.byKey(ItemScreen.readButton));
-
-    // The pages exist once the sheet's size is known: a chapter a page.
-    await waitUntil(
-      tester,
-      () =>
-          find.byKey(ReaderScreen.pageText).evaluate().isNotEmpty &&
-          pageText(tester) == 'Page 1 of 3',
-      reason: 'the EPUB laid out',
-    );
-    await pressKey(tester, LogicalKeyboardKey.arrowRight);
-    await waitUntil(
-      tester,
-      () => pageText(tester) == 'Page 2 of 3',
-      reason: 'the EPUB page to turn',
-    );
-    await tapOn(tester, find.byKey(ReaderScreen.backButton));
-    await waitFor(tester, find.byKey(ItemScreen.readButton));
-
-    final saved = await server.findItem(user, Fixtures.testNovel, type: 'Book');
-    expect(saved['RunTimeTicks'], 10000000);
-    final data = saved['UserData'] as Map<String, dynamic>;
-    final position = data['PlaybackPositionTicks'] as int;
-    expect(position, inExclusiveRange(0, 10000000));
-    // The server's "% read" is that fraction (what jellyfin-web shows).
-    expect(data['PlayedPercentage'] as num, closeTo(position / 100000, 0.01));
   });
 }
 

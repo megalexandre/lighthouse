@@ -83,22 +83,30 @@ Quatro camadas; toda fase só termina com as quatro verdes no `tool/check.sh`.
 
 ### Cenários de comportamento (Gherkin)
 
-Comportamentos de usuário descritos em `.feature`, em inglês, dentro de `test/`, com o pacote `bdd_widget_test`
-(fixado na 3.0.4). A etapa de geração de código do `check.sh` (`build_runner`) transforma cada `x.feature` num
-`x_test.dart` ao lado, um `testWidgets` por cenário. Esse arquivo é gerado: não se edita, é commitado e fica fora da
-checagem de formatação. Os passos ficam na pasta `step/` da feature, um arquivo por frase. Eles usam o `TestApp`
-(`step/world.dart`), e o gerador só cria o esqueleto de um passo novo, sem sobrescrever os existentes. As features
-ficam em Gherkin padrão (sem `After:`, que outras ferramentas leem como descrição): a limpeza fica nos hooks
-(`addHooks` no `build.yaml`), em `hook/hooks.dart` ao lado da feature. O `Hooks.afterEach` encerra o app no fim de
-cada cenário, mesmo dos que falham, para não sobrar timer, usando o `tester` que o passo "the app is signed in"
-guarda no `world.dart`.
+Comportamentos de usuário descritos em `.feature`, em inglês e em Gherkin padrão, com o pacote `bdd_widget_test`
+(fixado na 3.0.4). A etapa de geração de código do `check.sh` (`build_runner`, que no `build.yaml` também lê
+`integration_test/`) transforma cada `x.feature` num `x_test.dart` ao lado, um `testWidgets` por cenário. Esse arquivo
+é gerado: não se edita, é commitado e fica fora da checagem de formatação. Os passos ficam na pasta `step/` da feature,
+um arquivo por frase, e o gerador só cria o esqueleto de um passo novo, sem sobrescrever os existentes. O estado que os
+passos compartilham fica em `step/world.dart`; o que roda em volta de cada cenário fica em `hook/hooks.dart` (`addHooks`
+no `build.yaml`; um por pasta). O `After:` não é usado: outras ferramentas o leem como descrição.
 
-Para rodar: `tool/scenarios.sh` (todas), `tool/scenarios.sh <arquivo> ["parte do nome"]` (uma feature), ou as tasks
-do VS Code "scenarios (all features)", "scenarios (this feature)" (a feature aberta no editor) e "scenarios
-(regenerate on save)". Todas regeneram os testes antes de rodar.
+Dois lugares:
+- **`test/features/<área>/`**, com fakes (`TestApp`): rápido, sem rede. Hoje: `auth/login.feature` e `player/up_next.feature`.
+- **`integration_test/features/`**, com o app real sob Xvfb contra o servidor de teste. Uma pasta só, para os passos
+  ("I am signed in as a new user", "I play {..} from {..}"...) servirem a todas as features. O `Hooks.beforeAll` carrega
+  o libmpv e prepara o servidor; cada cenário cria o seu usuário no primeiro passo; o `Hooks.afterEach` sai do player ou
+  do leitor como o usuário sairia (para o último reporte chegar ao servidor) e desmonta o app. Features: `login`
+  (senha certa, errada, sair, sessão encerrada fora do app), `watching` (retomar, assistido no fim), `play_on`
+  (próximo episódio, próxima faixa), `audio_and_subtitles` (idioma em Settings, troca de faixa e legenda no player) e
+  `reading` (página do quadrinho, fração do EPUB). Elas substituíram os testes Dart desses fluxos; ficaram em Dart os
+  que não viraram cenário (navegação, busca, PDF, reconexão, keyring).
 
-Primeira feature: `test/features/player/up_next.feature`, com o cartão Up Next, Watch now, Hide e o autoplay
-desligado. Os testes de unidade e de tela continuam em Dart puro; o Gherkin fica para os fluxos de usuário.
+Para rodar: `tool/scenarios.sh` (todas), `tool/scenarios.sh <arquivo> ["parte do nome"]` (uma feature; de um arquivo
+de `step/` ou `hook/`, as features da pasta), ou as tasks do VS Code "scenarios (all features)", "scenarios (this
+feature)" (a feature aberta no editor) e "scenarios (regenerate on save)". Todas regeneram os testes antes de rodar; as
+de `integration_test/` pedem o servidor de teste e usam o build lock. Os testes de unidade e de tela continuam em Dart
+puro; o Gherkin fica para os fluxos de usuário.
 
 ### Servidor de teste isolado
 

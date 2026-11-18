@@ -8,8 +8,10 @@ Feature: Up next
 
   Scenario: The next episode is offered in the last seconds
     When I play {'episode-1'}
-    And the episode reaches its last {6} seconds
+    Then I do not see the up next card
+    When the episode reaches its last {6} seconds
     Then I see the up next card for {'S1:E2 · Episode 2'}
+    And it counts down from {6} seconds
 
   Scenario: Watch now plays the next episode at once
     When I play {'episode-1'}

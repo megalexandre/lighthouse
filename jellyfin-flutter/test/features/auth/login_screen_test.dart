@@ -2,7 +2,6 @@ import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:jellyfin_flutter/features/auth/data/session_store.dart';
-import 'package:jellyfin_flutter/features/auth/presentation/auth_form.dart';
 import 'package:jellyfin_flutter/features/auth/presentation/login_screen.dart';
 import 'package:jellyfin_flutter/features/home/presentation/home_screen.dart';
 import 'package:jellyfin_flutter/features/server/presentation/connect_screen.dart';
@@ -41,25 +40,6 @@ void main() {
       find.byKey(LoginScreen.passwordField),
     );
     expect(field.obscureText, isTrue);
-  });
-
-  testWidgets('wrong password shows an error and stays', (tester) async {
-    await app.pump(tester);
-    await signIn(tester, 'alice', 'wrong');
-
-    expect(find.byType(LoginScreen), findsOneWidget);
-    expect(
-      tester.widget<Text>(find.byKey(FormError.errorKey)).data,
-      'Wrong username or password.',
-    );
-  });
-
-  testWidgets('right password goes home', (tester) async {
-    await app.pump(tester);
-    await signIn(tester, ' alice ', 'secret');
-
-    expect(find.byType(HomeScreen), findsOneWidget);
-    expect(find.text('alice'), findsOneWidget); // in the app bar
   });
 
   testWidgets('restart after login opens home directly', (tester) async {

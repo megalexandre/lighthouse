@@ -1,14 +1,13 @@
 // The design system's player pieces (osd/): the seek bar's chapters and
-// preview, the ±10 s buttons, the settings panel's speed and Esc, the
-// "Up next" card, the big play button, and the subtitles rising with the
-// controls.
+// preview, the ±10 s buttons, the settings panel's speed and Esc, the big
+// play button, and the subtitles rising with the controls. The "Up next"
+// card is in up_next.feature.
 import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:jellyfin_flutter/api/models/chapter_info.dart';
 import 'package:jellyfin_flutter/features/item/presentation/item_screen.dart';
 import 'package:jellyfin_flutter/features/player/presentation/osd/settings_menu.dart';
-import 'package:jellyfin_flutter/features/player/presentation/osd/up_next.dart';
 import 'package:jellyfin_flutter/features/player/presentation/player_screen.dart';
 import 'package:jellyfin_flutter/router.dart';
 
@@ -125,57 +124,5 @@ void main() {
     await tester.pumpAndSettle();
     expect(app.window.isFullScreen, isTrue);
     await leave(tester);
-  });
-
-  group('up next', () {
-    final [e1, e2, _] = TestItems.episodes;
-
-    Future<void> nearTheEnd(WidgetTester tester) async {
-      await play(tester, e1.id);
-      app.engine.advance(app.engine.duration - const Duration(seconds: 6));
-      // The position arrives by stream: a frame later.
-      await tester.pump();
-      await tester.pump();
-    }
-
-    testWidgets('the last seconds: the next episode, counting down; Watch '
-        'now plays it', (tester) async {
-      await play(tester, e1.id);
-      expect(find.byKey(UpNextCard.card), findsNothing);
-      app.engine.advance(app.engine.duration - const Duration(seconds: 6));
-      // The position arrives by stream: a frame later.
-      await tester.pump();
-      await tester.pump();
-      expect(find.byKey(UpNextCard.card), findsOneWidget);
-      expect(find.text('UP NEXT · IN 6 S'), findsOneWidget);
-      expect(find.text('S1:E2 · Episode 2'), findsOneWidget);
-
-      await tester.tap(find.byKey(UpNextCard.watchNowButton));
-      await tester.pumpAndSettle();
-      expect(app.engine.openedUrl.toString(), contains(e2.id));
-      await leave(tester);
-    });
-
-    testWidgets('Hide: gone; the episode still plays on at the end', (
-      tester,
-    ) async {
-      await nearTheEnd(tester);
-      await tester.tap(find.byKey(UpNextCard.hideButton));
-      await tester.pump();
-      expect(find.byKey(UpNextCard.card), findsNothing);
-      app.engine.finish();
-      await tester.pumpAndSettle();
-      expect(app.engine.openedUrl.toString(), contains(e2.id));
-      await leave(tester);
-    });
-
-    testWidgets('autoplay off: no card', (tester) async {
-      app.settings.config = app.settings.config.copyWith(
-        enableNextEpisodeAutoPlay: false,
-      );
-      await nearTheEnd(tester);
-      expect(find.byKey(UpNextCard.card), findsNothing);
-      await leave(tester);
-    });
   });
 }

@@ -34,7 +34,8 @@ lib/
   widgets/        shared components (buttons, focus ring, badges, row arrows)
 test/             unit + widget tests; test/server/ (tag `server`) talks to the test server
 test/support/     fakes.dart (TestApp and fake repositories), fake HTTP, EPUB helpers
-integration_test/ the real app on Linux under Xvfb, against the test server
+integration_test/ the real app on Linux under Xvfb, against the test server;
+                  features/ holds its .feature scenarios
 packages/jellyfin_test_server/   sets up the throwaway test server; used by tests only
 fixtures/media/   generated test library (committed)
 third_party/      vendored, patched media_kit_video (see its README); keep as upstream wrote it
@@ -102,10 +103,12 @@ the bundle by hand.
 - **Test server isolation:** a test that changes server state creates its own user
   (`server.createUser()`). Users are never deleted: 12.4 reuses a deleted user's id, and the new
   user inherits its watch state.
-- **Behaviour scenarios:** `.feature` files live beside their feature under `test/`, in standard
-  Gherkin (`{...}` parameters are fine; no `After:` blocks). Steps go in `step/`, one file per
-  phrase; shared scenario state in `step/world.dart`; cleanup after each scenario in
-  `hook/hooks.dart` (hooks are per folder). See "Cenários de comportamento" in `docs/PLAN.md`.
+- **Behaviour scenarios:** `.feature` files in standard Gherkin (`{...}` parameters are fine; no
+  `After:` blocks), turned into `x_test.dart` beside them by build_runner. Under `test/features/<area>/`
+  they run against fakes (`TestApp`); under `integration_test/features/` they run the real app
+  against the test server, sharing one `step/` folder. Steps go in `step/`, one file per phrase;
+  shared scenario state in `step/world.dart`; setup and cleanup in `hook/hooks.dart` (per folder).
+  Run with `tool/scenarios.sh`. See "Cenários de comportamento" in `docs/PLAN.md`.
 - **Themes:** Lanterna (`assets/themes/lanterna.json`) is the base every theme falls back to and
   must stay complete; Prime is the default. "Sync Lanterna" means copying the design artifact's
   `project/tokens.json` over `assets/themes/lanterna.json` unchanged.

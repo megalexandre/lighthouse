@@ -3,6 +3,14 @@
 # contract test can check them against the server's OpenAPI document.
 targets:
   $default:
+    # build_runner reads only lib/ and test/ by default; integration_test/
+    # holds the behaviour scenarios that run the real app (.feature files).
+    sources:
+      - lib/**
+      - test/**
+      - integration_test/**
+      - pubspec.yaml
+      - $package$
     builders:
       json_serializable:
         options:
