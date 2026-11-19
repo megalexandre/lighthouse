@@ -103,6 +103,27 @@ void main() {
     expect(await repo.maxStreamingBitrate(), isNull);
   });
 
+  group('a stored value of another shape', () {
+    // Valid JSON, but not what this app writes (another version of it,
+    // a damaged keyring entry): no limit, and saving writes it anew.
+    for (final stored in [
+      '[]',
+      '"8000000"',
+      'null',
+      '{"maxStreamingBitrate": "8000000"}',
+      '{"maxStreamingBitrate": 8.5}',
+      'not json',
+    ]) {
+      test(stored, () async {
+        store.values['playback_settings'] = stored;
+        expect(await repo.maxStreamingBitrate(), isNull);
+
+        await repo.setMaxStreamingBitrate(4000000);
+        expect(await repo.maxStreamingBitrate(), 4000000);
+      });
+    }
+  });
+
   test('the quality limit goes into PlaybackInfo', () async {
     final http = FakeAdapter(
       (_) async => json({

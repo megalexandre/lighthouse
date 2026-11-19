@@ -9,6 +9,7 @@ import '../../../api/models/culture_dto.dart';
 import '../../../api/models/user_configuration.dart';
 import '../../../api/users.dart';
 import '../../../core/failure.dart';
+import '../../../core/log.dart';
 import '../../../core/storage.dart';
 import '../../auth/application/auth_controller.dart';
 import '../../auth/data/session.dart';
@@ -65,18 +66,32 @@ mixin _LocalSettings {
 
   static const key = 'playback_settings';
 
+  /// What is stored, as a JSON object. Anything else (broken JSON, a list,
+  /// a value from another version of the app) counts as nothing stored:
+  /// playback must not fail over it, and the next save writes it anew.
   Future<Map<String, dynamic>> _read() async {
     final raw = await store.read(key);
     if (raw == null) return {};
     try {
-      return jsonDecode(raw) as Map<String, dynamic>;
+      if (jsonDecode(raw) case final Map<String, dynamic> settings) {
+        return settings;
+      }
     } on FormatException {
-      return {};
+      // Logged below, as any other unreadable value.
     }
+    log.warning('settings', 'ignoring stored playback settings: not an object');
+    return {};
   }
 
-  Future<int?> maxStreamingBitrate() async =>
-      (await _read())['maxStreamingBitrate'] as int?;
+  Future<int?> maxStreamingBitrate() async {
+    final value = (await _read())['maxStreamingBitrate'];
+    if (value == null || value is int) return value as int?;
+    log.warning(
+      'settings',
+      'ignoring a stored quality limit that is no number',
+    );
+    return null;
+  }
 
   Future<void> setMaxStreamingBitrate(int? bitsPerSecond) async {
     final settings = await _read()
