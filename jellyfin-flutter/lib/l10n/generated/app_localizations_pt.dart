@@ -605,6 +605,14 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get readerDark => 'Escuro';
+
+  @override
+  String trackTitled(String language, String title) {
+    return '$language · $title';
+  }
+
+  @override
+  String get trackForced => 'Forçada';
 }
 
 /// The translations for Portuguese, as used in Brazil (`pt_BR`).

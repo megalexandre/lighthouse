@@ -1070,6 +1070,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Dark'**
   String get readerDark;
+
+  /// An audio or subtitle track: its language, then its own title ("Director's commentary").
+  ///
+  /// In en, this message translates to:
+  /// **'{language} · {title}'**
+  String trackTitled(String language, String title);
+
+  /// Detail of a forced subtitle (one shown only for foreign speech or signs).
+  ///
+  /// In en, this message translates to:
+  /// **'Forced'**
+  String get trackForced;
 }
 
 class _AppLocalizationsDelegate

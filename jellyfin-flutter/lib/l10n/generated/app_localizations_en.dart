@@ -604,4 +604,12 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get readerDark => 'Dark';
+
+  @override
+  String trackTitled(String language, String title) {
+    return '$language · $title';
+  }
+
+  @override
+  String get trackForced => 'Forced';
 }

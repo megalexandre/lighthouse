@@ -161,5 +161,7 @@
   "sans": "Sem serifa",
   "readerLight": "Claro",
   "readerSepia": "Sépia",
-  "readerDark": "Escuro"
+  "readerDark": "Escuro",
+  "trackTitled": "{language} · {title}",
+  "trackForced": "Forçada"
 }

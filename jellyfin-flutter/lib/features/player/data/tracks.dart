@@ -121,9 +121,45 @@ int? cycleBack(List<int> indexes, int? current, {bool includeNone = false}) {
   return options[(at <= 0 ? options.length : at) - 1];
 }
 
-/// Label of a track in the menus.
-String trackLabel(MediaStream stream, AppLocalizations l10n) =>
-    stream.displayTitle ??
-    stream.title ??
-    stream.language ??
-    l10n.trackNumber(stream.index);
+/// Label of a track in the menus: its language in the app's language
+/// ("Português"; the server's label is in English), then the track's own
+/// title unless that only names the language ("English", "Português").
+/// A track whose language the app cannot name keeps the server's label.
+String trackLabel(MediaStream stream, AppLocalizations l10n) {
+  final language = languageName(stream.language, l10n);
+  final title = stream.title?.trim();
+  final ownTitle =
+      title != null &&
+          title.isNotEmpty &&
+          !namesLanguage(title, stream.language)
+      ? title
+      : null;
+  if (language != null) {
+    return ownTitle == null ? language : l10n.trackTitled(language, ownTitle);
+  }
+  return stream.displayTitle ?? ownTitle ?? l10n.trackNumber(stream.index);
+}
+
+/// The grey detail beside a track: its format ("AAC", "SRT"), and
+/// "Forced" for a forced subtitle.
+String? trackDetail(MediaStream stream, AppLocalizations l10n) {
+  final parts = [
+    if (stream.codec case final String codec when codec.isNotEmpty)
+      _formats[codec.toLowerCase()] ?? codec.toUpperCase(),
+    if (stream.isForced) l10n.trackForced,
+  ];
+  return parts.isEmpty ? null : parts.join(' · ');
+}
+
+/// Formats whose ffmpeg name is not the one people know.
+const _formats = {
+  'subrip': 'SRT',
+  'hdmv_pgs_subtitle': 'PGS',
+  'pgssub': 'PGS',
+  'dvd_subtitle': 'VOBSUB',
+  'dvdsub': 'VOBSUB',
+  'webvtt': 'VTT',
+  'mov_text': 'TX3G',
+  'eac3': 'E-AC3',
+  'truehd': 'TrueHD',
+};

@@ -848,5 +848,21 @@
   "readerDark": "Dark",
   "@readerDark": {
     "description": "Reader theme."
+  },
+  "trackTitled": "{language} · {title}",
+  "@trackTitled": {
+    "description": "An audio or subtitle track: its language, then its own title (\"Director's commentary\").",
+    "placeholders": {
+      "language": {
+        "type": "String"
+      },
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "trackForced": "Forced",
+  "@trackForced": {
+    "description": "Detail of a forced subtitle (one shown only for foreign speech or signs)."
   }
 }

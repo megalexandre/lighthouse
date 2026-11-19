@@ -111,7 +111,7 @@ class _UserSettings extends ConsumerWidget {
     final options = languageOptions(languages, [
       ?config.audioLanguagePreference,
       ?config.subtitleLanguagePreference,
-    ]);
+    ], context.l10n);
     return Column(
       children: [
         _LanguageChoice(
@@ -157,14 +157,16 @@ class _UserSettings extends ConsumerWidget {
   }
 }
 
-/// (code, name) for the language pickers, one per code: the server lists
-/// regional variants under the same code ("Portuguese (Brazil)" is "por"
-/// too), and only the code is saved, so the plain name stands for all.
-/// Codes in [keep] that the server list lacks stay selectable as their
-/// code.
+/// (code, name) for the language pickers, one per code, named in the
+/// app's language and sorted by that name. The server lists regional
+/// variants under the same code ("Portuguese (Brazil)" is "por" too), and
+/// only the code is saved, so one name stands for all: the app's own, or
+/// else the server's plain (shortest) one. Codes in [keep] that the server
+/// list lacks stay selectable as their code.
 List<(String, String)> languageOptions(
   List<CultureDto> cultures,
   List<String> keep,
+  AppLocalizations l10n,
 ) {
   final options = <String, String>{};
   for (final c in cultures) {
@@ -177,8 +179,32 @@ List<(String, String)> languageOptions(
   for (final code in keep) {
     if (code.isNotEmpty) options.putIfAbsent(code, () => code);
   }
-  return [for (final e in options.entries) (e.key, e.value)];
+  return [
+    for (final e in options.entries)
+      (e.key, languageName(e.key, l10n) ?? e.value),
+  ]..sort((a, b) => _sortKey(a.$2).compareTo(_sortKey(b.$2)));
 }
+
+/// [name] as the sort sees it: case and accents dropped, so "Árabe"
+/// sorts with the A's (Dart has no collation of its own).
+String _sortKey(String name) {
+  final lower = name.toLowerCase();
+  final out = StringBuffer();
+  for (final rune in lower.runes) {
+    final ch = String.fromCharCode(rune);
+    out.write(_unaccented[ch] ?? ch);
+  }
+  return out.toString();
+}
+
+const _unaccented = {
+  'á': 'a', 'à': 'a', 'â': 'a', 'ã': 'a', 'ä': 'a', 'å': 'a', //
+  'é': 'e', 'è': 'e', 'ê': 'e', 'ë': 'e', //
+  'í': 'i', 'ì': 'i', 'î': 'i', 'ï': 'i', //
+  'ó': 'o', 'ò': 'o', 'ô': 'o', 'õ': 'o', 'ö': 'o', //
+  'ú': 'u', 'ù': 'u', 'û': 'u', 'ü': 'u', //
+  'ç': 'c', 'ñ': 'n', 'ý': 'y', 'ÿ': 'y',
+};
 
 /// Opens a folder in the desktop's file manager.
 final folderOpenerProvider = Provider<Future<void> Function(String path)>(

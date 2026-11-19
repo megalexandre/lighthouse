@@ -15,7 +15,15 @@ import 'world.dart' as world;
 ///
 /// A user of the scenario's own, signed in through the API (the login screen
 /// has scenarios of its own), and the app started on home.
-Future<void> iAmSignedInAsANewUser(WidgetTester tester) async {
+Future<void> iAmSignedInAsANewUser(WidgetTester tester) =>
+    signInAsANewUser(tester);
+
+/// [iAmSignedInAsANewUser], the app in its default language when
+/// [asInstalled] (see `launch`).
+Future<void> signInAsANewUser(
+  WidgetTester tester, {
+  bool asInstalled = false,
+}) async {
   world.tester = tester;
   final user = world.user = await world.server.createUser();
   final info = await JellyfinServerRepository(() async => world.probe)
@@ -24,6 +32,6 @@ Future<void> iAmSignedInAsANewUser(WidgetTester tester) async {
       .login(info, user.name, user.password);
   world.store = MemoryKeyValueStore()
     ..values[SessionStore.sessionKey] = jsonEncode(session.toJson());
-  await launch(tester, world.store);
+  await launch(tester, world.store, asInstalled: asInstalled);
   await waitFor(tester, find.byKey(HomeScreen.viewsRow));
 }

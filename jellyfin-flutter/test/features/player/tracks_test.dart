@@ -2,10 +2,13 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:jellyfin_flutter/api/models/media_stream.dart';
 import 'package:jellyfin_flutter/api/models/playback_info_response.dart';
 import 'package:jellyfin_flutter/api/models/playback_report.dart';
 import 'package:jellyfin_flutter/features/player/data/playback_plan.dart';
 import 'package:jellyfin_flutter/features/player/data/tracks.dart';
+import 'package:jellyfin_flutter/l10n/l10n.dart';
+import 'package:material_ui/material_ui.dart';
 
 import '../../support/fakes.dart';
 
@@ -82,6 +85,68 @@ void main() {
   test('the external subtitle URL is never printed whole', () {
     final action = subtitleAction(plan(), 0, baseUrl: testUrl);
     expect('$action', isNot(contains('ApiKey')));
+  });
+
+  group('labels', () {
+    final pt = lookupAppLocalizations(const Locale('pt', 'BR'));
+    MediaStream audio({String? language, String? title, String? display}) =>
+        MediaStream(
+          index: 1,
+          type: MediaStreamType.audio,
+          codec: 'aac',
+          language: language,
+          title: title,
+          displayTitle: display,
+        );
+
+    test('the language in the app language, not the server label', () {
+      final s = audio(language: 'por', display: 'Portuguese - AAC - Mono');
+      expect(trackLabel(s, pt), 'Português');
+      expect(trackLabel(s, en), 'Portuguese');
+      expect(trackDetail(s, pt), 'AAC');
+    });
+
+    test('B, T and two-letter codes name the same language', () {
+      for (final code in ['ger', 'deu', 'de', 'de-AT']) {
+        expect(trackLabel(audio(language: code), pt), 'Alemão');
+      }
+    });
+
+    test('a title that only names the language is not repeated', () {
+      expect(
+        trackLabel(audio(language: 'por', title: 'Português'), en),
+        'Portuguese',
+      );
+      expect(
+        trackLabel(audio(language: 'eng', title: 'english'), pt),
+        'Inglês',
+      );
+    });
+
+    test('a title of its own follows the language', () {
+      final s = audio(language: 'eng', title: "Director's commentary");
+      expect(trackLabel(s, pt), "Inglês · Director's commentary");
+    });
+
+    test('without a known language: the server label, then the title', () {
+      expect(
+        trackLabel(audio(language: 'und', display: 'AAC - Mono'), pt),
+        'AAC - Mono',
+      );
+      expect(trackLabel(audio(title: 'Mix'), pt), 'Mix');
+      expect(trackLabel(audio(), pt), 'Faixa 1');
+    });
+
+    test('a forced subtitle says so, with the format people know', () {
+      const s = MediaStream(
+        index: 4,
+        type: MediaStreamType.subtitle,
+        codec: 'subrip',
+        language: 'eng',
+        isForced: true,
+      );
+      expect(trackDetail(s, pt), 'SRT · Forçada');
+    });
   });
 
   group('cycling', () {

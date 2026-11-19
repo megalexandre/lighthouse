@@ -24,12 +24,14 @@ final window = TestWindow();
 /// keyring is swapped for [store] (and the reader's files for
 /// [readerStore]), so tests never touch the desktop's keyring (and CI has
 /// none) or data, and mpv runs without sound or hardware decoding (CI has
-/// neither).
+/// neither). In English, the tests' language, unless [asInstalled]: then
+/// in the app's default language.
 Future<void> launch(
   WidgetTester tester,
   MemoryKeyValueStore store, {
   MemoryKeyValueStore? readerStore,
   String theme = 'builtin:lanterna.json',
+  bool asInstalled = false,
 }) async {
   _simulateTextInput(tester);
   final themes = await loadBuiltInThemes(rootBundle);
@@ -39,7 +41,8 @@ Future<void> launch(
       retry: noAutomaticRetry,
       overrides: [
         // The tests' texts are English.
-        defaultLanguageProvider.overrideWithValue(AppLanguage.en),
+        if (!asInstalled)
+          defaultLanguageProvider.overrideWithValue(AppLanguage.en),
         keyValueStoreProvider.overrideWithValue(store),
         readerStoreProvider.overrideWithValue(
           readerStore ?? MemoryKeyValueStore(),

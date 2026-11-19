@@ -5,6 +5,7 @@ import 'generated/app_localizations.dart';
 
 export 'failure_text.dart';
 export 'generated/app_localizations.dart';
+export 'language_name.dart';
 
 /// The languages of the app's texts (lib/l10n/app_*.arb). Brazilian
 /// Portuguese is the default; English is the template the others are

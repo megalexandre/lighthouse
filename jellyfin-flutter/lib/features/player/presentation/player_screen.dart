@@ -552,7 +552,7 @@ class _TrackMenu extends StatelessWidget {
           (
             value: s.index,
             label: trackLabel(s, context.l10n),
-            detail: null,
+            detail: trackDetail(s, context.l10n),
             key: PlayerScreen.audioItem(s.index),
           ),
       ],
@@ -573,7 +573,7 @@ class _TrackMenu extends StatelessWidget {
           (
             value: s.index,
             label: trackLabel(s, context.l10n),
-            detail: s.codec?.toUpperCase(),
+            detail: trackDetail(s, context.l10n),
             key: PlayerScreen.subtitleItem(s.index),
           ),
       ],

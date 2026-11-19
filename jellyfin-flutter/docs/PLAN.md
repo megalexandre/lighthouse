@@ -245,8 +245,17 @@ gen-l10n exige o idioma base). O código usa `context.l10n.<chave>`; a classe ge
   (temporadas, horas/minutos/segundos do leitor de tela, problemas de tema); "S1:E2" vira "T1:E2", "1.5×" vira "1,5×".
   Nos testes, `en` (test/support/fakes.dart) é o inglês para comparar com a tela: `find.text(failure.describe(en))`.
   Ficam fora: nomes de teclas (Esc, Shift+P), textos de protocolo e de log.
-- **I3:** um cenário rodando em português de ponta a ponta; nomes dos idiomas de áudio e legenda (o servidor manda em
-  inglês) a decidir.
+- **I3 (feita):**
+  - `integration_test/features/portuguese.feature` roda o app real como instalado (pt_BR) e confere a home e as
+    faixas de áudio em português.
+  - Nomes de idioma: o servidor manda o rótulo da faixa em inglês ("Portuguese - AAC - Mono"). O app monta o seu a
+    partir do código ISO 639 da faixa: o nome do idioma no idioma do app, e o título da faixa só quando não é só o nome
+    do idioma ("Inglês · Comentário do diretor"). O formato ("AAC", "SRT") e "Forçada" vão no detalhe. Sem idioma
+    conhecido, fica o rótulo do servidor. As listas de idioma de Configurações usam os mesmos nomes, em ordem
+    alfabética sem acentos.
+  - A tabela (`lib/l10n/language_names.dart`) é gerada por `tool/gen_language_names.py`: nomes do Unicode CLDR
+    (versão fixa no script) para os códigos do `iso6392.txt` do servidor (B, T e de duas letras). Um idioma novo no
+    app entra em `APP_LANGUAGES` do script.
 Títulos, sinopses e gêneros vêm do servidor, no idioma dos metadados do Jellyfin: não são do app.
 
 **F5+ — Pós-MVP (planejar em detalhe ao chegar)**
