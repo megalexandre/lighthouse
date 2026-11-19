@@ -81,6 +81,7 @@ class JellyfinBookRepository implements BookRepository {
     required void Function() onUnauthorized,
     void Function({required bool reachable})? onReachability,
     HttpClientAdapter? adapter,
+    this.cacheLimit = defaultCacheLimit,
   }) : _client = SessionClient(
          session,
          client,
@@ -92,6 +93,11 @@ class JellyfinBookRepository implements BookRepository {
   final SessionClient _client;
   final Future<Directory> Function() _cache;
   final KeyValueStore _store;
+
+  /// The most the downloaded books may take, in bytes: past it, the ones
+  /// opened longest ago go (they download again when opened).
+  final int cacheLimit;
+  static const defaultCacheLimit = 2 * 1024 * 1024 * 1024;
 
   /// Downloads under way, by the book's cache path. The reader can close
   /// while a book downloads (the download goes on) and open it again: the
@@ -106,12 +112,53 @@ class JellyfinBookRepository implements BookRepository {
     final dir = await _cache();
     await dir.create(recursive: true);
     final file = bookCacheFile(dir, _client.session.server.id, book.id);
-    if (file.existsSync() && file.lengthSync() > 0) return file;
-    return _downloads[file.path] ??= _download(book, file).whenComplete(() {
-      // A block, not `=>`: remove() returns this very future, and
-      // whenComplete would wait for it, forever.
-      _downloads.remove(file.path);
-    });
+    if (file.existsSync() && file.lengthSync() > 0) {
+      _markUsed(file);
+    } else {
+      await (_downloads[file.path] ??= _download(book, file).whenComplete(() {
+        // A block, not `=>`: remove() returns this very future, and
+        // whenComplete would wait for it, forever.
+        _downloads.remove(file.path);
+      }));
+    }
+    await _trim(dir, keep: file);
+    return file;
+  }
+
+  /// Opened now: the last to go when the cache is trimmed. The file's
+  /// modification time says so (access times are often not kept).
+  void _markUsed(File file) {
+    try {
+      file.setLastModifiedSync(DateTime.now());
+    } on FileSystemException catch (e) {
+      log.warning('reader', 'cache: cannot mark a book used', e);
+    }
+  }
+
+  /// Keeps the books within [cacheLimit] (see [booksToEvict]); [keep] is
+  /// the one being opened.
+  Future<void> _trim(Directory dir, {required File keep}) async {
+    final books = <CachedBook>[];
+    try {
+      await for (final entry in dir.list()) {
+        // Temporary files are downloads under way (or their leftovers,
+        // which _removeLeftovers clears).
+        if (entry is! File || entry.path.endsWith(_partSuffix)) continue;
+        final stat = entry.statSync();
+        books.add((path: entry.path, size: stat.size, used: stat.modified));
+      }
+    } on FileSystemException catch (e) {
+      log.warning('reader', 'cache: cannot list the books', e);
+      return;
+    }
+    for (final path in booksToEvict(books, cacheLimit, keep: keep.path)) {
+      try {
+        await File(path).delete();
+        log.info('reader', 'cache: removed a book opened long ago');
+      } on FileSystemException catch (e) {
+        log.warning('reader', 'cache: cannot remove a book', e);
+      }
+    }
   }
 
   /// Downloads [book] beside [file], then renames it: an interrupted
@@ -188,6 +235,29 @@ class JellyfinBookRepository implements BookRepository {
       bookmarks.isEmpty
       ? _store.delete(_bookmarksKey(itemId))
       : _store.write(_bookmarksKey(itemId), jsonEncode(bookmarks));
+}
+
+/// A downloaded book: its file, its size, and when it was last opened.
+typedef CachedBook = ({String path, int size, DateTime used});
+
+/// Which of [books] to remove so the rest take at most [limit] bytes: the
+/// ones opened longest ago first; never [keep] (the book being opened),
+/// even when it alone is over the limit.
+List<String> booksToEvict(
+  List<CachedBook> books,
+  int limit, {
+  required String keep,
+}) {
+  var total = books.fold(0, (sum, b) => sum + b.size);
+  final oldestFirst = [...books]..sort((a, b) => a.used.compareTo(b.used));
+  final evicted = <String>[];
+  for (final book in oldestFirst) {
+    if (total <= limit) break;
+    if (book.path == keep) continue;
+    evicted.add(book.path);
+    total -= book.size;
+  }
+  return evicted;
 }
 
 /// Where [itemId] of [serverId] is kept in [dir]: one file per server and

@@ -83,9 +83,12 @@ void main() {
     for (final MapEntry(key: name, value: format) in expected.entries) {
       final file = await books.file(found[name]!);
       expect(detectBookFormat(await file.readAsBytes()), format, reason: name);
-      final modified = file.lastModifiedSync();
-      // The second time it comes from the cache.
-      expect((await books.file(found[name]!)).lastModifiedSync(), modified);
+      // The second time it comes from the cache: a byte added to the
+      // cached copy is still there (a new download would not have it).
+      // Not its modification time: opening a book marks it used.
+      final length = file.lengthSync();
+      file.writeAsBytesSync([0], mode: FileMode.append);
+      expect((await books.file(found[name]!)).lengthSync(), length + 1);
     }
     expect(cache.listSync().where((f) => f.path.endsWith('.part')), isEmpty);
   });

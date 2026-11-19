@@ -21,13 +21,17 @@ void main() {
   setUp(() => cache = Directory.systemTemp.createTempSync('books-'));
   tearDown(() => cache.deleteSync(recursive: true));
 
-  JellyfinBookRepository repo(FakeAdapter adapter) => JellyfinBookRepository(
+  JellyfinBookRepository repo(
+    FakeAdapter adapter, {
+    int cacheLimit = JellyfinBookRepository.defaultCacheLimit,
+  }) => JellyfinBookRepository(
     testSession,
     () async => client,
     () async => cache,
     MemoryKeyValueStore(),
     onUnauthorized: () {},
     adapter: adapter,
+    cacheLimit: cacheLimit,
   );
 
   /// A server whose answers wait for [release].
@@ -104,4 +108,71 @@ void main() {
       expect(fresh.existsSync(), isTrue);
     },
   );
+
+  group('the cache keeps within its limit', () {
+    final now = DateTime(2026, 11, 19, 12);
+    CachedBook entry(String name, int size, int hoursAgo) =>
+        (path: name, size: size, used: now.subtract(Duration(hours: hoursAgo)));
+
+    test('within the limit: nothing goes', () {
+      expect(
+        booksToEvict([entry('a', 40, 3), entry('b', 60, 1)], 100, keep: 'b'),
+        isEmpty,
+      );
+    });
+
+    test('over it: the ones opened longest ago go, until it fits', () {
+      final books = [
+        entry('new', 50, 1),
+        entry('oldest', 50, 30),
+        entry('old', 50, 20),
+        entry('recent', 50, 5),
+      ];
+      expect(booksToEvict(books, 100, keep: 'new'), ['oldest', 'old']);
+    });
+
+    test('never the book being opened, even when it alone is too big', () {
+      final books = [entry('huge', 500, 99), entry('small', 10, 1)];
+      expect(booksToEvict(books, 100, keep: 'huge'), ['small']);
+    });
+
+    /// A book already in the cache, of [size] bytes, last opened [ago].
+    File cached(String name, int size, Duration ago) =>
+        File('${cache.path}/$name')
+          ..writeAsBytesSync(Uint8List(size))
+          ..setLastModifiedSync(DateTime.now().subtract(ago));
+
+    test(
+      'a download past the limit removes the books opened longest ago',
+      () async {
+        final oldest = cached('oldest', 3000, const Duration(days: 30));
+        final recent = cached('recent', 3000, const Duration(hours: 1));
+        final release = Completer<void>()..complete();
+
+        // 3000 + 3000 + the new book's 4096 > 8000: the oldest goes.
+        final file = await repo(held(release), cacheLimit: 8000).file(book);
+
+        expect(file.existsSync(), isTrue);
+        expect(recent.existsSync(), isTrue);
+        expect(oldest.existsSync(), isFalse);
+      },
+    );
+
+    test('opening a book from the cache makes it the last to go', () async {
+      final release = Completer<void>()..complete();
+      final books = repo(held(release), cacheLimit: 8000);
+      final comic = await books.file(book);
+      comic.setLastModifiedSync(
+        DateTime.now().subtract(const Duration(days: 9)),
+      );
+      final other = cached('other', 3000, const Duration(days: 1));
+
+      await books.file(book); // Read again: now the latest.
+      cached('third', 3000, const Duration(minutes: 1));
+      await books.file(book); // Over the limit: "other" is the oldest now.
+
+      expect(comic.existsSync(), isTrue);
+      expect(other.existsSync(), isFalse);
+    });
+  });
 }
