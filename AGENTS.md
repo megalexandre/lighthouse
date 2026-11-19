@@ -20,8 +20,9 @@ page-curl animation, and themes built from design-system tokens.
 This git repository tracks the shared workspace: `.devcontainer/`, `.vscode/`, `.github/` and
 `lighthouse/`.
 
-- `jellyfin/` (server source, mounted read-only) and `jellyfin-desktop/` (the current Qt client)
-  are **separate repositories, ignored here, used only as reference**. Port logic from them, not
+- `related-repos/jellyfin/` (server source) and `related-repos/jellyfin-desktop/` (the current Qt
+  client) are **separate repositories, ignored here, used only as reference**: never edit them.
+  `.devcontainer/related_repos.sh` clones them or brings them up to date on every container start. Port logic from them, not
   code. Note that the server source is 13.x while the servers in the dev container run **12.4**:
   the 12.4 behaviour wins.
 - Inside `lighthouse/`:

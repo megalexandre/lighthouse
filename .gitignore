@@ -1,6 +1,7 @@
-# This repository tracks only the shared workspace setup (dev container, docs).
-# The two projects below are separate git repositories with their own history
-# and their own .gitignore, so this repository ignores them.
+# The reference repositories (jellyfin, jellyfin-desktop) are separate git
+# repositories, cloned and updated by .devcontainer/related_repos.sh.
+/related-repos/
+# Their old place at the root, until related_repos.sh moves them.
 /jellyfin/
 /jellyfin-desktop/
 

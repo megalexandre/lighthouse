@@ -18,8 +18,12 @@
   "postCreateCommand": "bash .devcontainer/postCreate.sh",
 
   // 4. On every start: a D-Bus session and keyring inside the container,
-  //    for the app's secure storage (the host's bus is off limits).
-  "postStartCommand": "bash .devcontainer/keyring.sh",
+  //    for the app's secure storage (the host's bus is off limits); and
+  //    related-repos/ cloned or brought up to date (run in parallel).
+  "postStartCommand": {
+    "keyring": "bash .devcontainer/keyring.sh",
+    "related-repos": "bash .devcontainer/related_repos.sh"
+  },
 
   "customizations": {
     "vscode": {

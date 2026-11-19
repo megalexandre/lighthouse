@@ -18,12 +18,10 @@ services:
     command: sleep infinity
     volumes:
       # The whole workspace, read/write. Same layout as on the host:
-      #   /workspace/jellyfin-desktop   the desktop client (we work here)
-      #   /workspace/jellyfin           the server source
+      #   /workspace/lighthouse      the Flutter client (we work here)
+      #   /workspace/related-repos   jellyfin and jellyfin-desktop, reference
+      #                              only; related_repos.sh keeps them current
       - ..:/workspace:cached
-      # Mounted again on top, read-only: the server source is a reference
-      # for the REST API, device profiles and stream decisions. Not built or run.
-      - ../jellyfin:/workspace/jellyfin:ro
       # Dart package cache survives container rebuilds.
       - pub-cache:/home/dev/.pub-cache
       # Claude Code: login, settings and session history survive rebuilds.
@@ -62,7 +60,7 @@ services:
       - jellyfin-test
 
   jellyfin:
-    # Latest stable server. The source in ../jellyfin is master (13.x),
+    # Latest stable server. The source in ../related-repos/jellyfin is master (13.x),
     # so small API differences between the two are expected.
     image: jellyfin/jellyfin:12.4
     volumes:

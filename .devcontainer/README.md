@@ -15,8 +15,8 @@ Everything else (Flutter, libmpv, a Jellyfin server) lives in containers.
           │                             │               │
  ┌────────┴─────────────────────────────┴───────────────┴──────┐
  │ container "app"  (Flutter SDK, libmpv, user "dev")          │
- │   /workspace/jellyfin-desktop   ← desktop repo (read/write) │
- │   /workspace/jellyfin           ← server source (read-only) │
+ │   /workspace/lighthouse         ← the Flutter client        │
+ │   /workspace/related-repos/     ← jellyfin, jellyfin-desktop│
  │                                                             │
  │   flutter run -d linux ──── HTTP ────┐                      │
  └──────────────────────────────────────┼──────────────────────┘
@@ -58,12 +58,15 @@ Everything else (Flutter, libmpv, a Jellyfin server) lives in containers.
 | `docker-compose.yml` | on `up` | Defines the two containers, their mounts and the network between them. |
 | `Dockerfile` | on image build | Builds the app image: system packages, Flutter SDK, user `dev`. |
 | `postCreate.sh` | in the container, once | `flutter doctor`, `flutter pub get` in `lighthouse/`, first-run hints. |
+| `keyring.sh` | in the container, every start | D-Bus session and keyring for the app's secure storage. |
+| `related_repos.sh` | in the container, every start | Clones `related-repos/jellyfin` and `related-repos/jellyfin-desktop` over HTTPS, or fetches and fast-forwards them (a clean branch with an upstream only; local work is left alone). Offline, it warns and goes on. |
 
 ## First run
 
-1. Open the workspace root (the folder holding `jellyfin/` and
-   `jellyfin-desktop/`) in VS Code and choose **Reopen in Container**.
-   The first build downloads Flutter and takes a few minutes.
+1. Open the workspace root (the folder holding `lighthouse/`) in VS Code
+   and choose **Reopen in Container**. The first build downloads Flutter
+   and takes a few minutes; the first start clones the reference
+   repositories into `related-repos/`.
 2. In the container terminal, set up the dev server:
    `bash lighthouse/tool/dev_server.sh`. It finishes the setup wizard
    (user `dev`, password `dev`) and creates the Movies, Shows and Music

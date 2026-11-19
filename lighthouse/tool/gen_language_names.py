@@ -27,7 +27,7 @@ root = pathlib.Path(__file__).resolve().parent.parent
 iso = pathlib.Path(
     sys.argv[1]
     if len(sys.argv) > 1
-    else root.parent / "jellyfin/Emby.Server.Implementations/Localization/iso6392.txt"
+    else root.parent / "related-repos/jellyfin/Emby.Server.Implementations/Localization/iso6392.txt"
 )
 
 

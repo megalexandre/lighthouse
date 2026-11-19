@@ -15,7 +15,7 @@ Decisões já tomadas com o usuário:
 - Linux é o alvo do MVP; Windows/macOS depois (código sem dependência de plataforma fora de `platform/`).
 - MVP = núcleo de playback; paridade completa (MPRIS, gamepads, refresh rate...) vem depois.
 - Código em `/workspace/lighthouse`, **versionado pelo repo git da raiz** (não é ignorado no `.gitignore`).
-- `jellyfin/` e `jellyfin-desktop/` ficam só como referência.
+- `related-repos/jellyfin/` e `related-repos/jellyfin-desktop/` ficam só como referência (clonados e atualizados a cada início do container por `.devcontainer/related_repos.sh`).
 
 ## Stack
 

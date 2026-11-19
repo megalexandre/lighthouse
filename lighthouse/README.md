@@ -2,7 +2,7 @@
 
 Jellyfin desktop client with a native Flutter UI. It talks to the server's
 REST API directly and plays media with [media_kit](https://github.com/media-kit/media-kit)
-(libmpv, the same engine as `../jellyfin-desktop`). Linux first.
+(libmpv, the same engine as `../related-repos/jellyfin-desktop`). Linux first.
 
 The plan (phases, test strategy) is in [docs/PLAN.md](docs/PLAN.md).
 
