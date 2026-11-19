@@ -1,11 +1,11 @@
-# Same checks as jellyfin-flutter/tool/check.sh, on a clean Ubuntu runner.
-name: jellyfin-flutter
+# Same checks as lighthouse/tool/check.sh, on a clean Ubuntu runner.
+name: lighthouse
 
 on:
   push:
-    paths: ["jellyfin-flutter/**", ".github/workflows/flutter.yml"]
+    paths: ["lighthouse/**", ".github/workflows/flutter.yml"]
   pull_request:
-    paths: ["jellyfin-flutter/**", ".github/workflows/flutter.yml"]
+    paths: ["lighthouse/**", ".github/workflows/flutter.yml"]
 
 jobs:
   check:
@@ -13,7 +13,7 @@ jobs:
     timeout-minutes: 60
     defaults:
       run:
-        working-directory: jellyfin-flutter
+        working-directory: lighthouse
     env:
       JELLYFIN_TEST_URL: http://localhost:8096
     steps:
@@ -53,7 +53,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: appimage
-          path: jellyfin-flutter/build/JellyfinFlutter-*-x86_64.AppImage
+          path: lighthouse/build/Lighthouse-*-x86_64.AppImage
           if-no-files-found: error
 
       - name: Server log on failure

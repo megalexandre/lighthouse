@@ -24,12 +24,12 @@ Everything else (Flutter, libmpv, a Jellyfin server) lives in containers.
  ┌─────────────────────────────────────────────────────────────┐
  │ container "jellyfin"  (official image 12.4)                 │
  │   http://jellyfin:8096   (host: http://localhost:8096)      │
- │   /media  ← jellyfin-flutter/fixtures/media (read-only)     │
+ │   /media  ← lighthouse/fixtures/media (read-only)     │
  └─────────────────────────────────────────────────────────────┘
  ┌─────────────────────────────────────────────────────────────┐
  │ container "jellyfin-test"  (same image, settings in memory) │
  │   http://jellyfin-test:8096   (not reachable from the host) │
- │   /media  ← jellyfin-flutter/fixtures/media (read-only)     │
+ │   /media  ← lighthouse/fixtures/media (read-only)     │
  └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -41,12 +41,12 @@ Everything else (Flutter, libmpv, a Jellyfin server) lives in containers.
   the server source is mounted read-only on top of it.
 - **jellyfin**: a real server for the app to talk to. Inside the compose
   network its hostname is `jellyfin`; from the host it is `localhost:8096`.
-  Its library is the generated fixtures in `jellyfin-flutter/fixtures/media`
+  Its library is the generated fixtures in `lighthouse/fixtures/media`
   (two movies, a three-episode show, an album), the same as the test server.
 - **jellyfin-test**: a second server, only for the automated tests. It
   keeps nothing between restarts; the tests run its setup wizard and
   create its libraries. Don't use it by hand: see
-  [../jellyfin-flutter/README.md](../jellyfin-flutter/README.md#tests).
+  [../lighthouse/README.md](../lighthouse/README.md#tests).
 
 ## What each file does
 
@@ -57,7 +57,7 @@ Everything else (Flutter, libmpv, a Jellyfin server) lives in containers.
 | `.env` | read by Compose | Generated, git-ignored. Fills the `${...}` values in the compose file. |
 | `docker-compose.yml` | on `up` | Defines the two containers, their mounts and the network between them. |
 | `Dockerfile` | on image build | Builds the app image: system packages, Flutter SDK, user `dev`. |
-| `postCreate.sh` | in the container, once | `flutter doctor`, `flutter pub get` in `jellyfin-flutter/`, first-run hints. |
+| `postCreate.sh` | in the container, once | `flutter doctor`, `flutter pub get` in `lighthouse/`, first-run hints. |
 
 ## First run
 
@@ -65,9 +65,9 @@ Everything else (Flutter, libmpv, a Jellyfin server) lives in containers.
    `jellyfin-desktop/`) in VS Code and choose **Reopen in Container**.
    The first build downloads Flutter and takes a few minutes.
 2. In the container terminal, set up the dev server:
-   `bash jellyfin-flutter/tool/dev_server.sh`. It finishes the setup wizard
+   `bash lighthouse/tool/dev_server.sh`. It finishes the setup wizard
    (user `dev`, password `dev`) and creates the Movies, Shows and Music
-   libraries. The launch config "Jellyfin Flutter (dev server)" runs it too.
+   libraries. The launch config "Lighthouse (dev server)" runs it too.
    You can also do it by hand at <http://localhost:8096>.
 3. To start the dev server from scratch (new libraries, no users), on the
    host: `docker compose -p jellyfin-dev down`, then
@@ -155,5 +155,5 @@ points everything in the container at it.
 - The keyring lives in the container, so a rebuild empties it: sign in to
   the app again. Its password is `dev`.
 - `secret-tool` is installed to inspect it; `gdb` too, for backtraces of
-  native crashes (a `core` file in jellyfin-flutter/).
+  native crashes (a `core` file in lighthouse/).
 - If the app says it could not save the login, run `bash .devcontainer/keyring.sh`.

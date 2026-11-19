@@ -1,13 +1,13 @@
 {
-  // Tasks for jellyfin-flutter/. Run with "Tasks: Run Task", or as a
+  // Tasks for lighthouse/. Run with "Tasks: Run Task", or as a
   // preLaunchTask from launch.json. Ctrl+Shift+B lists the build tasks
   // (release build, AppImage, generated code).
   "version": "2.0.0",
-  "options": { "cwd": "${workspaceFolder}/jellyfin-flutter" },
+  "options": { "cwd": "${workspaceFolder}/lighthouse" },
   "tasks": [
     {
-      // The release app: build/linux/x64/release/bundle/jellyfin_flutter.
-      "label": "jellyfin-flutter: build (release)",
+      // The release app: build/linux/x64/release/bundle/lighthouse.
+      "label": "lighthouse: build (release)",
       "type": "shell",
       // Waits for any other Flutter Linux build (see tool/with_build_lock.sh).
       "command": "tool/with_build_lock.sh flutter build linux --release",
@@ -16,9 +16,9 @@
       "presentation": { "reveal": "always", "panel": "dedicated", "clear": true }
     },
     {
-      // Build, then pack it as build/JellyfinFlutter-<version>-x86_64.AppImage
-      // (see jellyfin-flutter/tool/build_appimage.sh).
-      "label": "jellyfin-flutter: AppImage",
+      // Build, then pack it as build/Lighthouse-<version>-x86_64.AppImage
+      // (see lighthouse/tool/build_appimage.sh).
+      "label": "lighthouse: AppImage",
       "type": "shell",
       "command": "tool/build_appimage.sh",
       "group": "build",
@@ -27,7 +27,7 @@
     },
     {
       // Regenerates the freezed / json_serializable files after a model change.
-      "label": "jellyfin-flutter: generate code",
+      "label": "lighthouse: generate code",
       "type": "shell",
       "command": "dart run build_runner build --delete-conflicting-outputs",
       "group": "build",
@@ -36,8 +36,8 @@
     },
     {
       // Everything: format, analyze, unit / widget, server and integration
-      // tests (see jellyfin-flutter/tool/check.sh).
-      "label": "jellyfin-flutter: check (all tests)",
+      // tests (see lighthouse/tool/check.sh).
+      "label": "lighthouse: check (all tests)",
       "type": "shell",
       "command": "tool/check.sh",
       "group": { "kind": "test", "isDefault": true },
@@ -46,7 +46,7 @@
     },
     {
       // Unit and widget tests only: fast, no server needed.
-      "label": "jellyfin-flutter: unit tests",
+      "label": "lighthouse: unit tests",
       "type": "shell",
       "command": "flutter test --exclude-tags server",
       "group": "test",
@@ -56,7 +56,7 @@
     {
       // Behaviour scenarios (test/**/*.feature): makes their tests from the
       // .feature files, then runs every one. See tool/scenarios.sh.
-      "label": "jellyfin-flutter: scenarios (all features)",
+      "label": "lighthouse: scenarios (all features)",
       "type": "shell",
       "command": "tool/scenarios.sh",
       "group": "test",
@@ -66,7 +66,7 @@
     {
       // The feature open in the editor (its .feature, its _test.dart or one
       // of its steps); asks for part of a scenario's name, empty for all.
-      "label": "jellyfin-flutter: scenarios (this feature)",
+      "label": "lighthouse: scenarios (this feature)",
       "type": "shell",
       "command": "tool/scenarios.sh",
       "args": ["${file}", "${input:scenarioName}"],
@@ -78,7 +78,7 @@
       // Keeps the tests in step with the .feature files while you write
       // them (and makes the stub of a new step). Stop it with the trash
       // icon of its terminal.
-      "label": "jellyfin-flutter: scenarios (regenerate on save)",
+      "label": "lighthouse: scenarios (regenerate on save)",
       "type": "shell",
       "command": "dart run build_runner watch --delete-conflicting-outputs",
       "isBackground": true,
@@ -87,7 +87,7 @@
     },
     {
       // Integration tests on the release-like (AOT) build, headless.
-      "label": "jellyfin-flutter: integration tests (profile)",
+      "label": "lighthouse: integration tests (profile)",
       "type": "shell",
       "command": "tool/profile_test.sh",
       "group": "test",
@@ -97,8 +97,8 @@
     {
       // Waits for the dev server and finishes its setup if it was never
       // done (user dev / dev, libraries over /media). Changes nothing on an
-      // already set-up server. See jellyfin-flutter/tool/dev_server.sh.
-      "label": "jellyfin-flutter: prepare dev server",
+      // already set-up server. See lighthouse/tool/dev_server.sh.
+      "label": "lighthouse: prepare dev server",
       "type": "shell",
       "command": "tool/dev_server.sh",
       "problemMatcher": [],

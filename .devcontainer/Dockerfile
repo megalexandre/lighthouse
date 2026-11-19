@@ -46,9 +46,9 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
         gdb \
         # Headless testing: run integration tests without a real screen
         xvfb xauth x11-utils \
-        # Generates the test media in jellyfin-flutter/fixtures (tool/gen_fixtures.sh)
+        # Generates the test media in lighthouse/fixtures (tool/gen_fixtures.sh)
         ffmpeg \
-        # AppImage packing (jellyfin-flutter/tool/build_appimage.sh):
+        # AppImage packing (lighthouse/tool/build_appimage.sh):
         # appimagetool calls `file`
         file \
         # Runs the validators of the security-audit Claude Code skill

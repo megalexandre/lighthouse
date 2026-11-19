@@ -4,27 +4,27 @@ Guidance for AI coding agents working in this repository.
 
 ## What this is
 
-A Jellyfin desktop client with a native Flutter UI, in `jellyfin-flutter/`. It talks to the
+Lighthouse, a Jellyfin desktop client with a native Flutter UI, in `lighthouse/`. It talks to the
 server's REST API directly (no WebView) and plays media with media_kit (libmpv). Linux is the
 target for now. Besides video and music it has a book reader (PDF, CBZ comics, EPUB) with a
 page-curl animation, and themes built from design-system tokens.
 
-- `jellyfin-flutter/README.md`: running, logs, release, code generation, test layers.
-- `jellyfin-flutter/docs/PLAN.md` (Portuguese): the phased plan, the decisions behind it, what is
+- `lighthouse/README.md`: running, logs, release, code generation, test layers.
+- `lighthouse/docs/PLAN.md` (Portuguese): the phased plan, the decisions behind it, what is
   done and what is next. Read it before starting a feature.
-- `jellyfin-flutter/docs/THEMES.md` (Portuguese): how themes work and the token → UI table.
+- `lighthouse/docs/THEMES.md` (Portuguese): how themes work and the token → UI table.
 - `.devcontainer/README.md`: the containers and the two Jellyfin servers.
 
 ## Repository layout
 
 This git repository tracks the shared workspace: `.devcontainer/`, `.vscode/`, `.github/` and
-`jellyfin-flutter/`.
+`lighthouse/`.
 
 - `jellyfin/` (server source, mounted read-only) and `jellyfin-desktop/` (the current Qt client)
   are **separate repositories, ignored here, used only as reference**. Port logic from them, not
   code. Note that the server source is 13.x while the servers in the dev container run **12.4**:
   the 12.4 behaviour wins.
-- Inside `jellyfin-flutter/`:
+- Inside `lighthouse/`:
 
 ```
 lib/
@@ -54,7 +54,7 @@ servers run next to it:
 - `$JELLYFIN_TEST_URL` (http://jellyfin-test:8096): **for the automated tests only**. Its config
   lives in tmpfs and resets on every container restart; the tests set it up themselves.
 
-Run commands from `jellyfin-flutter/`.
+Run commands from `lighthouse/`.
 
 ## Commands
 

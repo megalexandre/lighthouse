@@ -5,9 +5,9 @@ set -euo pipefail
 # Show what Flutter sees. The "Linux toolchain" line should be green.
 flutter doctor -v || true
 
-# The Flutter project lives in jellyfin-flutter/.
+# The Flutter project lives in lighthouse/.
 # Fetch its packages once it exists.
-flutter_dir=jellyfin-flutter
+flutter_dir=lighthouse
 if [ -f "$flutter_dir/pubspec.yaml" ]; then
   (cd "$flutter_dir" && flutter pub get)
 else
@@ -17,11 +17,11 @@ fi
 cat <<EOF
 
 Test server: ${JELLYFIN_URL} (from the host: http://localhost:8096)
-First run: jellyfin-flutter/tool/dev_server.sh finishes its setup
-(user dev / dev); the "Jellyfin Flutter (dev server)" launch config runs it
+First run: lighthouse/tool/dev_server.sh finishes its setup
+(user dev / dev); the "Lighthouse (dev server)" launch config runs it
 for you. Or do the setup wizard yourself in a browser.
 
 Test server (wiped on every restart, set up by the tests themselves):
 ${JELLYFIN_TEST_URL}
-Run all checks: cd jellyfin-flutter && tool/check.sh
+Run all checks: cd lighthouse && tool/check.sh
 EOF

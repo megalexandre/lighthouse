@@ -1,13 +1,13 @@
 {
-  // Run and Debug (F5) for the Flutter app in jellyfin-flutter/.
+  // Run and Debug (F5) for the Flutter app in lighthouse/.
   // The window opens on the host display (see .devcontainer/README.md).
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "Jellyfin Flutter (debug)",
+      "name": "Lighthouse (debug)",
       "type": "dart",
       "request": "launch",
-      "cwd": "jellyfin-flutter",
+      "cwd": "lighthouse",
       "program": "lib/main.dart",
       "deviceId": "linux",
       "flutterMode": "debug"
@@ -16,30 +16,30 @@
       // Prepares the dev server ($JELLYFIN_URL) first, then opens the app
       // with its address filled in on the connect screen.
       // First run of a fresh server: sign in as dev / dev.
-      "name": "Jellyfin Flutter (dev server)",
+      "name": "Lighthouse (dev server)",
       "type": "dart",
       "request": "launch",
-      "cwd": "jellyfin-flutter",
+      "cwd": "lighthouse",
       "program": "lib/main.dart",
       "deviceId": "linux",
       "flutterMode": "debug",
-      "preLaunchTask": "jellyfin-flutter: prepare dev server",
+      "preLaunchTask": "lighthouse: prepare dev server",
       "toolArgs": ["--dart-define=JELLYFIN_SERVER=${env:JELLYFIN_URL}"]
     },
     {
-      "name": "Jellyfin Flutter (profile)",
+      "name": "Lighthouse (profile)",
       "type": "dart",
       "request": "launch",
-      "cwd": "jellyfin-flutter",
+      "cwd": "lighthouse",
       "program": "lib/main.dart",
       "deviceId": "linux",
       "flutterMode": "profile"
     },
     {
-      "name": "Jellyfin Flutter (release)",
+      "name": "Lighthouse (release)",
       "type": "dart",
       "request": "launch",
-      "cwd": "jellyfin-flutter",
+      "cwd": "lighthouse",
       "program": "lib/main.dart",
       "deviceId": "linux",
       "flutterMode": "release"
@@ -47,10 +47,10 @@
     {
       // Runs the integration tests in a visible window, so you can watch them.
       // Needs the test server (JELLYFIN_TEST_URL) for anything beyond the smoke test.
-      "name": "Jellyfin Flutter: integration tests",
+      "name": "Lighthouse: integration tests",
       "type": "dart",
       "request": "launch",
-      "cwd": "jellyfin-flutter",
+      "cwd": "lighthouse",
       "program": "integration_test",
       "deviceId": "linux"
     }

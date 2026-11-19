@@ -71,7 +71,7 @@ services:
       - jellyfin-cache:/cache
       # The generated fixtures (movies, a show, an album), the same media the
       # test server uses. tool/dev_server.sh creates one library per folder.
-      - ../jellyfin-flutter/fixtures/media:/media:ro
+      - ../lighthouse/fixtures/media:/media:ro
     ports:
       # Also reachable from the host at http://localhost:8096
       - "8096:8096"
@@ -87,7 +87,7 @@ services:
       - /cache
     volumes:
       # Generated test media (tool/gen_fixtures.sh), committed in the repo.
-      - ../jellyfin-flutter/fixtures/media:/media:ro
+      - ../lighthouse/fixtures/media:/media:ro
 
 volumes:
   pub-cache:

@@ -1,0 +1,10 @@
+[Desktop Entry]
+Version=1.0
+Name=Lighthouse
+Comment=Jellyfin client (Flutter rewrite of Jellyfin Desktop)
+Exec=lighthouse
+Icon=io.github.megalexandre.lighthouse
+Terminal=false
+Type=Application
+StartupWMClass=io.github.megalexandre.lighthouse
+Categories=AudioVideo;Video;Player;TV;
