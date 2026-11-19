@@ -93,16 +93,34 @@ class JellyfinBookRepository implements BookRepository {
   final Future<Directory> Function() _cache;
   final KeyValueStore _store;
 
+  /// Downloads under way, by the book's cache path. The reader can close
+  /// while a book downloads (the download goes on) and open it again: the
+  /// second request waits for the first instead of starting another.
+  final _downloads = <String, Future<File>>{};
+
+  /// Names this download's temporary file apart from any other's.
+  int _downloadCount = 0;
+
   @override
   Future<File> file(BaseItemDto book) async {
     final dir = await _cache();
     await dir.create(recursive: true);
     final file = bookCacheFile(dir, _client.session.server.id, book.id);
     if (file.existsSync() && file.lengthSync() > 0) return file;
+    return _downloads[file.path] ??= _download(book, file).whenComplete(() {
+      // A block, not `=>`: remove() returns this very future, and
+      // whenComplete would wait for it, forever.
+      _downloads.remove(file.path);
+    });
+  }
 
-    // Downloaded beside, then renamed: an interrupted download never
-    // leaves half a book behind.
-    final part = File('${file.path}.part');
+  /// Downloads [book] beside [file], then renames it: an interrupted
+  /// download never leaves half a book behind, and the temporary name is
+  /// this download's own, so no other one (another run of the app) ever
+  /// writes into it.
+  Future<File> _download(BaseItemDto book, File file) async {
+    await _removeLeftovers(file);
+    final part = File('${file.path}.$pid-${_downloadCount++}$_partSuffix');
     try {
       await _client.call((api) => api.downloadItem(book.id, part.path));
       await part.rename(file.path);
@@ -110,6 +128,28 @@ class JellyfinBookRepository implements BookRepository {
       if (part.existsSync()) await part.delete();
     }
     return file;
+  }
+
+  static const _partSuffix = '.part';
+
+  /// Temporary files of [file] left by a run that was killed mid-download.
+  /// One written to in the last minute may be another app's download under
+  /// way: left alone.
+  Future<void> _removeLeftovers(File file) async {
+    final name = file.uri.pathSegments.last;
+    final stale = DateTime.now().subtract(const Duration(minutes: 1));
+    await for (final entry in file.parent.list()) {
+      final other = entry.uri.pathSegments.last;
+      if (entry is File &&
+          other.startsWith('$name.') &&
+          other.endsWith(_partSuffix)) {
+        try {
+          if (entry.statSync().modified.isBefore(stale)) await entry.delete();
+        } on FileSystemException {
+          // Gone already, or not ours to delete: the download goes on.
+        }
+      }
+    }
   }
 
   @override
