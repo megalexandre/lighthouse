@@ -28,7 +28,7 @@ Decisões já tomadas com o usuário:
 | Player | `media_kit`, `media_kit_video`, `media_kit_libs_linux` | libmpv, mesmo motor do desktop atual |
 | Token | `flutter_secure_storage` (libsecret já está no Dockerfile) | |
 | Janela | `window_manager` | fullscreen, título |
-| Testes | `flutter_test`, `integration_test`, `mocktail` | |
+| Testes | `flutter_test`, `integration_test`, `bdd_widget_test` (cenários), fakes à mão (`test/support/fakes.dart`) | |
 | Lint | `flutter_lints` + regras estritas no `analysis_options.yaml` | |
 
 Cliente da API **escrito à mão** (só os endpoints usados), não gerado do OpenAPI: o gerador precisa de Java e gera

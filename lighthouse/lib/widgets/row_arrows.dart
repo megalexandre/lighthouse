@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:material_ui/material_ui.dart';
 
 import '../core/theme/app_tokens.dart';
+import '../core/window_size.dart';
 import '../l10n/l10n.dart';
 
 /// A horizontal row (built by [builder] with the [ScrollController] it is
@@ -22,9 +23,6 @@ class RowArrows extends StatefulWidget {
 
   static const previousKey = Key('row.previous');
   static const nextKey = Key('row.next');
-
-  /// Below this width the row has no arrows.
-  static const minWidth = 760.0;
 
   @override
   State<RowArrows> createState() => _RowArrowsState();
@@ -91,7 +89,8 @@ class _RowArrowsState extends State<RowArrows> {
       child: widget.builder(_controller),
     );
     if (!context.tokens.components.rowArrows ||
-        MediaQuery.sizeOf(context).width < RowArrows.minWidth) {
+        // Below expanded, rows are swiped, not stepped.
+        !WindowSize.of(context).atLeast(WindowSize.expanded)) {
       return row;
     }
     return Stack(

@@ -9,6 +9,7 @@ import '../../../api/models/base_item_dto.dart';
 import '../../../api/models/user_item_data_dto.dart';
 import '../../../core/theme/app_tokens.dart';
 import '../../../core/theme/design_tokens.dart';
+import '../../../core/window_size.dart';
 import '../../../l10n/l10n.dart';
 import '../../../router.dart';
 import '../data/library_repository.dart';
@@ -106,6 +107,10 @@ class ItemCard extends StatefulWidget {
   /// The progress bar along the picture's bottom (only when started).
   static const progressBar = Key('item.progress');
 
+  /// The check of a watched (or read) item, on its card and on its row in
+  /// a season.
+  static const watchedMark = Key('item.watchedMark');
+
   /// Height of the two text lines under the picture.
   static const textHeight = 48.0;
 
@@ -122,9 +127,6 @@ class ItemCard extends StatefulWidget {
   /// How long the mouse rests on a card before its panel opens (the
   /// theme's `cardHover: expand`).
   static const expandDelay = Duration(milliseconds: 450);
-
-  /// Narrower windows keep the plain hover (no room for the panel).
-  static const expandMinWidth = 800.0;
 
   /// Total height of a card [width] wide.
   static double heightFor(double width, double aspectRatio) =>
@@ -157,7 +159,8 @@ class _ItemCardState extends State<ItemCard> {
   /// Whether this card opens the panel under the mouse.
   bool _expands(BuildContext context) =>
       context.tokens.components.cardHover == CardHoverStyle.expand &&
-      MediaQuery.sizeOf(context).width >= ItemCard.expandMinWidth &&
+      // Narrower windows keep the plain hover (no room for the panel).
+      WindowSize.of(context).atLeast(WindowSize.expanded) &&
       switch (item.type) {
         BaseItemKind.movie ||
         BaseItemKind.episode ||
@@ -327,7 +330,6 @@ class _Picture extends StatelessWidget {
     final data = item.userData;
     final progress = (data?.playedPercentage ?? 0) / 100;
     final unplayed = data?.unplayedItemCount ?? 0;
-    final book = item.type == BaseItemKind.book;
     return AnimatedContainer(
       duration: const Duration(milliseconds: 150),
       decoration: BoxDecoration(
@@ -353,23 +355,10 @@ class _Picture extends StatelessWidget {
             children: [
               ItemImage(item: item, width: width),
               if (playRoute case final route? when lifted)
-                ColoredBox(
-                  color: tokens.mediaShade.withValues(alpha: 0.35),
-                  child: Center(
-                    child: _Disc(
-                      key: ItemCard.playKeyFor(item.id),
-                      size: 48,
-                      tooltip: book ? context.l10n.read : context.l10n.play,
-                      onTap: () => context.push(route),
-                      child: Icon(
-                        book ? Icons.auto_stories : Icons.play_arrow,
-                        size: 28,
-                      ),
-                    ),
-                  ),
-                ),
+                _PlayOverlay(item: item, route: route),
               if (data?.played ?? false)
                 const Positioned(
+                  key: ItemCard.watchedMark,
                   top: 8,
                   right: 8,
                   child: _Disc(size: 24, child: Icon(Icons.check, size: 16)),
@@ -387,14 +376,7 @@ class _Picture extends StatelessWidget {
                   right: 0,
                   bottom: 0,
                   height: 4,
-                  child: ColoredBox(
-                    color: tokens.mediaShade.withValues(alpha: 0.5),
-                    child: FractionallySizedBox(
-                      alignment: Alignment.centerLeft,
-                      widthFactor: progress.clamp(0, 1),
-                      child: ColoredBox(color: primary),
-                    ),
-                  ),
+                  child: _Progress(progress),
                 ),
             ],
           ),
@@ -402,6 +384,48 @@ class _Picture extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Over a lifted card: a shade and the play (or read) disc.
+class _PlayOverlay extends StatelessWidget {
+  const _PlayOverlay({required this.item, required this.route});
+
+  final BaseItemDto item;
+  final String route;
+
+  @override
+  Widget build(BuildContext context) {
+    final book = item.type == BaseItemKind.book;
+    return ColoredBox(
+      color: context.tokens.mediaShade.withValues(alpha: 0.35),
+      child: Center(
+        child: _Disc(
+          key: ItemCard.playKeyFor(item.id),
+          size: 48,
+          tooltip: book ? context.l10n.read : context.l10n.play,
+          onTap: () => context.push(route),
+          child: Icon(book ? Icons.auto_stories : Icons.play_arrow, size: 28),
+        ),
+      ),
+    );
+  }
+}
+
+/// How much was watched or read, in the primary colour on a shade.
+class _Progress extends StatelessWidget {
+  const _Progress(this.fraction);
+
+  final double fraction;
+
+  @override
+  Widget build(BuildContext context) => ColoredBox(
+    color: context.tokens.mediaShade.withValues(alpha: 0.5),
+    child: FractionallySizedBox(
+      alignment: Alignment.centerLeft,
+      widthFactor: fraction.clamp(0, 1),
+      child: ColoredBox(color: Theme.of(context).colorScheme.primary),
+    ),
+  );
 }
 
 /// The two lines under the picture: the name, and the subtitle when the

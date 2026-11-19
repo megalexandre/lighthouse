@@ -14,6 +14,8 @@ import './step/resume_starts_the_movie_there.dart';
 import './step/i_skip_to_the_end.dart';
 import './step/i_am_back_on_the_items_page.dart';
 import './step/the_server_has_as_watched.dart';
+import './step/i_go_back.dart';
+import './step/shows_as_watched.dart';
 
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
@@ -76,6 +78,28 @@ void main() {
       } finally {
         await afterEach(
           '''A movie played to its end is watched''',
+          success,
+        );
+      }
+    });
+    testWidgets('''A movie played to its end shows as watched in its library''',
+        (tester) async {
+      var success = true;
+      try {
+        await beforeEach(
+            '''A movie played to its end shows as watched in its library''');
+        await bddSetUp(tester);
+        await iPlayFrom(tester, 'Test Movie (2020)', 'Movies');
+        await iSkipToTheEnd(tester);
+        await iAmBackOnTheItemsPage(tester);
+        await iGoBack(tester);
+        await showsAsWatched(tester, 'Test Movie (2020)');
+      } catch (_) {
+        success = false;
+        rethrow;
+      } finally {
+        await afterEach(
+          '''A movie played to its end shows as watched in its library''',
           success,
         );
       }

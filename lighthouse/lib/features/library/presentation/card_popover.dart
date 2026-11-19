@@ -98,11 +98,7 @@ class _CardPopoverState extends ConsumerState<CardPopover>
       await ref
           .read(playbackRepositoryProvider)
           .setPlayed(widget.item.id, played: !played);
-      ref
-        ..invalidate(itemProvider(widget.item.id))
-        ..invalidate(resumeProvider)
-        ..invalidate(nextUpProvider)
-        ..invalidate(latestProvider);
+      ref.read(watchStateProvider.notifier).changed();
     } on Failure catch (e) {
       if (mounted) {
         ScaffoldMessenger.maybeOf(context)

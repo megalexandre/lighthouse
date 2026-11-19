@@ -12,8 +12,8 @@ import 'router.dart';
 /// error with a Retry button instead.
 Duration? noAutomaticRetry(int retryCount, Object error) => null;
 
-class JellyfinApp extends ConsumerWidget {
-  const JellyfinApp({super.key});
+class LighthouseApp extends ConsumerWidget {
+  const LighthouseApp({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {

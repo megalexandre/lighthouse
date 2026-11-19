@@ -85,6 +85,24 @@ class _SeekBarState extends State<SeekBar> {
     unawaited(widget.engine.seek(to));
   }
 
+  /// The drag is at [x] of the bar's [width]; with [hover], the preview
+  /// follows it.
+  void _dragTo(double x, double width, {bool hover = false}) {
+    setState(() {
+      _drag = _timeAt(x, width).inMilliseconds.toDouble();
+      if (hover) _hoverX = x;
+    });
+    widget.onInteract();
+  }
+
+  /// Released: one seek, to where the drag ended.
+  Future<void> _endDrag() async {
+    final to = _drag;
+    if (to == null) return;
+    await widget.engine.seek(Duration(milliseconds: to.round()));
+    if (mounted) setState(() => _drag = null);
+  }
+
   String? _chapterAt(Duration t) {
     String? name;
     for (final c in widget.chapters) {
@@ -139,29 +157,11 @@ class _SeekBarState extends State<SeekBar> {
                     : (d) => _seek(_timeAt(d.localPosition.dx, width)),
                 onHorizontalDragStart: _max <= 0
                     ? null
-                    : (d) => setState(() {
-                        _drag = _timeAt(
-                          d.localPosition.dx,
-                          width,
-                        ).inMilliseconds.toDouble();
-                        widget.onInteract();
-                      }),
+                    : (d) => _dragTo(d.localPosition.dx, width),
                 onHorizontalDragUpdate: _max <= 0
                     ? null
-                    : (d) => setState(() {
-                        _drag = _timeAt(
-                          d.localPosition.dx,
-                          width,
-                        ).inMilliseconds.toDouble();
-                        _hoverX = d.localPosition.dx;
-                        widget.onInteract();
-                      }),
-                onHorizontalDragEnd: (_) async {
-                  final to = _drag;
-                  if (to == null) return;
-                  await widget.engine.seek(Duration(milliseconds: to.round()));
-                  if (mounted) setState(() => _drag = null);
-                },
+                    : (d) => _dragTo(d.localPosition.dx, width, hover: true),
+                onHorizontalDragEnd: (_) => unawaited(_endDrag()),
                 onHorizontalDragCancel: () => setState(() => _drag = null),
                 child: Stack(
                   clipBehavior: Clip.none,

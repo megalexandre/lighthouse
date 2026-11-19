@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lighthouse/api/models/media_stream.dart';
 import 'package:lighthouse/core/failure.dart';
+import 'package:lighthouse/features/item/presentation/item_header.dart';
 import 'package:lighthouse/features/item/presentation/item_screen.dart';
 import 'package:lighthouse/features/library/presentation/item_card.dart';
 import 'package:lighthouse/l10n/l10n.dart';

@@ -10,6 +10,7 @@ import '../../../core/failure.dart';
 import '../../../core/log.dart';
 import '../../../core/theme/appearance.dart';
 import '../../../core/theme/theme_catalog.dart';
+import '../../../core/window_size.dart';
 import '../../../l10n/l10n.dart';
 import '../../../widgets/error_retry.dart';
 import '../../auth/application/auth_controller.dart';
@@ -227,7 +228,10 @@ class _AppearanceSettings extends ConsumerWidget {
     final catalog = ref.watch(themeCatalogProvider);
     final appearance = ref.watch(appearanceProvider);
     final shown = ref.watch(appThemeProvider).entry;
-    final controller = ref.read(appearanceProvider.notifier);
+    // From the appearance at the tap, not at this build.
+    Future<void> update(Appearance Function(Appearance) change) => ref
+        .read(appearanceProvider.notifier)
+        .set(change(ref.read(appearanceProvider)));
     final usable = [
       for (final e in catalog.entries)
         if (e.tokens != null) e,
@@ -256,7 +260,7 @@ class _AppearanceSettings extends ConsumerWidget {
             for (final e in usable)
               (e.id, e.builtIn ? e.name : context.l10n.themeFromFolder(e.name)),
           ],
-          onChanged: (id) => controller.set(appearance.copyWith(themeId: id)),
+          onChanged: (id) => update((a) => a.copyWith(themeId: id)),
         ),
         _Choice<AppLanguage>(
           key: SettingsScreen.languageField,
@@ -265,59 +269,142 @@ class _AppearanceSettings extends ConsumerWidget {
           value: ref.watch(appLanguageProvider),
           options: [for (final l in AppLanguage.values) (l, l.name)],
           onChanged: (language) =>
-              controller.set(appearance.copyWith(language: language)),
+              update((a) => a.copyWith(language: language)),
         ),
-        ListTile(
-          title: Text(context.l10n.mode),
-          subtitle: twoModes ? null : Text(context.l10n.singleMode),
-          trailing: SegmentedButton<ThemeMode>(
-            showSelectedIcon: false,
-            segments: [
-              for (final (mode, label) in [
-                (ThemeMode.dark, context.l10n.modeDark),
-                (ThemeMode.light, context.l10n.modeLight),
-                (ThemeMode.system, context.l10n.modeSystem),
-              ])
-                ButtonSegment(
-                  value: mode,
-                  label: Text(label, key: SettingsScreen.modeChoice(mode)),
-                  enabled: twoModes,
-                ),
-            ],
-            selected: {appearance.mode},
-            onSelectionChanged: (s) =>
-                controller.set(appearance.copyWith(mode: s.single)),
-          ),
+        _ModeChoice(
+          mode: appearance.mode,
+          enabled: twoModes,
+          onChanged: (mode) => unawaited(update((a) => a.copyWith(mode: mode))),
         ),
-        if (folder != null && folder.isNotEmpty)
-          ListTile(
-            key: SettingsScreen.themesFolder,
-            title: Text(context.l10n.yourThemes),
-            subtitle: Text(context.l10n.yourThemesHelp(folder)),
-            trailing: Platform.isLinux
-                ? TextButton(
-                    onPressed: () =>
-                        unawaited(ref.read(folderOpenerProvider)(folder)),
-                    child: Text(context.l10n.openFolder),
-                  )
-                : null,
-          ),
-        if (issues.isNotEmpty)
-          ExpansionTile(
-            key: SettingsScreen.themeIssues,
-            leading: Icon(
-              Icons.warning_amber,
-              color: Theme.of(context).colorScheme.error,
-            ),
-            title: Text(context.l10n.themeIssues(issues.length)),
-            children: [
-              for (final issue in issues)
-                ListTile(dense: true, title: SelectableText(issue)),
-            ],
-          ),
+        if (folder != null && folder.isNotEmpty) _ThemesFolder(folder: folder),
+        if (issues.isNotEmpty) _ThemeIssues(issues: issues),
       ],
     );
   }
+}
+
+/// Dark, light or the system's, when the theme has both.
+class _ModeChoice extends StatelessWidget {
+  const _ModeChoice({
+    required this.mode,
+    required this.enabled,
+    required this.onChanged,
+  });
+
+  final ThemeMode mode;
+  final bool enabled;
+  final ValueChanged<ThemeMode> onChanged;
+
+  @override
+  Widget build(BuildContext context) => _SettingTile(
+    title: context.l10n.mode,
+    help: enabled ? null : context.l10n.singleMode,
+    control: ({required below}) => SegmentedButton<ThemeMode>(
+      showSelectedIcon: false,
+      segments: [
+        for (final (value, label) in [
+          (ThemeMode.dark, context.l10n.modeDark),
+          (ThemeMode.light, context.l10n.modeLight),
+          (ThemeMode.system, context.l10n.modeSystem),
+        ])
+          ButtonSegment(
+            value: value,
+            label: Text(label, key: SettingsScreen.modeChoice(value)),
+            enabled: enabled,
+          ),
+      ],
+      selected: {mode},
+      onSelectionChanged: (s) => onChanged(s.single),
+    ),
+  );
+}
+
+/// Where the user's own themes go, with a button to open it.
+class _ThemesFolder extends ConsumerWidget {
+  const _ThemesFolder({required this.folder});
+
+  final String folder;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) => ListTile(
+    key: SettingsScreen.themesFolder,
+    title: Text(context.l10n.yourThemes),
+    subtitle: Text(context.l10n.yourThemesHelp(folder)),
+    trailing: Platform.isLinux
+        ? TextButton(
+            onPressed: () => unawaited(ref.read(folderOpenerProvider)(folder)),
+            child: Text(context.l10n.openFolder),
+          )
+        : null,
+  );
+}
+
+/// What is wrong with the themes: warnings of the one shown, files that
+/// could not be used.
+class _ThemeIssues extends StatelessWidget {
+  const _ThemeIssues({required this.issues});
+
+  final List<String> issues;
+
+  @override
+  Widget build(BuildContext context) => ExpansionTile(
+    key: SettingsScreen.themeIssues,
+    leading: Icon(
+      Icons.warning_amber,
+      color: Theme.of(context).colorScheme.error,
+    ),
+    title: Text(context.l10n.themeIssues(issues.length)),
+    children: [
+      for (final issue in issues)
+        ListTile(dense: true, title: SelectableText(issue)),
+    ],
+  );
+}
+
+/// A setting's label and help, with its control beside them; under them
+/// when the row is too narrow for both (a phone).
+class _SettingTile extends StatelessWidget {
+  const _SettingTile({required this.title, required this.control, this.help});
+
+  final String title;
+  final String? help;
+
+  /// The control, told whether it sits under the label (with the row's
+  /// whole width) or beside it.
+  final Widget Function({required bool below}) control;
+
+  @override
+  Widget build(BuildContext context) => LayoutBuilder(
+    builder: (context, constraints) {
+      final help = this.help;
+      if (WindowSize.ofWidth(constraints.maxWidth).atLeast(WindowSize.medium)) {
+        return ListTile(
+          title: Text(title),
+          subtitle: help == null ? null : Text(help),
+          trailing: control(below: false),
+        );
+      }
+      final theme = Theme.of(context);
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(title, style: theme.textTheme.bodyLarge),
+            if (help != null)
+              Text(
+                help,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+            const SizedBox(height: 8),
+            control(below: true),
+          ],
+        ),
+      );
+    },
+  );
 }
 
 class _Heading extends StatelessWidget {
@@ -354,15 +441,20 @@ class _Choice<T> extends StatelessWidget {
   final Future<void> Function(T value) onChanged;
 
   @override
-  Widget build(BuildContext context) => ListTile(
-    title: Text(label),
-    subtitle: help == null ? null : Text(help!),
-    trailing: DropdownButton<T>(
+  Widget build(BuildContext context) => _SettingTile(
+    title: label,
+    help: help,
+    control: ({required below}) => DropdownButton<T>(
+      // Under the label: as wide as the row, long options cut short.
+      isExpanded: below,
       value: options.any((o) => o.$1 == value) ? value : options.first.$1,
       onChanged: (v) => onChanged(v as T),
       items: [
         for (final (v, text) in options)
-          DropdownMenuItem<T>(value: v, child: Text(text)),
+          DropdownMenuItem<T>(
+            value: v,
+            child: Text(text, overflow: TextOverflow.ellipsis),
+          ),
       ],
     ),
   );
@@ -389,10 +481,10 @@ class _LanguageChoice extends StatelessWidget {
   final Future<void> Function(String value) onChanged;
 
   @override
-  Widget build(BuildContext context) => ListTile(
-    title: Text(label),
-    subtitle: help == null ? null : Text(help!),
-    trailing: DropdownMenu<String>(
+  Widget build(BuildContext context) => _SettingTile(
+    title: label,
+    help: help,
+    control: ({required below}) => DropdownMenu<String>(
       // Rebuilt when the value or the list changes, so the field shows it.
       key: ValueKey((value, options.length)),
       width: width,

@@ -62,7 +62,7 @@ Future<void> launch(
         ),
         appWindowProvider.overrideWithValue(window),
       ],
-      child: const JellyfinApp(),
+      child: const LighthouseApp(),
     ),
   );
 }

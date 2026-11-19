@@ -780,8 +780,10 @@ class FakeBookRepository implements BookRepository {
   }
 
   @override
-  Future<void> setRead(String itemId, {required bool read}) async =>
-      this.read[itemId] = read;
+  Future<void> setRead(String itemId, {required bool read}) async {
+    if (failures['read'] case final Failure f) throw f;
+    this.read[itemId] = read;
+  }
 
   /// itemId → bookmarks, as saved.
   final bookmarksOf = <String, List<double>>{};
@@ -894,7 +896,7 @@ class TestApp {
 
   /// The app's provider container, once pumped.
   ProviderContainer containerOf(WidgetTester tester) =>
-      ProviderScope.containerOf(tester.element(find.byType(JellyfinApp)));
+      ProviderScope.containerOf(tester.element(find.byType(LighthouseApp)));
 
   /// Every engine the app made, last one = current playback.
   final engines = <FakePlayerEngine>[];
@@ -938,12 +940,17 @@ class TestApp {
   ProviderContainer container() =>
       ProviderContainer.test(overrides: overrides, retry: noAutomaticRetry);
 
-  /// Signed in, on a desktop-sized window, at [location].
-  Future<void> open(WidgetTester tester, String location) async {
-    useDesktopWindow(tester);
+  /// Signed in, at [location], in a [window] of that size from the start
+  /// (a desktop one by default).
+  Future<void> open(
+    WidgetTester tester,
+    String location, {
+    Size window = TestWindows.desktop,
+  }) async {
+    useWindow(tester, window);
     signIn();
     await pump(tester);
-    ProviderScope.containerOf(tester.element(find.byType(JellyfinApp)))
+    ProviderScope.containerOf(tester.element(find.byType(LighthouseApp)))
         .read(routerProvider)
         .go(location);
     await tester.pumpAndSettle();
@@ -956,21 +963,41 @@ class TestApp {
         key: UniqueKey(),
         overrides: overrides,
         retry: noAutomaticRetry,
-        child: const JellyfinApp(),
+        child: const LighthouseApp(),
       ),
     );
     await tester.pumpAndSettle();
   }
 }
 
-/// A 1600×1200 window instead of the 800×600 default, so whole screens
-/// (every home row) are laid out without scrolling.
-void useDesktopWindow(WidgetTester tester) {
+/// Window sizes for layout tests, one per WindowSize class that matters
+/// (the default test window, 800×600, is a medium one).
+abstract final class TestWindows {
+  /// A phone upright (compact).
+  static const phone = Size(360, 800);
+
+  /// A phone on its side: short, and medium wide.
+  static const phoneSideways = Size(800, 360);
+
+  /// A tablet upright (medium).
+  static const tablet = Size(700, 1000);
+
+  /// A desktop window (large), tall enough for every home row.
+  static const desktop = Size(1600, 1200);
+}
+
+/// The test's window is [size] (logical pixels), until the test ends.
+void useWindow(WidgetTester tester, Size size) {
   tester.view
-    ..physicalSize = const Size(1600, 1200)
+    ..physicalSize = size
     ..devicePixelRatio = 1;
   addTearDown(tester.view.reset);
 }
+
+/// A 1600×1200 window instead of the 800×600 default, so whole screens
+/// (every home row) are laid out without scrolling.
+void useDesktopWindow(WidgetTester tester) =>
+    useWindow(tester, TestWindows.desktop);
 
 /// The app's built-in themes, read from assets/themes/ at once (widget
 /// tests run on a fake clock, where the asset bundle's reads never end).

@@ -7,6 +7,7 @@ import 'package:material_ui/material_ui.dart';
 
 import '../../../core/theme/app_tokens.dart';
 import '../../../core/theme/appearance.dart';
+import '../../../core/window_size.dart';
 import '../../../l10n/l10n.dart';
 import '../../../router.dart';
 import '../../auth/application/auth_controller.dart';
@@ -88,8 +89,8 @@ class _FloatingTopBarState extends ConsumerState<FloatingTopBar> {
 
   Widget _bar(BuildContext context) {
     final tokens = context.tokens;
-    final width = MediaQuery.sizeOf(context).width;
-    final narrow = width < 760;
+    // Below expanded the library tabs do not fit.
+    final narrow = !WindowSize.of(context).atLeast(WindowSize.expanded);
     final views = ref.watch(userViewsProvider).value ?? const [];
     final solid = widget.solid;
     // Over the carousel's pictures: the player's colours, dark whatever the
@@ -100,7 +101,11 @@ class _FloatingTopBarState extends ConsumerState<FloatingTopBar> {
 
     final content = Row(
       children: [
-        _Mark(onTap: () => context.go(Routes.home)),
+        _Mark(
+          onTap: () => context.go(Routes.home),
+          // A phone has no room for the name beside the tabs and buttons.
+          showName: WindowSize.of(context) != WindowSize.compact,
+        ),
         SizedBox(width: tokens.space(4)),
         Expanded(
           child: SingleChildScrollView(
@@ -247,9 +252,10 @@ class _FloatingTopBarState extends ConsumerState<FloatingTopBar> {
 
 /// The app's mark: a ring (the accent, open at one side) and the name.
 class _Mark extends StatelessWidget {
-  const _Mark({required this.onTap});
+  const _Mark({required this.onTap, required this.showName});
 
   final VoidCallback onTap;
+  final bool showName;
 
   @override
   Widget build(BuildContext context) {
@@ -277,12 +283,16 @@ class _Mark extends StatelessWidget {
                 ),
               ),
             ),
-            const SizedBox(width: 8),
-            Text(
-              'jellyfin',
-              style: Theme.of(context).textTheme.titleLarge
-                  ?.copyWith(color: context.tokens.osdInk, letterSpacing: -0.6),
-            ),
+            if (showName) ...[
+              const SizedBox(width: 8),
+              Text(
+                context.l10n.appTitle,
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                  color: context.tokens.osdInk,
+                  letterSpacing: -0.6,
+                ),
+              ),
+            ],
           ],
         ),
       ),
@@ -357,26 +367,7 @@ class _Profile extends ConsumerWidget {
       ThemeMode.system =>
         MediaQuery.platformBrightnessOf(context) == Brightness.light,
     };
-    final disc = Container(
-      width: 36,
-      height: 36,
-      alignment: Alignment.center,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [scheme.inversePrimary, scheme.primary],
-        ),
-      ),
-      child: Text(
-        name.isEmpty ? '?' : name.characters.first.toUpperCase(),
-        style: TextStyle(
-          color: context.tokens.osdInk,
-          fontWeight: FontWeight.w700,
-        ),
-      ),
-    );
+    final disc = _InitialDisc(name: name);
     return MenuAnchor(
       alignmentOffset: const Offset(-240, 8),
       style: MenuStyle(
@@ -384,37 +375,19 @@ class _Profile extends ConsumerWidget {
         minimumSize: const WidgetStatePropertyAll(Size(280, 0)),
       ),
       menuChildren: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-          child: Row(
-            children: [
-              disc,
-              const SizedBox(width: 12),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(name, style: Theme.of(context).textTheme.titleSmall),
-                  if (session != null)
-                    Text(
-                      session.server.name,
-                      style: Theme.of(context).textTheme.bodySmall,
-                    ),
-                ],
-              ),
-            ],
-          ),
-        ),
+        _ProfileHeader(name: name, server: session?.server.name),
         const Divider(height: 1),
         if (appTheme.entry.tokens?.hasLightAndDark ?? false)
           MenuItemButton(
             key: FloatingTopBar.themeItem,
             leadingIcon: Icon(light ? Icons.dark_mode : Icons.light_mode),
+            // The appearance at the tap, not at this build.
             onPressed: () => ref
                 .read(appearanceProvider.notifier)
                 .set(
-                  appearance.copyWith(
-                    mode: light ? ThemeMode.dark : ThemeMode.light,
-                  ),
+                  ref
+                      .read(appearanceProvider)
+                      .copyWith(mode: light ? ThemeMode.dark : ThemeMode.light),
                 ),
             child: Text(
               light ? context.l10n.darkTheme : context.l10n.lightTheme,
@@ -442,6 +415,68 @@ class _Profile extends ConsumerWidget {
               controller.isOpen ? controller.close() : controller.open(),
           child: disc,
         ),
+      ),
+    );
+  }
+}
+
+/// The user's initial in a disc of the theme's primary gradient.
+class _InitialDisc extends StatelessWidget {
+  const _InitialDisc({required this.name});
+
+  final String name;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Container(
+      width: 36,
+      height: 36,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [scheme.inversePrimary, scheme.primary],
+        ),
+      ),
+      child: Text(
+        name.isEmpty ? '?' : name.characters.first.toUpperCase(),
+        style: TextStyle(
+          color: context.tokens.osdInk,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+    );
+  }
+}
+
+/// The top of the profile menu: the disc, the user's name and the server.
+class _ProfileHeader extends StatelessWidget {
+  const _ProfileHeader({required this.name, required this.server});
+
+  final String name;
+  final String? server;
+
+  @override
+  Widget build(BuildContext context) {
+    final text = Theme.of(context).textTheme;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+      child: Row(
+        children: [
+          _InitialDisc(name: name),
+          const SizedBox(width: 12),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(name, style: text.titleSmall),
+              if (server case final String server)
+                Text(server, style: text.bodySmall),
+            ],
+          ),
+        ],
       ),
     );
   }

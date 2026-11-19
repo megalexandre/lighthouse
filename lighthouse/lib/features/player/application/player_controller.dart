@@ -418,11 +418,7 @@ class PlayerController extends AsyncNotifier<PlayerSession> {
 
   /// The item's position / watched state changed on the server.
   void _invalidateWatchState() {
-    if (!ref.mounted) return;
-    ref
-      ..invalidate(itemProvider(request.itemId))
-      ..invalidate(resumeProvider)
-      ..invalidate(nextUpProvider);
+    if (ref.mounted) ref.read(watchStateProvider.notifier).changed();
   }
 
   void _release() {

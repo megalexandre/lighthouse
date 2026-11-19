@@ -40,7 +40,7 @@ Future<void> main() async {
     ProviderScope(
       retry: noAutomaticRetry,
       overrides: [builtInThemesProvider.overrideWithValue(themes)],
-      child: const JellyfinApp(),
+      child: const LighthouseApp(),
     ),
   );
 }

@@ -14,6 +14,7 @@ import '../data/book_document.dart';
 import '../data/book_repository.dart';
 import '../data/epub/epub_layout.dart';
 import '../data/reading_position.dart';
+import 'pending_reading.dart';
 import 'reader_preferences.dart';
 
 /// Opens a book file (tests swap in their own documents).
@@ -85,6 +86,9 @@ class ReaderController extends AsyncNotifier<ReaderSession> {
   bool _markedRead = false;
   ReaderSession? _session;
   late final BookRepository _books = ref.read(bookRepositoryProvider);
+  late final PendingReading _pending = ref.read(
+    pendingReadingProvider.notifier,
+  );
 
   @override
   Future<ReaderSession> build() async {
@@ -92,6 +96,8 @@ class ReaderController extends AsyncNotifier<ReaderSession> {
     // Read before the first await: the reader can close while the book
     // downloads, and a closed controller's ref cannot be read.
     final books = _books;
+    final pending = _pending;
+    final unsent = ref.read(pendingReadingProvider)[itemId];
     final open = ref.read(bookOpenerProvider);
     final item = await ref.read(libraryRepositoryProvider).item(itemId);
     final file = await books.file(item);
@@ -124,13 +130,21 @@ class ReaderController extends AsyncNotifier<ReaderSession> {
       throw const NotReadable('a book closed while opening');
     }
     final data = item.userData;
-    final fraction = (data?.played ?? false)
+    // A place the server has not heard of yet is newer than its own; read
+    // to the end opens at the start, as a book the server has as read.
+    final read = unsent?.read ?? (data?.played ?? false);
+    _markedRead = data?.played ?? false;
+    final fraction = read
         ? 0.0
         : fractionForPosition(
-            data?.playbackPositionTicks ?? 0,
+            unsent?.position ?? data?.playbackPositionTicks ?? 0,
             document.pageCount,
             item.runTimeTicks,
           );
+    if (unsent != null) {
+      log.info('reader', '"${item.name}": opened at a place not sent yet');
+      pending.flush();
+    }
     // An EPUB has no pages yet: it opens there once laid out.
     if (document.reflowable) _openAt = fraction;
     final start = document.pageAt(fraction);
@@ -290,24 +304,29 @@ class ReaderController extends AsyncNotifier<ReaderSession> {
   Future<void> close() async {
     _saveTimer?.cancel();
     await _save();
-    if (!ref.mounted) return;
-    ref
-      ..invalidate(itemProvider(itemId))
-      ..invalidate(resumeBooksProvider);
+    if (ref.mounted) ref.read(watchStateProvider.notifier).changed();
   }
 
   Future<void> _save() async {
     final unsaved = _unsaved;
     if (unsaved == null) return;
     _unsaved = null;
+    final markRead = unsaved.last && !_markedRead;
     try {
       await _books.savePosition(itemId, unsaved.position);
-      if (unsaved.last && !_markedRead) {
-        _markedRead = true;
+      // Read only once the server says so: a failure tries again.
+      if (markRead) {
         await _books.setRead(itemId, read: true);
+        _markedRead = true;
       }
+      // The server is there: this book's older place is moot, and the
+      // others kept while it was away can go now.
+      _pending
+        ..remove(itemId)
+        ..flush();
     } on Failure catch (e) {
-      log.warning('reader', 'could not save the place', e);
+      log.warning('reader', 'could not save the place; kept for later', e);
+      _pending.add(itemId, (position: unsaved.position, read: markRead));
     }
   }
 

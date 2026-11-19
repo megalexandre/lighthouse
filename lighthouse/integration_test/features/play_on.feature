@@ -12,6 +12,14 @@ Feature: Play on
     Then {'Test Show S01E02'} is playing
     And the server has {'Test Show S01E01'} as watched
 
+  Scenario: An episode played to its end shows as watched in its season
+    When I play episode {'Test Show S01E01'} of {'Test Show'}
+    And I skip to the end
+    Then {'Test Show S01E02'} is playing
+    When I leave the player
+    And I go back
+    Then {'Test Show S01E01'} shows as watched
+
   Scenario: Next plays the album's second track
     When I play {'Test Album'} from {'Music'}
     Then {'Track 1'} is playing

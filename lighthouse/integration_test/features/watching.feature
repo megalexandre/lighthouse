@@ -16,3 +16,10 @@ Feature: Watching
     And I skip to the end
     Then I am back on the item's page
     And the server has {'Test Movie (2020)'} as watched
+
+  Scenario: A movie played to its end shows as watched in its library
+    When I play {'Test Movie (2020)'} from {'Movies'}
+    And I skip to the end
+    Then I am back on the item's page
+    When I go back
+    Then {'Test Movie (2020)'} shows as watched

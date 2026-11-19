@@ -13,6 +13,8 @@ dependencies:
   flutter_localizations:
     sdk: flutter
   intl: ^0.20.2
+  # Material widgets: since Flutter 3.47 they ship as this package (the
+  # official one, from flutter/packages), no longer inside the SDK.
   material_ui: ^1.1.0
 
   # State and dependency injection; tests swap real services for fakes
@@ -48,7 +50,6 @@ dev_dependencies:
   build_runner: ^2.10.0
   freezed: ^3.2.0
   json_serializable: ^6.11.0
-  mocktail: ^1.0.4
   # Fake clock for timers (PlaybackReporter's 10 s progress reports).
   fake_async: ^1.3.3
   # Behaviour scenarios in Gherkin (test/**/*.feature): build_runner turns

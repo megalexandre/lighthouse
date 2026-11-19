@@ -11,6 +11,9 @@ import './step/i_play_episode_of.dart';
 import './step/i_skip_to_the_end.dart';
 import './step/is_playing.dart';
 import './step/the_server_has_as_watched.dart';
+import './step/i_leave_the_player.dart';
+import './step/i_go_back.dart';
+import './step/shows_as_watched.dart';
 import './step/i_play_from.dart';
 import './step/i_tap_next.dart';
 import './step/there_is_no_next_track.dart';
@@ -56,6 +59,30 @@ void main() {
       } finally {
         await afterEach(
           '''An episode played to its end starts the next one''',
+          success,
+        );
+      }
+    });
+    testWidgets(
+        '''An episode played to its end shows as watched in its season''',
+        (tester) async {
+      var success = true;
+      try {
+        await beforeEach(
+            '''An episode played to its end shows as watched in its season''');
+        await bddSetUp(tester);
+        await iPlayEpisodeOf(tester, 'Test Show S01E01', 'Test Show');
+        await iSkipToTheEnd(tester);
+        await isPlaying(tester, 'Test Show S01E02');
+        await iLeaveThePlayer(tester);
+        await iGoBack(tester);
+        await showsAsWatched(tester, 'Test Show S01E01');
+      } catch (_) {
+        success = false;
+        rethrow;
+      } finally {
+        await afterEach(
+          '''An episode played to its end shows as watched in its season''',
           success,
         );
       }

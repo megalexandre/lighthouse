@@ -9,7 +9,7 @@ import 'world.dart';
 ///
 /// Starts the app first if it is not running.
 Future<void> iOpenSettings(WidgetTester tester) async {
-  if (find.byType(JellyfinApp).evaluate().isEmpty) await app.pump(tester);
+  if (find.byType(LighthouseApp).evaluate().isEmpty) await app.pump(tester);
   app.containerOf(tester).read(routerProvider).go(Routes.settings);
   await tester.pumpAndSettle();
   expect(find.byType(SettingsScreen), findsOneWidget);

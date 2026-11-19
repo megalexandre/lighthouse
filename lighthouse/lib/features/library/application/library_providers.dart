@@ -1,3 +1,6 @@
+import 'dart:async';
+import 'dart:math' as math;
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -66,6 +69,32 @@ final tracksProvider = FutureProvider.autoDispose
       (ref, albumId) => ref.watch(libraryRepositoryProvider).tracks(albumId),
     );
 
+/// What the user watched or read changed on the server (something played,
+/// stopped, read, or marked). Its value only counts the changes: library
+/// grids listen to it and refresh the items they hold in place.
+final watchStateProvider = NotifierProvider<WatchState, int>(WatchState.new);
+
+class WatchState extends Notifier<int> {
+  @override
+  int build() => 0;
+
+  /// Every list that shows watched marks, places or unplayed counts loads
+  /// again: those on a screen do (the screens under the player, the
+  /// reader, a popover); the others are not alive and load fresh anyway.
+  void changed() {
+    ref
+      ..invalidate(itemProvider)
+      ..invalidate(resumeProvider)
+      ..invalidate(resumeBooksProvider)
+      ..invalidate(nextUpProvider)
+      ..invalidate(latestProvider)
+      ..invalidate(seasonsProvider)
+      ..invalidate(episodesProvider)
+      ..invalidate(tracksProvider);
+    state++;
+  }
+}
+
 /// A library grid: the folder, the items loaded so far and how many exist.
 @immutable
 class LibraryPage {
@@ -119,6 +148,9 @@ class LibraryController extends AsyncNotifier<LibraryPage> {
   @override
   Future<LibraryPage> build() async {
     final repo = ref.watch(libraryRepositoryProvider);
+    // Not invalidated with the other lists: that would bring back only the
+    // first page, and the grid would lose its place.
+    ref.listen(watchStateProvider, (_, _) => unawaited(_refresh()));
     final parent = await repo.item(parentId);
     final first = await repo.children(parent, startIndex: 0, limit: pageSize);
     return LibraryPage(
@@ -126,6 +158,30 @@ class LibraryController extends AsyncNotifier<LibraryPage> {
       items: first.items,
       total: first.totalRecordCount,
     );
+  }
+
+  /// The items loaded so far, again, in one request: their watched marks
+  /// and places changed. In place, so the grid stays where it was; a
+  /// failure keeps what is shown.
+  Future<void> _refresh() async {
+    final page = state.value;
+    if (page == null) return;
+    try {
+      final fresh = await _repo.children(
+        page.parent,
+        startIndex: 0,
+        limit: math.max(page.items.length, pageSize),
+      );
+      if (!ref.mounted) return;
+      state = AsyncData(
+        (state.value ?? page).copyWith(
+          items: fresh.items,
+          total: fresh.totalRecordCount,
+        ),
+      );
+    } on Failure catch (e) {
+      log.warning('library', 'grid not refreshed', e);
+    }
   }
 
   /// Loads the next page, unless one is loading or all are loaded. A

@@ -7,6 +7,7 @@ import '../../../../api/models/media_stream.dart';
 import '../../../../api/models/playback_report.dart';
 import '../../../../core/theme/app_tokens.dart';
 import '../../../../core/ticks.dart';
+import '../../../../core/window_size.dart';
 import '../../../../l10n/l10n.dart';
 import '../../../../widgets/media_badge.dart';
 import '../../../library/presentation/item_card.dart';
@@ -56,7 +57,8 @@ class PlayerOsd extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tokens = context.tokens;
-    final narrow = MediaQuery.sizeOf(context).width <= 720;
+    final size = WindowSize.of(context);
+    final narrow = !size.atLeast(WindowSize.expanded);
     final margin = narrow ? tokens.space(4) : tokens.space(6);
     return Stack(
       fit: StackFit.expand,
@@ -65,7 +67,12 @@ class PlayerOsd extends StatelessWidget {
           children: [
             _TitleBar(item: session.item, margin: margin, onBack: onBack),
             const Spacer(),
-            _ControlBar(osd: this, margin: margin, narrow: narrow),
+            _ControlBar(
+              osd: this,
+              margin: margin,
+              narrow: narrow,
+              compact: size == WindowSize.compact,
+            ),
           ],
         ),
         if (showCenterPlay)
@@ -169,11 +176,15 @@ class _ControlBar extends StatelessWidget {
     required this.osd,
     required this.margin,
     required this.narrow,
+    required this.compact,
   });
 
   final PlayerOsd osd;
   final double margin;
   final bool narrow;
+
+  /// A phone upright: the buttons in two rows, the transport on its own.
+  final bool compact;
 
   @override
   Widget build(BuildContext context) {
@@ -202,10 +213,16 @@ class _ControlBar extends StatelessWidget {
                 onInteract: osd.onInteract,
               ),
               SizedBox(height: tokens.space(2)),
+              if (compact) ...[
+                _Transport(osd: osd),
+                SizedBox(height: tokens.space(1)),
+              ],
               Row(
                 children: [
-                  _Transport(osd: osd),
-                  SizedBox(width: tokens.space(2)),
+                  if (!compact) ...[
+                    _Transport(osd: osd),
+                    SizedBox(width: tokens.space(2)),
+                  ],
                   _Time(engine: engine, showLength: !narrow),
                   const Spacer(),
                   _Volume(
@@ -214,7 +231,8 @@ class _ControlBar extends StatelessWidget {
                     onInteract: osd.onInteract,
                     slider: !narrow,
                   ),
-                  _Extras(osd: osd),
+                  // No room for the quality badges on a phone.
+                  _Extras(osd: osd, badges: !compact),
                 ],
               ),
             ],
@@ -292,9 +310,10 @@ class _Transport extends StatelessWidget {
 /// The quality badges, then subtitles (when the item has some), the
 /// settings panel and full screen.
 class _Extras extends StatelessWidget {
-  const _Extras({required this.osd});
+  const _Extras({required this.osd, required this.badges});
 
   final PlayerOsd osd;
+  final bool badges;
 
   @override
   Widget build(BuildContext context) {
@@ -303,11 +322,12 @@ class _Extras extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        for (final b in qualityBadges(session, context.l10n))
-          Padding(
-            padding: EdgeInsets.only(left: tokens.space(1)),
-            child: MediaBadge(b, onVideo: true),
-          ),
+        if (badges)
+          for (final b in qualityBadges(session, context.l10n))
+            Padding(
+              padding: EdgeInsets.only(left: tokens.space(1)),
+              child: MediaBadge(b, onVideo: true),
+            ),
         SizedBox(width: tokens.space(1)),
         if (session.plan.subtitleStreams.isNotEmpty)
           ControlButton(
