@@ -33,7 +33,8 @@ lib/
   core/           config, logging, device id, failures, ticks, storage, window, theme/
   features/<f>/   data/ (repositories)  application/ (Riverpod providers)  presentation/ (widgets)
   widgets/        shared components (buttons, focus ring, badges, row arrows)
-test/             unit + widget tests; test/server/ (tag `server`) talks to the test server
+test/             unit + widget tests (features/<f>/); test/server/ (tag `server`) talks to the test server;
+                  scenarios/<area>/ holds the .feature scenarios that run against fakes
 test/support/     fakes.dart (TestApp and fake repositories), fake HTTP, EPUB helpers
 integration_test/ the real app on Linux under Xvfb, against the test server;
                   features/ holds its .feature scenarios
@@ -113,7 +114,7 @@ the bundle by hand.
   (`server.createUser()`). Users are never deleted: 12.4 reuses a deleted user's id, and the new
   user inherits its watch state.
 - **Behaviour scenarios:** `.feature` files in standard Gherkin (`{...}` parameters are fine; no
-  `After:` blocks), turned into `x_test.dart` beside them by build_runner. Under `test/features/<area>/`
+  `After:` blocks), turned into `x_test.dart` beside them by build_runner. Under `test/scenarios/<area>/`
   they run against fakes (`TestApp`); under `integration_test/features/` they run the real app
   against the test server, sharing one `step/` folder. Steps go in `step/`, one file per phrase;
   shared scenario state in `step/world.dart`; setup and cleanup in `hook/hooks.dart` (per folder).

@@ -124,7 +124,8 @@ the servers bind-mount it, so it must never be deleted and recreated.
 
 ```
 lib/            app (api/, core/, features/<feature>/{data,application,presentation})
-test/           unit + widget tests; test/server/ talks to the test server
+test/           unit + widget tests; test/server/ talks to the test server;
+                test/scenarios/ the .feature scenarios, against fakes
 integration_test/   real app on Linux against the test server
 packages/jellyfin_test_server/   test server setup, used by the tests only
 fixtures/media/ generated test library

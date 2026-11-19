@@ -92,7 +92,11 @@ passos compartilham fica em `step/world.dart`; o que roda em volta de cada cená
 no `build.yaml`; um por pasta). O `After:` não é usado: outras ferramentas o leem como descrição.
 
 Dois lugares:
-- **`test/features/<área>/`**, com fakes (`TestApp`): rápido, sem rede. Hoje: `auth/login.feature` e `player/up_next.feature`.
+- **`test/scenarios/<área>/`**, com fakes (`TestApp`): rápido, sem rede. Hoje: `auth/` (`login`, `connect`), `search/`,
+  `browse/` (`home`, `library`, `item`: uma pasta só, porque as três navegam pelas mesmas telas e dividem os passos),
+  `player/` (`up_next`, `keyboard_tracks`), `reader/reading_offline` e `settings/language`. Os testes Dart ficam em
+  `test/features/<área>/`; nessas áreas, só o que nenhum usuário vê (quantas vezes e com que páginas o servidor é
+  chamado, funções puras).
 - **`integration_test/features/`**, com o app real sob Xvfb contra o servidor de teste. Uma pasta só, para os passos
   ("I am signed in as a new user", "I play {..} from {..}"...) servirem a todas as features. O `Hooks.beforeAll` carrega
   o libmpv e prepara o servidor; cada cenário cria o seu usuário no primeiro passo; o `Hooks.afterEach` sai do player ou
@@ -237,7 +241,7 @@ gen-l10n exige o idioma base). O código usa `context.l10n.<chave>`; a classe ge
 - **I1 (feita):** a base. O idioma fica no `Appearance` (Settings → Appearance → Language), guardado só depois de
   escolhido; até lá vale `defaultLanguageProvider` (pt_BR). Os testes sobrescrevem esse padrão com inglês, então os
   `find.text` e os `.feature` seguem em inglês. O `check.sh` roda o gen-l10n e falha se alguma chave do inglês não
-  tiver tradução. Cenário `test/features/settings/language.feature`.
+  tiver tradução. Cenário `test/scenarios/settings/language.feature`.
 - **I2 (feita):** os textos de todas as telas nos ARBs (~165 chaves). Os `Failure` não têm mais texto de tela: a
   tela os descreve pelo tipo (`describe(l10n)` em `lib/l10n/failure_text.dart`, um `switch` sobre a sealed class, então
   um tipo novo sem tradução não compila); o `detail` segue só no log. `formatRuntime`, `cardSubtitle`,
