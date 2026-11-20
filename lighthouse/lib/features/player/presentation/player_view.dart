@@ -7,6 +7,7 @@ import 'package:material_ui/material_ui.dart';
 import '../../../api/models/base_item_dto.dart';
 import '../../../core/theme/app_tokens.dart';
 import '../../../core/ticks.dart';
+import '../../../core/touch.dart';
 import '../../../core/window_size.dart';
 import '../../../l10n/l10n.dart';
 import '../application/player_carry_over.dart';
@@ -62,7 +63,13 @@ class _PlayerViewState extends ConsumerState<PlayerView> {
   /// seek bar and the row of buttons (the design system says 48 px for its
   /// shorter bar); on a phone, above both rows of buttons.
   double get _subtitleLift =>
-      WindowSize.of(context) == WindowSize.compact ? 148 : 96;
+      (WindowSize.of(context) == WindowSize.compact ? 148 : 96) +
+      _touchRoom(context);
+
+  /// What the controls gain in height on touch: the seek bar's 48 px to
+  /// grab instead of 16.
+  static double _touchRoom(BuildContext context) =>
+      isTouch(context) ? touchTarget - 16 : 0;
 
   PlayerEngine get engine => widget.session.engine;
 
@@ -251,14 +258,25 @@ class _PlayerViewState extends ConsumerState<PlayerView> {
           child: Stack(
             fit: StackFit.expand,
             children: [
-              _Picture(
-                session: session,
-                onTap: () {
-                  unawaited(engine.playOrPause());
-                  _show();
-                },
-                onDoubleTap: _isAudio ? null : _toggleFullscreen,
-              ),
+              if (isTouch(context) && !_isAudio)
+                // As phone players do: a tap shows or hides the controls
+                // (play / pause is their button), a double tap on either
+                // half goes back or on 10 s.
+                _Picture(
+                  session: session,
+                  onTap: () => _osdVisible ? _setOsd(false) : _show(),
+                  onDoubleTapAt: (side) =>
+                      unawaited(_seekBy(side < 0 ? -seekStep : seekStep)),
+                )
+              else
+                _Picture(
+                  session: session,
+                  onTap: () {
+                    unawaited(engine.playOrPause());
+                    _show();
+                  },
+                  onDoubleTap: _isAudio ? null : _toggleFullscreen,
+                ),
               if (session.interruptedAt case final Duration at)
                 InterruptedNotice(
                   at: at,
@@ -319,28 +337,47 @@ class _PlayerViewState extends ConsumerState<PlayerView> {
   }
 }
 
-/// The video (or a song's cover), full size: a tap plays / pauses, a
-/// double tap goes full screen.
-class _Picture extends StatelessWidget {
+/// The video (or a song's cover), full size, and what a tap and a double
+/// tap on it do: [onDoubleTapAt] is told the half, -1 left or 1 right.
+class _Picture extends StatefulWidget {
   const _Picture({
     required this.session,
     required this.onTap,
-    required this.onDoubleTap,
+    this.onDoubleTap,
+    this.onDoubleTapAt,
   });
 
   final PlayerSession session;
   final VoidCallback onTap;
   final VoidCallback? onDoubleTap;
+  final void Function(int side)? onDoubleTapAt;
 
   @override
-  Widget build(BuildContext context) => GestureDetector(
-    behavior: HitTestBehavior.opaque,
-    onTap: onTap,
-    onDoubleTap: onDoubleTap,
-    child: session.item.type == BaseItemKind.audio
-        ? AudioCover(item: session.item)
-        : Center(child: session.engine.buildVideo()),
-  );
+  State<_Picture> createState() => _PictureState();
+}
+
+class _PictureState extends State<_Picture> {
+  int _side = 1;
+
+  @override
+  Widget build(BuildContext context) {
+    final at = widget.onDoubleTapAt;
+    return LayoutBuilder(
+      builder: (context, constraints) => GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: widget.onTap,
+        onDoubleTapDown: at == null
+            ? null
+            : (d) => _side = d.localPosition.dx < constraints.maxWidth / 2
+                  ? -1
+                  : 1,
+        onDoubleTap: at == null ? widget.onDoubleTap : () => at(_side),
+        child: widget.session.item.type == BaseItemKind.audio
+            ? AudioCover(item: widget.session.item)
+            : Center(child: widget.session.engine.buildVideo()),
+      ),
+    );
+  }
 }
 
 /// A spinner while mpv waits for data.
@@ -392,7 +429,13 @@ class _UpNextLayer extends StatelessWidget {
         }
         return Positioned(
           right: tokens.space(6),
-          bottom: raised ? 136 : tokens.space(6),
+          // Above the controls while they are up: on a phone they have a
+          // second row, on touch a taller seek bar.
+          bottom: raised
+              ? 136 +
+                    (WindowSize.of(context) == WindowSize.compact ? 52 : 0) +
+                    _PlayerViewState._touchRoom(context)
+              : tokens.space(6),
           child: UpNextCard(
             next: next,
             remaining: remaining,

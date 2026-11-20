@@ -167,8 +167,15 @@ class _SeekBarState extends State<SeekBar> {
                 onHorizontalDragUpdate: _max <= 0
                     ? null
                     : (d) => _dragTo(d.localPosition.dx, width, hover: true),
-                onHorizontalDragEnd: (_) => unawaited(_endDrag()),
-                onHorizontalDragCancel: () => setState(() => _drag = null),
+                onHorizontalDragEnd: (_) {
+                  // A finger lifted is gone (a mouse stays over the bar).
+                  if (isTouch(context)) _hoverX = null;
+                  unawaited(_endDrag());
+                },
+                onHorizontalDragCancel: () => setState(() {
+                  _drag = null;
+                  if (isTouch(context)) _hoverX = null;
+                }),
                 child: SizedBox(
                   height: grab,
                   child: Stack(

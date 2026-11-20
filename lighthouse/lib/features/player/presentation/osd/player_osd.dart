@@ -7,6 +7,7 @@ import '../../../../api/models/media_stream.dart';
 import '../../../../api/models/playback_report.dart';
 import '../../../../core/theme/app_tokens.dart';
 import '../../../../core/ticks.dart';
+import '../../../../core/touch.dart';
 import '../../../../core/window_size.dart';
 import '../../../../l10n/l10n.dart';
 import '../../../../widgets/media_badge.dart';
@@ -225,12 +226,14 @@ class _ControlBar extends StatelessWidget {
                   ],
                   _Time(engine: engine, showLength: !narrow),
                   const Spacer(),
-                  _Volume(
-                    engine: engine,
-                    controller: osd.controller,
-                    onInteract: osd.onInteract,
-                    slider: !narrow,
-                  ),
+                  // A phone's volume is its keys'.
+                  if (!isTouch(context))
+                    _Volume(
+                      engine: engine,
+                      controller: osd.controller,
+                      onInteract: osd.onInteract,
+                      slider: !narrow,
+                    ),
                   // No room for the quality badges on a phone.
                   _Extras(osd: osd, badges: !compact),
                 ],

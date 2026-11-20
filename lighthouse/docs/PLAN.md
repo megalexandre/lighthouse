@@ -380,20 +380,28 @@ Dois eixos, decididos em lugares diferentes:
     celular.
   - Cards no toque: o toque longo abre `CardActions`, uma folha com a ação principal, "marcar como visto" e
     Detalhes, com as regras do painel do hover (`cardMainAction`, `setWatched`). Com o mouse, nada muda.
-- **A1d, player e leitor no toque:**
-  - Player:
-    - Um toque mostra ou esconde a OSD; o play/pause fica no botão central.
-    - Duplo toque na metade esquerda ou direita volta ou avança 10 s.
-    - Arrastar a barra de progresso mostra a prévia de trickplay.
+- **A1d, player e leitor no toque (feita):** testes em `test/features/phone/player_touch_test.dart`.
+  - Player no toque (vídeo):
+    - Um toque mostra ou esconde os controles e não pausa. O play/pausa é o botão da fileira de transporte, e o botão
+      central aparece com o vídeo pausado.
+    - Duplo toque na metade esquerda volta 10 s; na direita, avança 10 s.
     - Sem botão de volume, que fica com as teclas do aparelho.
-    - O botão de tela cheia vira modo imersivo, ligado na A2.
-    - Altura dos controles e `_subtitleLift` revistos para retrato e paisagem.
-  - Leitor: já é guiado pelo toque. Conferir a barra de cima e a de baixo no retrato e com os recortes. O modo de
-    duas páginas na paisagem continua pendente (L).
-- **Pronto:**
-  - Cenários `.feature` de navegação, item, player e leitor rodam também em `TestWindows.phone` em modo toque.
-  - Widget tests cobrem as quebras de layout (compact, medium, curto).
-  - Nada muda no desktop: os cenários atuais seguem verdes sem alteração.
+    - A prévia da barra de progresso some ao soltar o dedo.
+    - A legenda e o card "A seguir" sobem o que os controles cresceram: 32 px da barra de progresso no toque, e a
+      segunda fileira no celular. O card não considerava essa fileira.
+    - Com o mouse e na música, nada muda (um toque pausa; duplo toque, tela cheia).
+  - O botão de tela cheia continua; no Android ele vira modo imersivo na A2.
+  - Leitor: já era guiado pelo toque. As barras de cima e de baixo respeitam as áreas seguras e os alvos de toque
+    (`phone_layout_test`). O modo de duas páginas na paisagem continua com a L.
+- **Pronto (A1 feita):**
+  - `test/features/phone/` cobre em widget tests, no celular em pé e deitado e em modo toque:
+    - o layout: áreas seguras, alvos de toque, fonte grande e o que cabe na primeira tela;
+    - a navegação e o voltar do sistema;
+    - o toque longo e o player.
+  - Nada mudou no desktop: os cenários e os testes de integração seguem verdes. A única mudança neles é o passo
+    `i_press`, que envia as teclas como Android.
+  - Pendente: cenários `.feature` de celular (Gherkin), se quisermos o comportamento do celular também descrito
+    nessa forma.
 
 **A2, infraestrutura (planejar em detalhe ao chegar):**
 - Projeto e dependências:
