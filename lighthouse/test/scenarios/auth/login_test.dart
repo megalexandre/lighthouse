@@ -18,7 +18,10 @@ import './step/i_type_the_password.dart';
 import './step/the_password_is_hidden.dart';
 import './step/i_restart_the_app.dart';
 import './step/i_sign_out.dart';
+import './step/i_see_the_notice.dart';
 import './step/the_server_is_told_i_signed_out.dart';
+import './step/the_server_is_slow_to_answer_a_signout.dart';
+import './step/i_see_no_notice.dart';
 import './step/i_change_server.dart';
 import './step/i_see_the_connect_screen_with_an_empty_address.dart';
 
@@ -39,19 +42,25 @@ void main() {
       await Hooks.beforeEach(title, tags);
     }
 
-    Future<void> afterEach(String title, bool success,
-        [List<String>? tags]) async {
+    Future<void> afterEach(
+      String title,
+      bool success, [
+      List<String>? tags,
+    ]) async {
       await Hooks.afterEach(title, success, tags);
     }
 
-    testWidgets('''A stored server opens on its login screen''',
-        (tester) async {
+    testWidgets('''A stored server opens on its login screen''', (
+      tester,
+    ) async {
       var success = true;
       try {
         await beforeEach('''A stored server opens on its login screen''');
         await bddSetUp(tester);
         await iSeeTheLoginScreenOf(
-            tester, 'Test Server · http://jellyfin.test:8096');
+          tester,
+          'Test Server · http://jellyfin.test:8096',
+        );
       } catch (_) {
         success = false;
         rethrow;
@@ -62,12 +71,14 @@ void main() {
         );
       }
     });
-    testWidgets('''The right username and password open the home screen''',
-        (tester) async {
+    testWidgets('''The right username and password open the home screen''', (
+      tester,
+    ) async {
       var success = true;
       try {
         await beforeEach(
-            '''The right username and password open the home screen''');
+          '''The right username and password open the home screen''',
+        );
         await bddSetUp(tester);
         await iSignInAsWithPassword(tester, 'alice', 'secret');
         await iSeeTheHomeScreenSignedInAs(tester, 'alice');
@@ -93,10 +104,7 @@ void main() {
         success = false;
         rethrow;
       } finally {
-        await afterEach(
-          '''A wrong password shows an error''',
-          success,
-        );
+        await afterEach('''A wrong password shows an error''', success);
       }
     });
     testWidgets('''A blank username is not sent''', (tester) async {
@@ -111,10 +119,7 @@ void main() {
         success = false;
         rethrow;
       } finally {
-        await afterEach(
-          '''A blank username is not sent''',
-          success,
-        );
+        await afterEach('''A blank username is not sent''', success);
       }
     });
     testWidgets('''The keyboard alone signs in''', (tester) async {
@@ -130,10 +135,7 @@ void main() {
         success = false;
         rethrow;
       } finally {
-        await afterEach(
-          '''The keyboard alone signs in''',
-          success,
-        );
+        await afterEach('''The keyboard alone signs in''', success);
       }
     });
     testWidgets('''The password is hidden''', (tester) async {
@@ -147,10 +149,7 @@ void main() {
         success = false;
         rethrow;
       } finally {
-        await afterEach(
-          '''The password is hidden''',
-          success,
-        );
+        await afterEach('''The password is hidden''', success);
       }
     });
     testWidgets('''Once signed in, a restart opens home''', (tester) async {
@@ -165,14 +164,12 @@ void main() {
         success = false;
         rethrow;
       } finally {
-        await afterEach(
-          '''Once signed in, a restart opens home''',
-          success,
-        );
+        await afterEach('''Once signed in, a restart opens home''', success);
       }
     });
-    testWidgets('''Signing out comes back to the same server''',
-        (tester) async {
+    testWidgets('''Signing out comes back to the same server''', (
+      tester,
+    ) async {
       var success = true;
       try {
         await beforeEach('''Signing out comes back to the same server''');
@@ -180,6 +177,7 @@ void main() {
         await iSignInAsWithPassword(tester, 'alice', 'secret');
         await iSignOut(tester);
         await iSeeTheLoginScreenOf(tester, 'Test Server');
+        await iSeeTheNotice(tester, 'You signed out.');
         await theServerIsToldISignedOut(tester);
       } catch (_) {
         success = false;
@@ -187,6 +185,48 @@ void main() {
       } finally {
         await afterEach(
           '''Signing out comes back to the same server''',
+          success,
+        );
+      }
+    });
+    testWidgets('''Signing out does not wait for the server''', (tester) async {
+      var success = true;
+      try {
+        await beforeEach('''Signing out does not wait for the server''');
+        await bddSetUp(tester);
+        await theServerIsSlowToAnswerASignout(tester);
+        await iSignInAsWithPassword(tester, 'alice', 'secret');
+        await iSignOut(tester);
+        await iSeeTheLoginScreenOf(tester, 'Test Server');
+        await iSeeTheNotice(tester, 'You signed out.');
+      } catch (_) {
+        success = false;
+        rethrow;
+      } finally {
+        await afterEach(
+          '''Signing out does not wait for the server''',
+          success,
+        );
+      }
+    });
+    testWidgets('''The sign-out notice gives way to an error''', (
+      tester,
+    ) async {
+      var success = true;
+      try {
+        await beforeEach('''The sign-out notice gives way to an error''');
+        await bddSetUp(tester);
+        await iSignInAsWithPassword(tester, 'alice', 'secret');
+        await iSignOut(tester);
+        await iSignInAsWithPassword(tester, 'alice', 'wrong');
+        await iSeeTheError(tester, 'Wrong username or password.');
+        await iSeeNoNotice(tester);
+      } catch (_) {
+        success = false;
+        rethrow;
+      } finally {
+        await afterEach(
+          '''The sign-out notice gives way to an error''',
           success,
         );
       }
@@ -204,10 +244,7 @@ void main() {
         success = false;
         rethrow;
       } finally {
-        await afterEach(
-          '''Changing server forgets this one''',
-          success,
-        );
+        await afterEach('''Changing server forgets this one''', success);
       }
     });
   });

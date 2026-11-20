@@ -44,7 +44,22 @@ Feature: Login
     When I sign in as {'alice'} with password {'secret'}
     And I sign out
     Then I see the login screen of {'Test Server'}
+    And I see the notice {'You signed out.'}
     And the server is told I signed out
+
+  Scenario: Signing out does not wait for the server
+    Given the server is slow to answer a sign-out
+    When I sign in as {'alice'} with password {'secret'}
+    And I sign out
+    Then I see the login screen of {'Test Server'}
+    And I see the notice {'You signed out.'}
+
+  Scenario: The sign-out notice gives way to an error
+    When I sign in as {'alice'} with password {'secret'}
+    And I sign out
+    And I sign in as {'alice'} with password {'wrong'}
+    Then I see the error {'Wrong username or password.'}
+    And I see no notice
 
   Scenario: Changing server forgets this one
     When I change server

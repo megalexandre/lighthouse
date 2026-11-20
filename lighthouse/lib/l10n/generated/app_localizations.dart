@@ -387,6 +387,18 @@ abstract class AppLocalizations {
   /// **'Sign out'**
   String get signOut;
 
+  /// Login screen, right after the user signed out.
+  ///
+  /// In en, this message translates to:
+  /// **'You signed out.'**
+  String get signedOutNotice;
+
+  /// Login screen, when the server no longer accepted the session (revoked, or signed out from another device).
+  ///
+  /// In en, this message translates to:
+  /// **'Your session ended. Sign in again.'**
+  String get sessionExpiredNotice;
+
   /// Tooltip of the profile disc when the user has no name.
   ///
   /// In en, this message translates to:

@@ -48,6 +48,8 @@
   "lightTheme": "Tema claro",
   "settings": "Configurações",
   "signOut": "Sair",
+  "signedOutNotice": "Você saiu da sua conta.",
+  "sessionExpiredNotice": "Sua sessão terminou. Entre novamente.",
   "profile": "Perfil",
   "heroMovie": "FILME",
   "heroSeries": "SÉRIE",

@@ -271,6 +271,14 @@
   "@signOut": {
     "description": "Sign-out button and menu item."
   },
+  "signedOutNotice": "You signed out.",
+  "@signedOutNotice": {
+    "description": "Login screen, right after the user signed out."
+  },
+  "sessionExpiredNotice": "Your session ended. Sign in again.",
+  "@sessionExpiredNotice": {
+    "description": "Login screen, when the server no longer accepted the session (revoked, or signed out from another device)."
+  },
   "profile": "Profile",
   "@profile": {
     "description": "Tooltip of the profile disc when the user has no name."

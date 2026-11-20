@@ -40,6 +40,7 @@ void main() {
       final state = await start();
       expect(state.signedIn, isFalse);
       expect(state.server, testServer);
+      expect(state.signedOut, SignOutReason.expired);
       expect(app.store.values, isNot(contains(SessionStore.sessionKey)));
     });
 
@@ -72,8 +73,16 @@ void main() {
     final after = container.read(authControllerProvider).value!;
     expect(after.signedIn, isFalse);
     expect(after.server, testServer, reason: 'login screen keeps the server');
+    expect(after.signedOut, SignOutReason.user);
     expect(app.auth.loggedOut, [testSession]);
     expect(app.store.values, isNot(contains(SessionStore.sessionKey)));
+
+    await auth.login('alice', 'secret');
+    expect(
+      container.read(authControllerProvider).value!.signedOut,
+      isNull,
+      reason: 'the notice is gone once signed in again',
+    );
   });
 
   test('wrong password leaves the state unchanged', () async {
@@ -98,6 +107,20 @@ void main() {
     await container.read(authControllerProvider.notifier).logout();
     expect(container.read(authControllerProvider).value!.signedIn, isFalse);
     expect(app.store.values, isNot(contains(SessionStore.sessionKey)));
+  });
+
+  test('logout does not wait for a slow server', () async {
+    storeSession();
+    final answer = Completer<void>();
+    app.auth.logoutAnswer = answer.future;
+    final container = app.container();
+    await container.read(authControllerProvider.future);
+
+    await container.read(authControllerProvider.notifier).logout();
+    expect(container.read(authControllerProvider).value!.signedIn, isFalse);
+    expect(app.store.values, isNot(contains(SessionStore.sessionKey)));
+    expect(app.auth.loggedOut, [testSession], reason: 'told, not awaited');
+    answer.complete();
   });
 
   test('the app closing while the server is told about a logout: no error, '
@@ -125,6 +148,7 @@ void main() {
     final state = container.read(authControllerProvider).value!;
     expect(state.signedIn, isFalse);
     expect(state.server, testServer);
+    expect(state.signedOut, SignOutReason.expired);
     expect(app.store.values, isNot(contains(SessionStore.sessionKey)));
     expect(app.auth.loggedOut, isEmpty); // the token is already dead
   });

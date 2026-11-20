@@ -186,6 +186,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get signOut => 'Sign out';
 
   @override
+  String get signedOutNotice => 'You signed out.';
+
+  @override
+  String get sessionExpiredNotice => 'Your session ended. Sign in again.';
+
+  @override
   String get profile => 'Profile';
 
   @override

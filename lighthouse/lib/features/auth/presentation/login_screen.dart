@@ -13,6 +13,7 @@ class LoginScreen extends ConsumerStatefulWidget {
   static const passwordField = Key('login.password');
   static const submitButton = Key('login.submit');
   static const changeServerButton = Key('login.changeServer');
+  static const notice = Key('login.notice');
 
   @override
   ConsumerState<LoginScreen> createState() => _LoginScreenState();
@@ -57,13 +58,23 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final server = ref.watch(authControllerProvider).value?.server;
+    final auth = ref.watch(authControllerProvider).value;
+    final server = auth?.server;
+    // Why the user is here, until an error has something newer to say.
+    final notice = _error != null
+        ? null
+        : switch (auth?.signedOut) {
+            SignOutReason.user => context.l10n.signedOutNotice,
+            SignOutReason.expired => context.l10n.sessionExpiredNotice,
+            null => null,
+          };
     return AuthForm(
       title: context.l10n.signIn,
       subtitle: server == null
           ? null
           : context.l10n.serverNameAndUrl(server.name, server.url),
       children: [
+        if (notice != null) ...[_Notice(notice), const SizedBox(height: 16)],
         TextField(
           key: LoginScreen.usernameField,
           controller: _username,
@@ -105,6 +116,43 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           child: Text(context.l10n.changeServer),
         ),
       ],
+    );
+  }
+}
+
+/// A short line above the form, in the theme's secondary colours: news, not
+/// an error.
+class _Notice extends StatelessWidget {
+  const _Notice(this.message);
+
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return Container(
+      key: LoginScreen.notice,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: colors.secondaryContainer,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            Icons.info_outline,
+            size: 20,
+            color: colors.onSecondaryContainer,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              message,
+              style: TextStyle(color: colors.onSecondaryContainer),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

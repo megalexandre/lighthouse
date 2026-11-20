@@ -31,13 +31,17 @@ void main() {
       await Hooks.beforeEach(title, tags);
     }
 
-    Future<void> afterEach(String title, bool success,
-        [List<String>? tags]) async {
+    Future<void> afterEach(
+      String title,
+      bool success, [
+      List<String>? tags,
+    ]) async {
       await Hooks.afterEach(title, success, tags);
     }
 
-    testWidgets('''A first start asks for the server's address''',
-        (tester) async {
+    testWidgets('''A first start asks for the server's address''', (
+      tester,
+    ) async {
       var success = true;
       try {
         await beforeEach('''A first start asks for the server's address''');
@@ -53,8 +57,9 @@ void main() {
         );
       }
     });
-    testWidgets('''A working server leads to its login screen''',
-        (tester) async {
+    testWidgets('''A working server leads to its login screen''', (
+      tester,
+    ) async {
       var success = true;
       try {
         await beforeEach('''A working server leads to its login screen''');
@@ -82,10 +87,7 @@ void main() {
         success = false;
         rethrow;
       } finally {
-        await afterEach(
-          '''Pressing Enter connects too''',
-          success,
-        );
+        await afterEach('''Pressing Enter connects too''', success);
       }
     });
     testWidgets('''A server that does not answer says why''', (tester) async {
@@ -95,17 +97,16 @@ void main() {
         await bddSetUp(tester);
         await nothingAnswersAt(tester, 'http://nowhere:8096');
         await iConnectTo(tester, 'http://nowhere:8096');
-        await iSeeTheError(tester,
-            'Cannot reach http://nowhere:8096. Check the address and that the server is running.');
+        await iSeeTheError(
+          tester,
+          'Cannot reach http://nowhere:8096. Check the address and that the server is running.',
+        );
         await iAmStillOnTheConnectScreen(tester);
       } catch (_) {
         success = false;
         rethrow;
       } finally {
-        await afterEach(
-          '''A server that does not answer says why''',
-          success,
-        );
+        await afterEach('''A server that does not answer says why''', success);
       }
     });
     testWidgets('''An empty address is not sent''', (tester) async {
@@ -120,10 +121,7 @@ void main() {
         success = false;
         rethrow;
       } finally {
-        await afterEach(
-          '''An empty address is not sent''',
-          success,
-        );
+        await afterEach('''An empty address is not sent''', success);
       }
     });
   });

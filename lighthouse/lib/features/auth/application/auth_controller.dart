@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -9,14 +11,27 @@ import '../data/auth_repository.dart';
 import '../data/session.dart';
 import '../data/session_store.dart';
 
+/// Why the user was signed out, for the login screen to say so.
+enum SignOutReason {
+  /// They chose to.
+  user,
+
+  /// The server no longer accepts the session (revoked, or signed out from
+  /// another client).
+  expired,
+}
+
 /// Where the user is in the connect → login flow. The router follows it.
 @immutable
 class AuthState {
-  const AuthState({this.server, this.session});
+  const AuthState({this.server, this.session, this.signedOut});
 
   /// The server picked on the connect screen (kept after logout).
   final ServerInfo? server;
   final Session? session;
+
+  /// Set when this state comes from a sign-out, until the next change.
+  final SignOutReason? signedOut;
 
   bool get signedIn => session != null;
 }
@@ -47,7 +62,7 @@ class AuthController extends AsyncNotifier<AuthState> {
     } on Unauthorized {
       // Signed out elsewhere, or the token was revoked.
       await store.clearSession();
-      return AuthState(server: server);
+      return AuthState(server: server, signedOut: SignOutReason.expired);
     } on Failure catch (e) {
       // Server unreachable or failing: stay signed in, the screens show
       // the error and retry.
@@ -89,22 +104,38 @@ class AuthController extends AsyncNotifier<AuthState> {
     if (!ref.mounted) return;
     final current = state.value;
     if (current == null || current.session == null) return;
-    state = AsyncData(AuthState(server: current.server));
+    state = AsyncData(
+      AuthState(server: current.server, signedOut: SignOutReason.expired),
+    );
     await _store.clearSession();
   }
 
-  /// Signs out locally even when the server cannot be told.
+  /// Signs out here at once; the server is told in the background.
+  ///
+  /// Waiting for the server first left the user on home with no sign of
+  /// progress for as long as the request took (up to the timeouts when the
+  /// server is down). Telling it is best effort anyway: a sign-out must
+  /// work offline too.
   Future<void> logout() async {
     final current = state.requireValue;
     final session = current.session;
     if (session == null) return;
     final store = _store;
-    try {
-      await ref.read(authRepositoryProvider).logout(session);
-    } on Failure catch (e) {
-      log.warning('auth', 'server logout failed, signing out locally', e);
-    }
+    final auth = ref.read(authRepositoryProvider);
+    state = AsyncData(
+      AuthState(server: current.server, signedOut: SignOutReason.user),
+    );
+    unawaited(_tellServer(auth, session));
     await store.clearSession();
-    if (ref.mounted) state = AsyncData(AuthState(server: current.server));
+  }
+
+  static Future<void> _tellServer(AuthRepository auth, Session session) async {
+    try {
+      await auth.logout(session);
+    } on Failure catch (e) {
+      // The token stays valid there until it expires or is revoked from
+      // the dashboard; nothing the user can do about it here.
+      log.warning('auth', 'server logout failed, signed out locally', e);
+    }
   }
 }
