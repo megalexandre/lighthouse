@@ -39,6 +39,9 @@ class SeekBar extends StatefulWidget {
   /// The preview's thumbnail size.
   static const previewWidth = 160.0;
 
+  /// The trickplay picture in the preview, once it is loaded.
+  static const thumbnailKey = Key('player.seek.thumbnail');
+
   @override
   State<SeekBar> createState() => _SeekBarState();
 }
@@ -220,7 +223,10 @@ class _SeekBarState extends State<SeekBar> {
                   ),
                   child: thumbnail == null
                       ? null
-                      : CustomPaint(painter: _ThumbnailPainter(thumbnail)),
+                      : CustomPaint(
+                          key: SeekBar.thumbnailKey,
+                          painter: _ThumbnailPainter(thumbnail),
+                        ),
                 ),
               ),
             const SizedBox(height: 4),

@@ -62,6 +62,12 @@ Feature: Prime layout
     When I tap the {'Home'} tab
     Then the carousel shows {'Test Movie'}
 
+  Scenario: The Lighthouse mark goes home
+    When I go home
+    And I tap the {'Movies'} tab
+    And I tap the Lighthouse mark
+    Then the carousel shows {'Test Movie'}
+
   Scenario: Scrolled down, the bar turns solid
     When I go home
     And I scroll home down
@@ -72,6 +78,11 @@ Feature: Prime layout
     Then there is no search field
     When I search the bar for {'test'}
     Then the search screen searches for {'test'}
+
+  Scenario: An empty search closes on a click elsewhere
+    When I go home
+    And I open the search and click elsewhere
+    Then there is no search field
 
   Scenario: The profile menu switches the mode, opens Settings, signs out
     When I go home

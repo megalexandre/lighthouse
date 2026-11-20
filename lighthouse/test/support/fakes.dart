@@ -38,6 +38,7 @@ import 'package:lighthouse/features/server/data/server_info.dart';
 import 'package:lighthouse/features/server/data/server_repository.dart';
 import 'package:lighthouse/features/server/presentation/connect_screen.dart';
 import 'package:lighthouse/features/settings/data/settings_repository.dart';
+import 'package:lighthouse/features/settings/presentation/settings_screen.dart';
 import 'package:lighthouse/l10n/l10n.dart';
 import 'package:lighthouse/router.dart';
 import 'package:material_ui/material_ui.dart';
@@ -232,6 +233,10 @@ class FakeLibraryRepository implements LibraryRepository {
 
   /// The one series (replace it to give it the user's progress).
   BaseItemDto show = TestItems.testShow;
+
+  /// Its season's episodes (replace them for watched marks, overviews, or
+  /// none at all).
+  List<BaseItemDto> episodeItems = TestItems.episodes;
   List<BaseItemDto> resumeItems = [];
 
   /// The books (replace one to give it a reading position).
@@ -269,7 +274,7 @@ class FakeLibraryRepository implements LibraryRepository {
     ...movies,
     show,
     TestItems.season1,
-    ...TestItems.episodes,
+    ...episodeItems,
     TestItems.testAlbum,
     ...TestItems.tracks,
   ];
@@ -331,7 +336,7 @@ class FakeLibraryRepository implements LibraryRepository {
     'nextUpOf',
     () =>
         nextUpItems.where((e) => e.seriesId == seriesId).firstOrNull ??
-        TestItems.episodes.where((e) => e.seriesId == seriesId).firstOrNull,
+        episodeItems.where((e) => e.seriesId == seriesId).firstOrNull,
   );
 
   @override
@@ -340,7 +345,7 @@ class FakeLibraryRepository implements LibraryRepository {
 
   @override
   Future<List<BaseItemDto>> episodes(String seriesId, String seasonId) =>
-      _answer('episodes', () => TestItems.episodes);
+      _answer('episodes', () => episodeItems);
 
   @override
   Future<List<BaseItemDto>> search(String term) => _answer('search', () {
@@ -360,7 +365,7 @@ class FakeLibraryRepository implements LibraryRepository {
 
   @override
   Future<List<BaseItemDto>> seriesEpisodes(String seriesId) =>
-      _answer('seriesEpisodes', () => TestItems.episodes);
+      _answer('seriesEpisodes', () => episodeItems);
 
   @override
   Future<List<BaseItemDto>> tracks(String albumId) =>
@@ -583,8 +588,12 @@ class FakePlayerEngine implements PlayerEngine {
   @override
   Future<void> playOrPause() async => _setPlaying(!playing);
 
+  /// Every seek asked for, in order.
+  final seeks = <Duration>[];
+
   @override
   Future<void> seek(Duration to) async {
+    seeks.add(to);
     position = to;
     _position.add(to);
   }
@@ -800,12 +809,16 @@ class FakeBookRepository implements BookRepository {
   final bookmarksOf = <String, List<double>>{};
 
   @override
-  Future<List<double>> bookmarks(String itemId) async =>
-      bookmarksOf[itemId] ?? const [];
+  Future<List<double>> bookmarks(String itemId) async {
+    if (failures['bookmarks'] case final Failure f) throw f;
+    return bookmarksOf[itemId] ?? const [];
+  }
 
   @override
-  Future<void> saveBookmarks(String itemId, List<double> bookmarks) async =>
-      bookmarksOf[itemId] = [...bookmarks];
+  Future<void> saveBookmarks(String itemId, List<double> bookmarks) async {
+    if (failures['saveBookmarks'] case final Failure f) throw f;
+    bookmarksOf[itemId] = [...bookmarks];
+  }
 }
 
 /// Opens a fixture book the way the app does, but reading the file
@@ -890,6 +903,9 @@ class TestApp {
 
   /// The user's themes folder.
   final userThemes = MemoryUserThemes();
+
+  /// Folders the app asked the desktop to open, in order.
+  final openedFolders = <String>[];
   final servers = FakeServerRepository();
   final auth = FakeAuthRepository();
   final library = FakeLibraryRepository();
@@ -911,6 +927,9 @@ class TestApp {
 
   /// Every engine the app made, last one = current playback.
   final engines = <FakePlayerEngine>[];
+
+  /// What the engines made from now on throw when asked to open a stream.
+  Object? engineOpenError;
   FakePlayerEngine get engine => engines.last;
 
   /// Starts as if [testSession] was stored by an earlier run.
@@ -928,6 +947,9 @@ class TestApp {
     appFilesStoreProvider.overrideWithValue(appFiles),
     builtInThemesProvider.overrideWithValue(builtInThemesForTests),
     userThemeSourceProvider.overrideWithValue(userThemes),
+    folderOpenerProvider.overrideWithValue(
+      (path) async => openedFolders.add(path),
+    ),
     serverRepositoryProvider.overrideWithValue(servers),
     authRepositoryProvider.overrideWithValue(auth),
     libraryRepositoryProvider.overrideWithValue(library),
@@ -941,7 +963,7 @@ class TestApp {
       return serverUp;
     }),
     playerEngineFactoryProvider.overrideWithValue(() {
-      final engine = FakePlayerEngine();
+      final engine = FakePlayerEngine()..openError = engineOpenError;
       engines.add(engine);
       return engine;
     }),

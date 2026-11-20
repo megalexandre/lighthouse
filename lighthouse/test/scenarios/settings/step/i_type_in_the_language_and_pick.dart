@@ -2,18 +2,25 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:lighthouse/features/settings/presentation/settings_screen.dart';
 import 'package:material_ui/material_ui.dart';
 
-/// Usage: When I type {'port'} in the audio language and pick {'Portuguese'}
+/// Usage: When I type {'port'} in the {'audio'} language and pick {'Portuguese'}
 ///
-/// The field filters its hundreds of languages as it is typed into.
-Future<void> iTypeInTheAudioLanguageAndPick(
+/// The 'audio' or 'subtitle' language field, which filters its hundreds
+/// of languages as it is typed into.
+Future<void> iTypeInTheLanguageAndPick(
   WidgetTester tester,
   String filter,
+  String field,
   String option,
 ) async {
   final input = find.descendant(
-    of: find.byKey(SettingsScreen.audioLanguageField),
+    of: find.byKey(
+      field == 'audio'
+          ? SettingsScreen.audioLanguageField
+          : SettingsScreen.subtitleLanguageField,
+    ),
     matching: find.byType(TextField),
   );
+  await tester.ensureVisible(input);
   await tester.tap(input);
   await tester.pumpAndSettle();
   await tester.enterText(input, filter);

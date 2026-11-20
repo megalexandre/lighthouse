@@ -27,6 +27,8 @@ import './step/i_open_the_bookmarks.dart';
 import './step/i_tap_the_button.dart';
 import './step/i_see_a_line.dart';
 import './step/has_no_bookmarks.dart';
+import './step/the_bookmarks_cannot_be_read.dart';
+import './step/the_bookmarks_cannot_be_saved.dart';
 import './step/the_desk_is.dart';
 import './step/i_pick_the_theme.dart';
 import './step/the_paper_is.dart';
@@ -206,6 +208,77 @@ void main() {
       } finally {
         await afterEach(
           '''A bookmarked page is kept, listed, and removed''',
+          success,
+        );
+      }
+    });
+    testWidgets('''The bookmark button takes the page's bookmark off again''',
+        (tester) async {
+      var success = true;
+      try {
+        await beforeEach(
+            '''The bookmark button takes the page's bookmark off again''');
+        await bddSetUp(tester);
+        await iRead(tester, 'book-epub');
+        await iPress(tester, 'Right');
+        await iBookmarkThePage(tester);
+        await iSeeAButton(tester, 'Remove bookmark');
+        await iBookmarkThePage(tester);
+        await iSeeAButton(tester, 'Bookmark this page');
+        await hasNoBookmarks(tester, 'book-epub');
+      } catch (_) {
+        success = false;
+        rethrow;
+      } finally {
+        await afterEach(
+          '''The bookmark button takes the page's bookmark off again''',
+          success,
+        );
+      }
+    });
+    testWidgets(
+        '''Bookmarks that cannot be read: the book opens all the same, without them''',
+        (tester) async {
+      var success = true;
+      try {
+        await beforeEach(
+            '''Bookmarks that cannot be read: the book opens all the same, without them''');
+        await bddSetUp(tester);
+        await theBookmarksCannotBeRead(tester);
+        await iRead(tester, 'book-epub');
+        await theReaderShows(tester, 'Page 1 of 3');
+        await iOpenTheBookmarks(tester);
+        await iSeeALine(tester, 'No bookmarks yet');
+      } catch (_) {
+        success = false;
+        rethrow;
+      } finally {
+        await afterEach(
+          '''Bookmarks that cannot be read: the book opens all the same, without them''',
+          success,
+        );
+      }
+    });
+    testWidgets(
+        '''A bookmark that cannot be saved still marks the page while the book is open''',
+        (tester) async {
+      var success = true;
+      try {
+        await beforeEach(
+            '''A bookmark that cannot be saved still marks the page while the book is open''');
+        await bddSetUp(tester);
+        await theBookmarksCannotBeSaved(tester);
+        await iRead(tester, 'book-epub');
+        await iPress(tester, 'Right');
+        await iBookmarkThePage(tester);
+        await iSeeAButton(tester, 'Remove bookmark');
+        await hasNoBookmarks(tester, 'book-epub');
+      } catch (_) {
+        success = false;
+        rethrow;
+      } finally {
+        await afterEach(
+          '''A bookmark that cannot be saved still marks the page while the book is open''',
           success,
         );
       }

@@ -6,5 +6,5 @@ import 'world.dart';
 ///
 /// Kept on this device.
 Future<void> hasNoBookmarks(WidgetTester tester, String itemId) async {
-  expect(app.books.bookmarksOf[itemId], isEmpty);
+  expect(app.books.bookmarksOf[itemId] ?? const <double>[], isEmpty);
 }

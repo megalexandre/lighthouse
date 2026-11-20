@@ -31,6 +31,9 @@ import './step/seconds_have_played.dart';
 import './step/the_server_is_asked_for_a_new_stream_from_seconds_with_the_audio_track.dart';
 import './step/it_started_at_seconds.dart';
 import './step/the_server_is_told_stopped_at_seconds.dart';
+import './step/the_server_is_asked_for_a_new_stream_from_seconds_with_the_subtitle.dart';
+import './step/mpv_cannot_open_the_stream.dart';
+import './step/i_see.dart';
 import './step/the_server_stops_answering.dart';
 import './step/i_see_the_message.dart';
 import './step/only_one_stream_was_opened.dart';
@@ -163,6 +166,26 @@ void main() {
         );
       }
     });
+    testWidgets('''Ctrl+A cycles the audio the other way''', (tester) async {
+      var success = true;
+      try {
+        await beforeEach('''Ctrl+A cycles the audio the other way''');
+        await bddSetUp(tester);
+        await iPlay(tester, 'movie-1');
+        await iPress(tester, 'Ctrl+A');
+        await theAudioTrackPlays(tester, 'Portuguese');
+        await iPress(tester, 'Ctrl+A');
+        await theAudioTrackPlays(tester, 'English');
+      } catch (_) {
+        success = false;
+        rethrow;
+      } finally {
+        await afterEach(
+          '''Ctrl+A cycles the audio the other way''',
+          success,
+        );
+      }
+    });
     testWidgets(
         '''L cycles the subtitles through off; S shows and hides them''',
         (tester) async {
@@ -188,6 +211,29 @@ void main() {
       } finally {
         await afterEach(
           '''L cycles the subtitles through off; S shows and hides them''',
+          success,
+        );
+      }
+    });
+    testWidgets('''Ctrl+L cycles the subtitles the other way''',
+        (tester) async {
+      var success = true;
+      try {
+        await beforeEach('''Ctrl+L cycles the subtitles the other way''');
+        await bddSetUp(tester);
+        await iPlay(tester, 'movie-1');
+        await iPress(tester, 'Ctrl+L');
+        await theSubtitleIsShown(tester, 'English');
+        await iPress(tester, 'Ctrl+L');
+        await theSubtitleIsShown(tester, 'Portuguese');
+        await iPress(tester, 'Ctrl+L');
+        await noSubtitleIsShown(tester);
+      } catch (_) {
+        success = false;
+        rethrow;
+      } finally {
+        await afterEach(
+          '''Ctrl+L cycles the subtitles the other way''',
           success,
         );
       }
@@ -274,6 +320,49 @@ void main() {
       } finally {
         await afterEach(
           '''In a transcode, another audio track is a new stream from the same place''',
+          success,
+        );
+      }
+    });
+    testWidgets(
+        '''In a transcode, a subtitle inside the file is a new stream from the same place''',
+        (tester) async {
+      var success = true;
+      try {
+        await beforeEach(
+            '''In a transcode, a subtitle inside the file is a new stream from the same place''');
+        await bddSetUp(tester);
+        await theMoviePlaysAsATranscode(tester);
+        await iPlay(tester, 'movie-1');
+        await secondsHavePlayed(tester, 30);
+        await iPickTheSubtitleFromTheMenu(tester, 'English');
+        await theServerIsAskedForANewStreamFromSecondsWithTheSubtitle(
+            tester, 30, 'English');
+        await itStartedAtSeconds(tester, 30);
+      } catch (_) {
+        success = false;
+        rethrow;
+      } finally {
+        await afterEach(
+          '''In a transcode, a subtitle inside the file is a new stream from the same place''',
+          success,
+        );
+      }
+    });
+    testWidgets('''A stream mpv cannot open says so''', (tester) async {
+      var success = true;
+      try {
+        await beforeEach('''A stream mpv cannot open says so''');
+        await bddSetUp(tester);
+        await mpvCannotOpenTheStream(tester);
+        await iPlay(tester, 'movie-1');
+        await iSee(tester, 'Playback failed: the stream could not be opened.');
+      } catch (_) {
+        success = false;
+        rethrow;
+      } finally {
+        await afterEach(
+          '''A stream mpv cannot open says so''',
           success,
         );
       }

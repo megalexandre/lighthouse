@@ -173,6 +173,8 @@ final _physical = {
   LogicalKeyboardKey.arrowRight: PhysicalKeyboardKey.arrowRight,
   LogicalKeyboardKey.space: PhysicalKeyboardKey.space,
   LogicalKeyboardKey.escape: PhysicalKeyboardKey.escape,
+  LogicalKeyboardKey.arrowDown: PhysicalKeyboardKey.arrowDown,
+  LogicalKeyboardKey.keyM: PhysicalKeyboardKey.keyM,
 };
 
 /// Presses and releases [key], as a keyboard would.

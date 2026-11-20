@@ -12,6 +12,10 @@ import './step/i_hover_three_quarters_along_the_seek_bar.dart';
 import './step/i_see.dart';
 import './step/i_click_there.dart';
 import './step/it_is_at_seconds.dart';
+import './step/i_drag_the_seek_bar_from_a_quarter_to_halfway.dart';
+import './step/it_seeks_once_to_seconds.dart';
+import './step/has_trickplay_pictures.dart';
+import './step/i_see_the_picture_of_that_moment.dart';
 import './step/seconds_have_played.dart';
 import './step/i_tap_the_button.dart';
 import './step/i_pick_the_speed.dart';
@@ -73,6 +77,48 @@ void main() {
       } finally {
         await afterEach(
           '''The seek bar names the chapter under the mouse, and a click seeks there''',
+          success,
+        );
+      }
+    });
+    testWidgets('''Dragging the seek bar seeks once, where it is let go''',
+        (tester) async {
+      var success = true;
+      try {
+        await beforeEach(
+            '''Dragging the seek bar seeks once, where it is let go''');
+        await bddSetUp(tester);
+        await iPlay(tester, 'movie-1');
+        await iDragTheSeekBarFromAQuarterToHalfway(tester);
+        await itSeeksOnceToSeconds(tester, 300);
+      } catch (_) {
+        success = false;
+        rethrow;
+      } finally {
+        await afterEach(
+          '''Dragging the seek bar seeks once, where it is let go''',
+          success,
+        );
+      }
+    });
+    testWidgets(
+        '''The seek bar shows the picture of the moment under the mouse''',
+        (tester) async {
+      var success = true;
+      try {
+        await beforeEach(
+            '''The seek bar shows the picture of the moment under the mouse''');
+        await bddSetUp(tester);
+        await hasTrickplayPictures(tester, 'movie-1');
+        await iPlay(tester, 'movie-1');
+        await iHoverThreeQuartersAlongTheSeekBar(tester);
+        await iSeeThePictureOfThatMoment(tester);
+      } catch (_) {
+        success = false;
+        rethrow;
+      } finally {
+        await afterEach(
+          '''The seek bar shows the picture of the moment under the mouse''',
           success,
         );
       }

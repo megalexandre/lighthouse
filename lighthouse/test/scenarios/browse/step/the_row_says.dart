@@ -7,7 +7,10 @@ import 'world.dart';
 /// In place of its cards.
 Future<void> theRowSays(WidgetTester tester, String title, String text) async {
   expect(
-    find.descendant(of: row(title), matching: find.text(text)),
+    find.descendant(
+      of: await rowOnScreen(tester, title),
+      matching: find.text(text),
+    ),
     findsOneWidget,
   );
 }

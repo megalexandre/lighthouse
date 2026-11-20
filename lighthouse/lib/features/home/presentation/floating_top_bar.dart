@@ -34,6 +34,7 @@ class FloatingTopBar extends ConsumerStatefulWidget
   static const height = 72.0;
 
   static const homeTab = Key('topBar.home');
+  static const mark = Key('topBar.mark');
   static Key tab(String viewId) => Key('topBar.tab.$viewId');
   static const searchButton = Key('topBar.search');
   static const searchField = Key('topBar.searchField');
@@ -264,6 +265,7 @@ class _Mark extends StatelessWidget {
       button: true,
       label: context.l10n.home,
       child: GestureDetector(
+        key: FloatingTopBar.mark,
         onTap: onTap,
         child: Row(
           mainAxisSize: MainAxisSize.min,

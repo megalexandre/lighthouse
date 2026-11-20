@@ -12,13 +12,17 @@ import './step/there_is_no_row.dart';
 import './step/is_percent_watched.dart';
 import './step/is_next_up.dart';
 import './step/the_row_shows_how_much_is_watched.dart';
-import './step/the_latest_items_cannot_be_loaded.dart';
+import './step/there_is_something_in_every_row.dart';
+import './step/the_row_cannot_be_loaded.dart';
 import './step/the_row_says.dart';
 import './step/the_server_answers_again.dart';
 import './step/i_tap_retry_in_the_row.dart';
+import './step/the_theme_is.dart';
 import './step/the_list_of_libraries_cannot_be_loaded.dart';
 import './step/i_see.dart';
 import './step/i_tap_retry.dart';
+import './step/i_see_the_libraries.dart';
+import './step/i_pull_home_down.dart';
 import './step/i_open.dart';
 import './step/i_see_the_library.dart';
 import './step/i_go_back.dart';
@@ -111,14 +115,16 @@ void main() {
         );
       }
     });
-    testWidgets('''A row that fails says so, and the others still show''',
+    testWidgets(
+        '''A row that fails says so, the others still show, and it can be tried again ('Latest in Movies', 'Test Movie')''',
         (tester) async {
       var success = true;
       try {
         await beforeEach(
-            '''A row that fails says so, and the others still show''');
+            '''A row that fails says so, the others still show, and it can be tried again ('Latest in Movies', 'Test Movie')''');
         await bddSetUp(tester);
-        await theLatestItemsCannotBeLoaded(tester);
+        await thereIsSomethingInEveryRow(tester);
+        await theRowCannotBeLoaded(tester, 'Latest in Movies');
         await iGoHome(tester);
         await iSeeInTheRow(tester, 'Movies', 'My media');
         await theRowSays(tester, 'Latest in Movies',
@@ -131,30 +137,184 @@ void main() {
         rethrow;
       } finally {
         await afterEach(
-          '''A row that fails says so, and the others still show''',
+          '''A row that fails says so, the others still show, and it can be tried again ('Latest in Movies', 'Test Movie')''',
           success,
         );
       }
     });
-    testWidgets('''Libraries that fail to load can be tried again''',
+    testWidgets(
+        '''A row that fails says so, the others still show, and it can be tried again ('Continue watching', 'Test Movie')''',
         (tester) async {
       var success = true;
       try {
-        await beforeEach('''Libraries that fail to load can be tried again''');
+        await beforeEach(
+            '''A row that fails says so, the others still show, and it can be tried again ('Continue watching', 'Test Movie')''');
         await bddSetUp(tester);
+        await thereIsSomethingInEveryRow(tester);
+        await theRowCannotBeLoaded(tester, 'Continue watching');
+        await iGoHome(tester);
+        await iSeeInTheRow(tester, 'Movies', 'My media');
+        await theRowSays(tester, 'Continue watching',
+            'Cannot reach http://jellyfin.test:8096. Check the address and that the server is running.');
+        await theServerAnswersAgain(tester);
+        await iTapRetryInTheRow(tester, 'Continue watching');
+        await iSeeInTheRow(tester, 'Test Movie', 'Continue watching');
+      } catch (_) {
+        success = false;
+        rethrow;
+      } finally {
+        await afterEach(
+          '''A row that fails says so, the others still show, and it can be tried again ('Continue watching', 'Test Movie')''',
+          success,
+        );
+      }
+    });
+    testWidgets(
+        '''A row that fails says so, the others still show, and it can be tried again ('Next up', 'Test Show · S1:E2')''',
+        (tester) async {
+      var success = true;
+      try {
+        await beforeEach(
+            '''A row that fails says so, the others still show, and it can be tried again ('Next up', 'Test Show · S1:E2')''');
+        await bddSetUp(tester);
+        await thereIsSomethingInEveryRow(tester);
+        await theRowCannotBeLoaded(tester, 'Next up');
+        await iGoHome(tester);
+        await iSeeInTheRow(tester, 'Movies', 'My media');
+        await theRowSays(tester, 'Next up',
+            'Cannot reach http://jellyfin.test:8096. Check the address and that the server is running.');
+        await theServerAnswersAgain(tester);
+        await iTapRetryInTheRow(tester, 'Next up');
+        await iSeeInTheRow(tester, 'Test Show · S1:E2', 'Next up');
+      } catch (_) {
+        success = false;
+        rethrow;
+      } finally {
+        await afterEach(
+          '''A row that fails says so, the others still show, and it can be tried again ('Next up', 'Test Show · S1:E2')''',
+          success,
+        );
+      }
+    });
+    testWidgets(
+        '''A row that fails says so, the others still show, and it can be tried again ('Continue reading', 'Test Comic')''',
+        (tester) async {
+      var success = true;
+      try {
+        await beforeEach(
+            '''A row that fails says so, the others still show, and it can be tried again ('Continue reading', 'Test Comic')''');
+        await bddSetUp(tester);
+        await thereIsSomethingInEveryRow(tester);
+        await theRowCannotBeLoaded(tester, 'Continue reading');
+        await iGoHome(tester);
+        await iSeeInTheRow(tester, 'Movies', 'My media');
+        await theRowSays(tester, 'Continue reading',
+            'Cannot reach http://jellyfin.test:8096. Check the address and that the server is running.');
+        await theServerAnswersAgain(tester);
+        await iTapRetryInTheRow(tester, 'Continue reading');
+        await iSeeInTheRow(tester, 'Test Comic', 'Continue reading');
+      } catch (_) {
+        success = false;
+        rethrow;
+      } finally {
+        await afterEach(
+          '''A row that fails says so, the others still show, and it can be tried again ('Continue reading', 'Test Comic')''',
+          success,
+        );
+      }
+    });
+    testWidgets(
+        '''In <theme>, libraries that fail to load can be tried again ('Lanterna')''',
+        (tester) async {
+      var success = true;
+      try {
+        await beforeEach(
+            '''In <theme>, libraries that fail to load can be tried again ('Lanterna')''');
+        await bddSetUp(tester);
+        await theThemeIs(tester, 'Lanterna');
         await theListOfLibrariesCannotBeLoaded(tester);
         await iGoHome(tester);
         await iSee(tester,
             'Cannot reach http://jellyfin.test:8096. Check the address and that the server is running.');
         await theServerAnswersAgain(tester);
         await iTapRetry(tester);
-        await iSeeInTheRow(tester, 'Movies', 'My media');
+        await iSeeTheLibraries(tester);
       } catch (_) {
         success = false;
         rethrow;
       } finally {
         await afterEach(
-          '''Libraries that fail to load can be tried again''',
+          '''In <theme>, libraries that fail to load can be tried again ('Lanterna')''',
+          success,
+        );
+      }
+    });
+    testWidgets(
+        '''In <theme>, libraries that fail to load can be tried again ('Prime')''',
+        (tester) async {
+      var success = true;
+      try {
+        await beforeEach(
+            '''In <theme>, libraries that fail to load can be tried again ('Prime')''');
+        await bddSetUp(tester);
+        await theThemeIs(tester, 'Prime');
+        await theListOfLibrariesCannotBeLoaded(tester);
+        await iGoHome(tester);
+        await iSee(tester,
+            'Cannot reach http://jellyfin.test:8096. Check the address and that the server is running.');
+        await theServerAnswersAgain(tester);
+        await iTapRetry(tester);
+        await iSeeTheLibraries(tester);
+      } catch (_) {
+        success = false;
+        rethrow;
+      } finally {
+        await afterEach(
+          '''In <theme>, libraries that fail to load can be tried again ('Prime')''',
+          success,
+        );
+      }
+    });
+    testWidgets('''In <theme>, pulling home down loads it again ('Lanterna')''',
+        (tester) async {
+      var success = true;
+      try {
+        await beforeEach(
+            '''In <theme>, pulling home down loads it again ('Lanterna')''');
+        await bddSetUp(tester);
+        await theThemeIs(tester, 'Lanterna');
+        await iGoHome(tester);
+        await isNextUp(tester, 'Episode 2');
+        await iPullHomeDown(tester);
+        await iSeeInTheRow(tester, 'Test Show · S1:E2', 'Next up');
+      } catch (_) {
+        success = false;
+        rethrow;
+      } finally {
+        await afterEach(
+          '''In <theme>, pulling home down loads it again ('Lanterna')''',
+          success,
+        );
+      }
+    });
+    testWidgets('''In <theme>, pulling home down loads it again ('Prime')''',
+        (tester) async {
+      var success = true;
+      try {
+        await beforeEach(
+            '''In <theme>, pulling home down loads it again ('Prime')''');
+        await bddSetUp(tester);
+        await theThemeIs(tester, 'Prime');
+        await iGoHome(tester);
+        await isNextUp(tester, 'Episode 2');
+        await iPullHomeDown(tester);
+        await iSeeInTheRow(tester, 'Test Show · S1:E2', 'Next up');
+      } catch (_) {
+        success = false;
+        rethrow;
+      } finally {
+        await afterEach(
+          '''In <theme>, pulling home down loads it again ('Prime')''',
           success,
         );
       }

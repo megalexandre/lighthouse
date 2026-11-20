@@ -41,13 +41,43 @@ Feature: Item page
     When I open the page of {'Test Movie'}
     Then I see the badges {'1080P'}, {'5.1'} and {'CC'}
 
-  Scenario: Seasons that fail to load do not hide the series
-    Given the seasons cannot be loaded
-    When I open the page of {'Test Show'}
-    Then I see the page of {'Test Show'}
+  Scenario Outline: The <section> that fail to load can be tried again, the page still shows
+    Given the {<section>} cannot be loaded
+    When I open the page of {<page>}
+    Then I see the page of {<page>}
     When the server answers again
     And I tap Retry
-    Then I see {'Season 1'}
+    Then I see {<item>}
+
+    Examples:
+      | section    | page         | item           |
+      | 'seasons'  | 'Test Show'  | 'Season 1'     |
+      | 'episodes' | 'Season 1'   | '1. Episode 1' |
+      | 'tracks'   | 'Test Album' | 'Track 1'      |
+
+  Scenario: A season without episodes says so
+    Given {'Season 1'} has no episodes
+    When I open the page of {'Season 1'}
+    Then I see {'Nothing here yet.'}
+
+  Scenario: A season's episodes show which were watched, and what each is about
+    Given {'Episode 1'} was watched
+    And {'Episode 2'} is about {'The second one.'}
+    When I open the page of {'Season 1'}
+    Then the episode {'Episode 1'} shows it was watched
+    And the episode {'Episode 2'} does not show it was watched
+    And I see {'The second one.'}
+
+  Scenario Outline: Marking a <kind> <what> when the server cannot save it says so
+    Given the server cannot save what was watched or read
+    When I open the page of {<page>}
+    And I tap the button {<button>}
+    Then I see a message {'Cannot reach http://jellyfin.test:8096. Check the address and that the server is running.'}
+
+    Examples:
+      | kind  | what    | page         | button            |
+      | movie | watched | 'Test Movie' | 'Mark as watched' |
+      | book  | read    | 'Test Comic' | 'Mark as read'    |
 
   Scenario: A page that fails to load can be tried again
     Given the item cannot be loaded

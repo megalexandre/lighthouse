@@ -31,6 +31,14 @@ import './step/the_panel_is_closed.dart';
 import './step/i_tap_in_the_panel.dart';
 import './step/the_server_is_told_was_watched.dart';
 import './step/i_go_back.dart';
+import './step/has_seasons.dart';
+import './step/is_next_up.dart';
+import './step/i_go_home.dart';
+import './step/i_scroll_to_the_row.dart';
+import './step/i_see_a_button.dart';
+import './step/the_server_is_told_was_not_watched.dart';
+import './step/the_server_cannot_save_what_was_watched_or_read.dart';
+import './step/i_see_a_message.dart';
 
 void main() {
   setUpAll(() async {
@@ -199,6 +207,178 @@ void main() {
       } finally {
         await afterEach(
           '''In Prime, the panel marks watched, opens the page, and plays''',
+          success,
+        );
+      }
+    });
+    testWidgets(
+        '''In Prime, the panel's <part> opens the item's page ('picture')''',
+        (tester) async {
+      var success = true;
+      try {
+        await beforeEach(
+            '''In Prime, the panel's <part> opens the item's page ('picture')''');
+        await bddSetUp(tester);
+        await theThemeIs(tester, 'Prime');
+        await iOpenTheLibrary(tester, 'Movies');
+        await iRestTheMouseOn(tester, 'Test Movie');
+        await afterAMomentThePanelOpens(tester);
+        await iTapInThePanel(tester, 'picture');
+        await iSeeThePageOf(tester, 'Test Movie');
+      } catch (_) {
+        success = false;
+        rethrow;
+      } finally {
+        await afterEach(
+          '''In Prime, the panel's <part> opens the item's page ('picture')''',
+          success,
+        );
+      }
+    });
+    testWidgets(
+        '''In Prime, the panel's <part> opens the item's page ('title')''',
+        (tester) async {
+      var success = true;
+      try {
+        await beforeEach(
+            '''In Prime, the panel's <part> opens the item's page ('title')''');
+        await bddSetUp(tester);
+        await theThemeIs(tester, 'Prime');
+        await iOpenTheLibrary(tester, 'Movies');
+        await iRestTheMouseOn(tester, 'Test Movie');
+        await afterAMomentThePanelOpens(tester);
+        await iTapInThePanel(tester, 'title');
+        await iSeeThePageOf(tester, 'Test Movie');
+      } catch (_) {
+        success = false;
+        rethrow;
+      } finally {
+        await afterEach(
+          '''In Prime, the panel's <part> opens the item's page ('title')''',
+          success,
+        );
+      }
+    });
+    testWidgets(
+        '''In Prime, the panel's <part> opens the item's page ('details')''',
+        (tester) async {
+      var success = true;
+      try {
+        await beforeEach(
+            '''In Prime, the panel's <part> opens the item's page ('details')''');
+        await bddSetUp(tester);
+        await theThemeIs(tester, 'Prime');
+        await iOpenTheLibrary(tester, 'Movies');
+        await iRestTheMouseOn(tester, 'Test Movie');
+        await afterAMomentThePanelOpens(tester);
+        await iTapInThePanel(tester, 'details');
+        await iSeeThePageOf(tester, 'Test Movie');
+      } catch (_) {
+        success = false;
+        rethrow;
+      } finally {
+        await afterEach(
+          '''In Prime, the panel's <part> opens the item's page ('details')''',
+          success,
+        );
+      }
+    });
+    testWidgets('''In Prime, a series' panel opens its episodes''',
+        (tester) async {
+      var success = true;
+      try {
+        await beforeEach('''In Prime, a series' panel opens its episodes''');
+        await bddSetUp(tester);
+        await theThemeIs(tester, 'Prime');
+        await hasSeasons(tester, 'Test Show', 2);
+        await iOpenTheLibrary(tester, 'Shows');
+        await iRestTheMouseOn(tester, 'Test Show');
+        await afterAMomentThePanelOpens(tester);
+        await thePanelShows(tester, '2 seasons');
+        await thePanelShows(tester, 'Episodes');
+        await iTapInThePanel(tester, 'play');
+        await iSeeThePageOf(tester, 'Test Show');
+      } catch (_) {
+        success = false;
+        rethrow;
+      } finally {
+        await afterEach(
+          '''In Prime, a series' panel opens its episodes''',
+          success,
+        );
+      }
+    });
+    testWidgets('''In Prime, an episode's panel names its series''',
+        (tester) async {
+      var success = true;
+      try {
+        await beforeEach('''In Prime, an episode's panel names its series''');
+        await bddSetUp(tester);
+        await theThemeIs(tester, 'Prime');
+        await isNextUp(tester, 'Episode 2');
+        await iGoHome(tester);
+        await iScrollToTheRow(tester, 'Next up');
+        await iRestTheMouseOn(tester, 'Episode 2');
+        await afterAMomentThePanelOpens(tester);
+        await thePanelShows(tester, 'Test Show · S1:E2');
+      } catch (_) {
+        success = false;
+        rethrow;
+      } finally {
+        await afterEach(
+          '''In Prime, an episode's panel names its series''',
+          success,
+        );
+      }
+    });
+    testWidgets(
+        '''In Prime, a watched movie can be marked unwatched from its panel''',
+        (tester) async {
+      var success = true;
+      try {
+        await beforeEach(
+            '''In Prime, a watched movie can be marked unwatched from its panel''');
+        await bddSetUp(tester);
+        await theThemeIs(tester, 'Prime');
+        await wasWatched(tester, 'Test Movie');
+        await iOpenTheLibrary(tester, 'Movies');
+        await iRestTheMouseOn(tester, 'Test Movie');
+        await afterAMomentThePanelOpens(tester);
+        await iSeeAButton(tester, 'Mark as unwatched');
+        await iTapInThePanel(tester, 'watched');
+        await theServerIsToldWasNotWatched(tester, 'Test Movie');
+      } catch (_) {
+        success = false;
+        rethrow;
+      } finally {
+        await afterEach(
+          '''In Prime, a watched movie can be marked unwatched from its panel''',
+          success,
+        );
+      }
+    });
+    testWidgets(
+        '''In Prime, marking watched when the server cannot save it says so''',
+        (tester) async {
+      var success = true;
+      try {
+        await beforeEach(
+            '''In Prime, marking watched when the server cannot save it says so''');
+        await bddSetUp(tester);
+        await theThemeIs(tester, 'Prime');
+        await theServerCannotSaveWhatWasWatchedOrRead(tester);
+        await iOpenTheLibrary(tester, 'Movies');
+        await iRestTheMouseOn(tester, 'Test Movie');
+        await afterAMomentThePanelOpens(tester);
+        await iTapInThePanel(tester, 'watched');
+        await iSeeAMessage(tester,
+            'Cannot reach http://jellyfin.test:8096. Check the address and that the server is running.');
+      } catch (_) {
+        success = false;
+        rethrow;
+      } finally {
+        await afterEach(
+          '''In Prime, marking watched when the server cannot save it says so''',
           success,
         );
       }

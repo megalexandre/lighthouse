@@ -1,7 +1,7 @@
 Feature: On-screen controls
 
-  The seek bar names the chapter under the mouse and seeks where it is
-  clicked; buttons skip 10 seconds; the settings panel sets the speed, and
+  The seek bar names the chapter under the mouse, shows the picture of
+  that moment, and seeks where it is clicked or let go; buttons skip 10 seconds; the settings panel sets the speed, and
   Esc closes it a level at a time before it leaves the player. Paused, a
   big play button shows. Subtitles rise above the controls.
 
@@ -16,6 +16,17 @@ Feature: On-screen controls
     And I see {'Storm'}
     When I click there
     Then it is at {450} seconds
+
+  Scenario: Dragging the seek bar seeks once, where it is let go
+    When I play {'movie-1'}
+    And I drag the seek bar from a quarter to halfway
+    Then it seeks once, to {300} seconds
+
+  Scenario: The seek bar shows the picture of the moment under the mouse
+    Given {'movie-1'} has trickplay pictures
+    When I play {'movie-1'}
+    And I hover three quarters along the seek bar
+    Then I see the picture of that moment
 
   Scenario: The buttons skip 10 seconds back and forth
     When I play {'movie-1'}

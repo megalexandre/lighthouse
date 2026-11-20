@@ -65,3 +65,56 @@ Feature: Cards
     And after a moment the panel opens
     And I tap {'play'} in the panel
     Then the player is open
+
+  Scenario Outline: In Prime, the panel's <part> opens the item's page
+    Given the theme is {'Prime'}
+    When I open the {'Movies'} library
+    And I rest the mouse on {'Test Movie'}
+    And after a moment the panel opens
+    And I tap {<part>} in the panel
+    Then I see the page of {'Test Movie'}
+
+    Examples:
+      | part      |
+      | 'picture' |
+      | 'title'   |
+      | 'details' |
+
+  Scenario: In Prime, a series' panel opens its episodes
+    Given the theme is {'Prime'}
+    And {'Test Show'} has {2} seasons
+    When I open the {'Shows'} library
+    And I rest the mouse on {'Test Show'}
+    And after a moment the panel opens
+    Then the panel shows {'2 seasons'}
+    And the panel shows {'Episodes'}
+    When I tap {'play'} in the panel
+    Then I see the page of {'Test Show'}
+
+  Scenario: In Prime, an episode's panel names its series
+    Given the theme is {'Prime'}
+    And {'Episode 2'} is next up
+    When I go home
+    And I scroll to the {'Next up'} row
+    And I rest the mouse on {'Episode 2'}
+    And after a moment the panel opens
+    Then the panel shows {'Test Show · S1:E2'}
+
+  Scenario: In Prime, a watched movie can be marked unwatched from its panel
+    Given the theme is {'Prime'}
+    And {'Test Movie'} was watched
+    When I open the {'Movies'} library
+    And I rest the mouse on {'Test Movie'}
+    And after a moment the panel opens
+    Then I see a button {'Mark as unwatched'}
+    When I tap {'watched'} in the panel
+    Then the server is told {'Test Movie'} was not watched
+
+  Scenario: In Prime, marking watched when the server cannot save it says so
+    Given the theme is {'Prime'}
+    And the server cannot save what was watched or read
+    When I open the {'Movies'} library
+    And I rest the mouse on {'Test Movie'}
+    And after a moment the panel opens
+    And I tap {'watched'} in the panel
+    Then I see a message {'Cannot reach http://jellyfin.test:8096. Check the address and that the server is running.'}

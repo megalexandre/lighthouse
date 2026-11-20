@@ -28,10 +28,12 @@ import './step/i_tap_the_tab.dart';
 import './step/the_tab_is_on.dart';
 import './step/the_bar_is_solid.dart';
 import './step/i_see.dart';
+import './step/i_tap_the_lighthouse_mark.dart';
 import './step/i_scroll_home_down.dart';
 import './step/there_is_no_search_field.dart';
 import './step/i_search_the_bar_for.dart';
 import './step/the_search_screen_searches_for.dart';
+import './step/i_open_the_search_and_click_elsewhere.dart';
 import './step/i_pick_in_the_profile_menu.dart';
 import './step/home_is.dart';
 import './step/i_see_settings.dart';
@@ -208,6 +210,25 @@ void main() {
         );
       }
     });
+    testWidgets('''The Lighthouse mark goes home''', (tester) async {
+      var success = true;
+      try {
+        await beforeEach('''The Lighthouse mark goes home''');
+        await bddSetUp(tester);
+        await iGoHome(tester);
+        await iTapTheTab(tester, 'Movies');
+        await iTapTheLighthouseMark(tester);
+        await theCarouselShows(tester, 'Test Movie');
+      } catch (_) {
+        success = false;
+        rethrow;
+      } finally {
+        await afterEach(
+          '''The Lighthouse mark goes home''',
+          success,
+        );
+      }
+    });
     testWidgets('''Scrolled down, the bar turns solid''', (tester) async {
       var success = true;
       try {
@@ -242,6 +263,25 @@ void main() {
       } finally {
         await afterEach(
           '''Search opens into a field, and Enter searches''',
+          success,
+        );
+      }
+    });
+    testWidgets('''An empty search closes on a click elsewhere''',
+        (tester) async {
+      var success = true;
+      try {
+        await beforeEach('''An empty search closes on a click elsewhere''');
+        await bddSetUp(tester);
+        await iGoHome(tester);
+        await iOpenTheSearchAndClickElsewhere(tester);
+        await thereIsNoSearchField(tester);
+      } catch (_) {
+        success = false;
+        rethrow;
+      } finally {
+        await afterEach(
+          '''An empty search closes on a click elsewhere''',
           success,
         );
       }

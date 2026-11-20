@@ -13,13 +13,16 @@ import './step/i_open_settings_from_home.dart';
 import './step/i_see.dart';
 import './step/the_audio_language_reads.dart';
 import './step/i_open_settings.dart';
-import './step/i_type_in_the_audio_language_and_pick.dart';
-import './step/the_server_keeps_my_audio_language_as.dart';
+import './step/i_type_in_the_language_and_pick.dart';
+import './step/the_server_keeps_my_language_as.dart';
 import './step/i_pick_in_the_setting.dart';
 import './step/the_server_keeps_my_subtitles_as.dart';
 import './step/the_server_keeps_no_audio_language.dart';
 import './step/i_turn_next_episode_autoplay_off.dart';
 import './step/the_server_keeps_next_episode_autoplay_off.dart';
+import './step/my_settings_cannot_be_loaded.dart';
+import './step/the_server_answers_again.dart';
+import './step/i_tap_retry.dart';
 import './step/this_device_keeps_the_quality_at.dart';
 import './step/the_server_cannot_save_settings.dart';
 import './step/no_look_was_chosen_yet.dart';
@@ -31,6 +34,8 @@ import './step/a_file_that_cannot_be_read.dart';
 import './step/the_accent_is.dart';
 import './step/i_open_the_theme_issues.dart';
 import './step/i_see_a_line.dart';
+import './step/i_tap.dart';
+import './step/the_file_manager_opens.dart';
 import './step/was_chosen.dart';
 import './step/the_mode_was_chosen.dart';
 import './step/i_open_an_episode.dart';
@@ -92,13 +97,15 @@ void main() {
             '''Languages, subtitles and autoplay go to the server''');
         await bddSetUp(tester);
         await iOpenSettings(tester);
-        await iTypeInTheAudioLanguageAndPick(tester, 'port', 'Portuguese');
-        await theServerKeepsMyAudioLanguageAs(tester, 'por');
+        await iTypeInTheLanguageAndPick(tester, 'port', 'audio', 'Portuguese');
+        await theServerKeepsMyLanguageAs(tester, 'audio', 'por');
         await iPickInTheSetting(tester, 'Never', 'subtitles');
         await theServerKeepsMySubtitlesAs(tester, 'Never');
-        await iTypeInTheAudioLanguageAndPick(
-            tester, 'file', "The file's default");
+        await iTypeInTheLanguageAndPick(
+            tester, 'file', 'audio', "The file's default");
         await theServerKeepsNoAudioLanguage(tester);
+        await iTypeInTheLanguageAndPick(tester, 'eng', 'subtitle', 'English');
+        await theServerKeepsMyLanguageAs(tester, 'subtitle', 'eng');
         await iTurnNextEpisodeAutoplayOff(tester);
         await theServerKeepsNextEpisodeAutoplayOff(tester);
       } catch (_) {
@@ -107,6 +114,29 @@ void main() {
       } finally {
         await afterEach(
           '''Languages, subtitles and autoplay go to the server''',
+          success,
+        );
+      }
+    });
+    testWidgets('''Settings that fail to load can be tried again''',
+        (tester) async {
+      var success = true;
+      try {
+        await beforeEach('''Settings that fail to load can be tried again''');
+        await bddSetUp(tester);
+        await mySettingsCannotBeLoaded(tester);
+        await iOpenSettings(tester);
+        await iSee(tester,
+            'Cannot reach http://jellyfin.test:8096. Check the address and that the server is running.');
+        await theServerAnswersAgain(tester);
+        await iTapRetry(tester);
+        await theAudioLanguageReads(tester, "The file's default");
+      } catch (_) {
+        success = false;
+        rethrow;
+      } finally {
+        await afterEach(
+          '''Settings that fail to load can be tried again''',
           success,
         );
       }
@@ -138,7 +168,7 @@ void main() {
         await bddSetUp(tester);
         await theServerCannotSaveSettings(tester);
         await iOpenSettings(tester);
-        await iTypeInTheAudioLanguageAndPick(tester, 'port', 'Portuguese');
+        await iTypeInTheLanguageAndPick(tester, 'port', 'audio', 'Portuguese');
         await iSee(tester,
             'Cannot reach http://jellyfin.test:8096. Check the address and that the server is running.');
       } catch (_) {
@@ -200,6 +230,25 @@ void main() {
       } finally {
         await afterEach(
           '''A theme from my folder can be picked; one that cannot be read is reported''',
+          success,
+        );
+      }
+    });
+    testWidgets('''My themes folder opens in the file manager''',
+        (tester) async {
+      var success = true;
+      try {
+        await beforeEach('''My themes folder opens in the file manager''');
+        await bddSetUp(tester);
+        await iOpenSettings(tester);
+        await iTap(tester, 'Open folder');
+        await theFileManagerOpens(tester, '/themes');
+      } catch (_) {
+        success = false;
+        rethrow;
+      } finally {
+        await afterEach(
+          '''My themes folder opens in the file manager''',
           success,
         );
       }

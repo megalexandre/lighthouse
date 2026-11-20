@@ -9,7 +9,10 @@ Future<void> iSeeInTheRow(
   String title,
 ) async {
   expect(
-    find.descendant(of: row(title), matching: find.text(text)),
+    find.descendant(
+      of: await rowOnScreen(tester, title),
+      matching: find.text(text),
+    ),
     findsOneWidget,
   );
 }

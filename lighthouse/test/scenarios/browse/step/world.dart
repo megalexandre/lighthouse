@@ -23,9 +23,10 @@ const unreachable = ServerUnreachable(testUrl);
 BaseItemDto itemNamed(String name) => [
   ...TestItems.views,
   ...app.library.movies,
-  TestItems.testShow,
+  ...app.library.books,
+  app.library.show,
   TestItems.season1,
-  ...TestItems.episodes,
+  ...app.library.episodeItems,
   TestItems.testAlbum,
   ...TestItems.tracks,
 ].firstWhere((i) => i.name == name);
@@ -53,3 +54,15 @@ double cardScale(WidgetTester tester, String name) => tester
       find.descendant(of: cardOf(name), matching: find.byType(AnimatedScale)),
     )
     .scale;
+
+/// The row with that title, scrolled into view: home builds only the rows
+/// on screen.
+Future<Finder> rowOnScreen(WidgetTester tester, String title) async {
+  await tester.scrollUntilVisible(
+    row(title),
+    200,
+    scrollable: find.byType(Scrollable).first,
+  );
+  await tester.pumpAndSettle();
+  return row(title);
+}

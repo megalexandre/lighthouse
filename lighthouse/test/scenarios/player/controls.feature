@@ -1,7 +1,7 @@
 Feature: Player controls
 
   The audio and subtitle menus, and the keys of the desktop client: A for
-  audio, L and S for subtitles, the arrows and M for the volume, F and F11
+  audio, L and S for subtitles (Ctrl+A and Ctrl+L the other way), the arrows and M for the volume, F and F11
   for full screen. The server is told what plays.
 
   Background:
@@ -42,6 +42,13 @@ Feature: Player controls
     When I press {'A'}
     Then the {'English'} audio track plays
 
+  Scenario: Ctrl+A cycles the audio the other way
+    When I play {'movie-1'}
+    And I press {'Ctrl+A'}
+    Then the {'Portuguese'} audio track plays
+    When I press {'Ctrl+A'}
+    Then the {'English'} audio track plays
+
   Scenario: L cycles the subtitles through off; S shows and hides them
     When I play {'movie-1'}
     And I press {'L'}
@@ -53,6 +60,15 @@ Feature: Player controls
     When I press {'S'}
     Then the {'English'} subtitle is shown
     When I press {'S'}
+    Then no subtitle is shown
+
+  Scenario: Ctrl+L cycles the subtitles the other way
+    When I play {'movie-1'}
+    And I press {'Ctrl+L'}
+    Then the {'English'} subtitle is shown
+    When I press {'Ctrl+L'}
+    Then the {'Portuguese'} subtitle is shown
+    When I press {'Ctrl+L'}
     Then no subtitle is shown
 
   Scenario: The volume, from the arrows and mute, and what the server is told
@@ -91,6 +107,19 @@ Feature: Player controls
     Then the server is asked for a new stream from {30} seconds with the {'Portuguese'} audio track
     And it started at {30} seconds
     And the server is told {'movie-1'} stopped at {30} seconds
+
+  Scenario: In a transcode, a subtitle inside the file is a new stream from the same place
+    Given the movie plays as a transcode
+    When I play {'movie-1'}
+    And {30} seconds have played
+    And I pick the {'English'} subtitle from the menu
+    Then the server is asked for a new stream from {30} seconds with the {'English'} subtitle
+    And it started at {30} seconds
+
+  Scenario: A stream mpv cannot open says so
+    Given mpv cannot open the stream
+    When I play {'movie-1'}
+    Then I see {'Playback failed: the stream could not be opened.'}
 
   Scenario: In a transcode, a stream the server cannot give leaves the old one playing
     Given the movie plays as a transcode

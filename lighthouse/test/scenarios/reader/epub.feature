@@ -67,6 +67,30 @@ Feature: EPUB
     Then I see a line {'No bookmarks yet'}
     And {'book-epub'} has no bookmarks
 
+  Scenario: The bookmark button takes the page's bookmark off again
+    When I read {'book-epub'}
+    And I press {'Right'}
+    And I bookmark the page
+    Then I see a button {'Remove bookmark'}
+    When I bookmark the page
+    Then I see a button {'Bookmark this page'}
+    And {'book-epub'} has no bookmarks
+
+  Scenario: Bookmarks that cannot be read: the book opens all the same, without them
+    Given the bookmarks cannot be read
+    When I read {'book-epub'}
+    Then the reader shows {'Page 1 of 3'}
+    When I open the bookmarks
+    Then I see a line {'No bookmarks yet'}
+
+  Scenario: A bookmark that cannot be saved still marks the page while the book is open
+    Given the bookmarks cannot be saved
+    When I read {'book-epub'}
+    And I press {'Right'}
+    And I bookmark the page
+    Then I see a button {'Remove bookmark'}
+    And {'book-epub'} has no bookmarks
+
   Scenario: The theme changes the desk and the paper, and is kept
     When I read {'book-epub'}
     Then the desk is {'light'}

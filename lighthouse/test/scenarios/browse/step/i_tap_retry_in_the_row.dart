@@ -7,7 +7,7 @@ import 'world.dart';
 Future<void> iTapRetryInTheRow(WidgetTester tester, String title) async {
   await tester.tap(
     find.descendant(
-      of: row(title),
+      of: await rowOnScreen(tester, title),
       matching: find.byKey(ErrorRetry.retryButton),
     ),
   );

@@ -20,14 +20,24 @@ Feature: Settings
 
   Scenario: Languages, subtitles and autoplay go to the server
     When I open Settings
-    And I type {'port'} in the audio language and pick {'Portuguese'}
-    Then the server keeps my audio language as {'por'}
+    And I type {'port'} in the {'audio'} language and pick {'Portuguese'}
+    Then the server keeps my {'audio'} language as {'por'}
     When I pick {'Never'} in the {'subtitles'} setting
     Then the server keeps my subtitles as {'Never'}
-    When I type {'file'} in the audio language and pick {"The file's default"}
+    When I type {'file'} in the {'audio'} language and pick {"The file's default"}
     Then the server keeps no audio language
+    When I type {'eng'} in the {'subtitle'} language and pick {'English'}
+    Then the server keeps my {'subtitle'} language as {'eng'}
     When I turn next episode autoplay off
     Then the server keeps next episode autoplay off
+
+  Scenario: Settings that fail to load can be tried again
+    Given my settings cannot be loaded
+    When I open Settings
+    Then I see {'Cannot reach http://jellyfin.test:8096. Check the address and that the server is running.'}
+    When the server answers again
+    And I tap Retry
+    Then the audio language reads {"The file's default"}
 
   Scenario: The quality is kept on this device
     When I open Settings
@@ -39,7 +49,7 @@ Feature: Settings
   Scenario: A save that fails says so
     Given the server cannot save settings
     When I open Settings
-    And I type {'port'} in the audio language and pick {'Portuguese'}
+    And I type {'port'} in the {'audio'} language and pick {'Portuguese'}
     Then I see {'Cannot reach http://jellyfin.test:8096. Check the address and that the server is running.'}
 
   Scenario: Prime in dark at first; another mode and theme are kept
@@ -63,6 +73,11 @@ Feature: Settings
     And I see {'1 theme issue'}
     When I open the theme issues
     Then I see a line {'broken.json: not used'}
+
+  Scenario: My themes folder opens in the file manager
+    When I open Settings
+    And I tap {'Open folder'}
+    Then the file manager opens {'/themes'}
 
   Scenario: Saving my theme's file changes the app as it runs
     Given my themes folder has {'Mine'} with the accent {'#00a4dc'}

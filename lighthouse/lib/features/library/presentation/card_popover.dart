@@ -49,6 +49,8 @@ class CardPopover extends ConsumerStatefulWidget {
   static const playButton = Key('card.popover.play');
   static const watchedButton = Key('card.popover.watched');
   static const infoButton = Key('card.popover.info');
+  static const picture = Key('card.popover.picture');
+  static const title = Key('card.popover.title');
 
   /// Its width for a card picture [width] wide.
   static double widthFor(double width) => (width * 1.55).clamp(380, 520);
@@ -251,6 +253,7 @@ class _CardPopoverState extends ConsumerState<CardPopover>
           mainAxisSize: MainAxisSize.min,
           children: [
             GestureDetector(
+              key: CardPopover.picture,
               onTap: () => _go(Routes.item(item.id)),
               child: AspectRatio(
                 aspectRatio: 16 / 9,
@@ -285,6 +288,7 @@ class _CardPopoverState extends ConsumerState<CardPopover>
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   GestureDetector(
+                    key: CardPopover.title,
                     onTap: () => _go(Routes.item(item.id)),
                     child: Text(
                       item.name,
