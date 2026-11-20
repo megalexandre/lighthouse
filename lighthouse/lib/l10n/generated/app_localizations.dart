@@ -129,6 +129,12 @@ abstract class AppLocalizations {
   /// **'{url} does not look like a Jellyfin server.'**
   String failureNotJellyfin(String url);
 
+  /// The fallback address reaches another server than the main one.
+  ///
+  /// In en, this message translates to:
+  /// **'{url} reaches a different Jellyfin server than the first address.'**
+  String failureDifferentServer(String url);
+
   /// The server's setup wizard was never finished.
   ///
   /// In en, this message translates to:
@@ -314,6 +320,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Server address'**
   String get serverAddress;
+
+  /// Connect screen field: a second address for the same server.
+  ///
+  /// In en, this message translates to:
+  /// **'Fallback address (optional)'**
+  String get fallbackAddress;
+
+  /// Help under the fallback address field.
+  ///
+  /// In en, this message translates to:
+  /// **'Used when the first one does not answer, e.g. away from home.'**
+  String get fallbackAddressHint;
 
   /// Connect without an address.
   ///

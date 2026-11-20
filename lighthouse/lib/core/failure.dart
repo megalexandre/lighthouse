@@ -31,6 +31,15 @@ final class NotJellyfinServer extends Failure {
   String get detail => url;
 }
 
+/// [url] reaches a Jellyfin server, but not the one the other addresses
+/// given with it reach.
+final class DifferentServer extends Failure {
+  const DifferentServer(this.url);
+  final String url;
+  @override
+  String get detail => url;
+}
+
 /// The server's setup wizard has not been finished yet.
 final class ServerNotSetUp extends Failure {
   const ServerNotSetUp(this.url);

@@ -15,8 +15,12 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$ServerInfo {
 
-/// Normalized base URL, no trailing slash: http://jellyfin:8096
- String get url; String get id; String get name; String get version;
+/// Normalized base URL in use, no trailing slash: http://jellyfin:8096
+ String get url; String get id; String get name; String get version;/// The addresses the user gave for this server, as typed, preferred
+/// first: a home one (fedora.local) before one that works from
+/// anywhere. Empty for a server stored before there was a choice, and
+/// for one connected with a single address: then [url] is all there is.
+ List<String> get addresses;
 /// Create a copy of ServerInfo
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -29,16 +33,16 @@ $ServerInfoCopyWith<ServerInfo> get copyWith => _$ServerInfoCopyWithImpl<ServerI
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is ServerInfo&&(identical(other.url, url) || other.url == url)&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.version, version) || other.version == version));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is ServerInfo&&(identical(other.url, url) || other.url == url)&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.version, version) || other.version == version)&&const DeepCollectionEquality().equals(other.addresses, addresses));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,url,id,name,version);
+int get hashCode => Object.hash(runtimeType,url,id,name,version,const DeepCollectionEquality().hash(addresses));
 
 @override
 String toString() {
-  return 'ServerInfo(url: $url, id: $id, name: $name, version: $version)';
+  return 'ServerInfo(url: $url, id: $id, name: $name, version: $version, addresses: $addresses)';
 }
 
 
@@ -49,7 +53,7 @@ abstract mixin class $ServerInfoCopyWith<$Res>  {
   factory $ServerInfoCopyWith(ServerInfo value, $Res Function(ServerInfo) _then) = _$ServerInfoCopyWithImpl;
 @useResult
 $Res call({
- String url, String id, String name, String version
+ String url, String id, String name, String version, List<String> addresses
 });
 
 
@@ -66,13 +70,14 @@ class _$ServerInfoCopyWithImpl<$Res>
 
 /// Create a copy of ServerInfo
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? url = null,Object? id = null,Object? name = null,Object? version = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? url = null,Object? id = null,Object? name = null,Object? version = null,Object? addresses = null,}) {
   return _then(_self.copyWith(
 url: null == url ? _self.url : url // ignore: cast_nullable_to_non_nullable
 as String,id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
 as String,version: null == version ? _self.version : version // ignore: cast_nullable_to_non_nullable
-as String,
+as String,addresses: null == addresses ? _self.addresses : addresses // ignore: cast_nullable_to_non_nullable
+as List<String>,
   ));
 }
 
@@ -157,10 +162,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String url,  String id,  String name,  String version)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String url,  String id,  String name,  String version,  List<String> addresses)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _ServerInfo() when $default != null:
-return $default(_that.url,_that.id,_that.name,_that.version);case _:
+return $default(_that.url,_that.id,_that.name,_that.version,_that.addresses);case _:
   return orElse();
 
 }
@@ -178,10 +183,10 @@ return $default(_that.url,_that.id,_that.name,_that.version);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String url,  String id,  String name,  String version)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String url,  String id,  String name,  String version,  List<String> addresses)  $default,) {final _that = this;
 switch (_that) {
 case _ServerInfo():
-return $default(_that.url,_that.id,_that.name,_that.version);case _:
+return $default(_that.url,_that.id,_that.name,_that.version,_that.addresses);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -198,10 +203,10 @@ return $default(_that.url,_that.id,_that.name,_that.version);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String url,  String id,  String name,  String version)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String url,  String id,  String name,  String version,  List<String> addresses)?  $default,) {final _that = this;
 switch (_that) {
 case _ServerInfo() when $default != null:
-return $default(_that.url,_that.id,_that.name,_that.version);case _:
+return $default(_that.url,_that.id,_that.name,_that.version,_that.addresses);case _:
   return null;
 
 }
@@ -212,15 +217,20 @@ return $default(_that.url,_that.id,_that.name,_that.version);case _:
 /// @nodoc
 @JsonSerializable()
 
-class _ServerInfo implements ServerInfo {
-  const _ServerInfo({required this.url, required this.id, required this.name, required this.version});
+class _ServerInfo extends ServerInfo {
+  const _ServerInfo({required this.url, required this.id, required this.name, required this.version, this.addresses = const <String>[]}): super._();
   factory _ServerInfo.fromJson(Map<String, dynamic> json) => _$ServerInfoFromJson(json);
 
-/// Normalized base URL, no trailing slash: http://jellyfin:8096
+/// Normalized base URL in use, no trailing slash: http://jellyfin:8096
 @override final  String url;
 @override final  String id;
 @override final  String name;
 @override final  String version;
+/// The addresses the user gave for this server, as typed, preferred
+/// first: a home one (fedora.local) before one that works from
+/// anywhere. Empty for a server stored before there was a choice, and
+/// for one connected with a single address: then [url] is all there is.
+@override@JsonKey() final  List<String> addresses;
 
 /// Create a copy of ServerInfo
 /// with the given fields replaced by the non-null parameter values.
@@ -235,16 +245,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ServerInfo&&(identical(other.url, url) || other.url == url)&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.version, version) || other.version == version));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ServerInfo&&(identical(other.url, url) || other.url == url)&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.version, version) || other.version == version)&&const DeepCollectionEquality().equals(other.addresses, addresses));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,url,id,name,version);
+int get hashCode => Object.hash(runtimeType,url,id,name,version,const DeepCollectionEquality().hash(addresses));
 
 @override
 String toString() {
-  return 'ServerInfo(url: $url, id: $id, name: $name, version: $version)';
+  return 'ServerInfo(url: $url, id: $id, name: $name, version: $version, addresses: $addresses)';
 }
 
 
@@ -255,7 +265,7 @@ abstract mixin class _$ServerInfoCopyWith<$Res> implements $ServerInfoCopyWith<$
   factory _$ServerInfoCopyWith(_ServerInfo value, $Res Function(_ServerInfo) _then) = __$ServerInfoCopyWithImpl;
 @override @useResult
 $Res call({
- String url, String id, String name, String version
+ String url, String id, String name, String version, List<String> addresses
 });
 
 
@@ -272,13 +282,14 @@ class __$ServerInfoCopyWithImpl<$Res>
 
 /// Create a copy of ServerInfo
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? url = null,Object? id = null,Object? name = null,Object? version = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? url = null,Object? id = null,Object? name = null,Object? version = null,Object? addresses = null,}) {
   return _then(_ServerInfo(
 url: null == url ? _self.url : url // ignore: cast_nullable_to_non_nullable
 as String,id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
 as String,version: null == version ? _self.version : version // ignore: cast_nullable_to_non_nullable
-as String,
+as String,addresses: null == addresses ? _self.addresses : addresses // ignore: cast_nullable_to_non_nullable
+as List<String>,
   ));
 }
 

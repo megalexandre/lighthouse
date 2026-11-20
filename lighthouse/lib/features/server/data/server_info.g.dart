@@ -11,6 +11,9 @@ _ServerInfo _$ServerInfoFromJson(Map<String, dynamic> json) => _ServerInfo(
   id: json['Id'] as String,
   name: json['Name'] as String,
   version: json['Version'] as String,
+  addresses:
+      (json['Addresses'] as List<dynamic>?)?.map((e) => e as String).toList() ??
+      const <String>[],
 );
 
 const _$ServerInfoFieldMap = <String, String>{
@@ -18,6 +21,7 @@ const _$ServerInfoFieldMap = <String, String>{
   'id': 'Id',
   'name': 'Name',
   'version': 'Version',
+  'addresses': 'Addresses',
 };
 
 Map<String, dynamic> _$ServerInfoToJson(_ServerInfo instance) =>
@@ -26,4 +30,5 @@ Map<String, dynamic> _$ServerInfoToJson(_ServerInfo instance) =>
       'Id': instance.id,
       'Name': instance.name,
       'Version': instance.version,
+      'Addresses': instance.addresses,
     };

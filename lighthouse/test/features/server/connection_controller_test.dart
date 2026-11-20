@@ -73,6 +73,31 @@ void main() {
       });
     });
 
+    test('back at another address: calls and the next start go there', () {
+      fakeAsync((clock) {
+        final c = start();
+        c.read(authControllerProvider.future);
+        clock.flushMicrotasks();
+        final away = testServer.copyWith(
+          url: 'https://jellyfin.example.com',
+          addresses: ['fedora.local', 'jellyfin.example.com'],
+        );
+        app
+          ..serverUp = true
+          ..serverMovedTo = away;
+
+        c.read(connectionProvider.notifier).report(reachable: false);
+        clock.elapse(const Duration(seconds: 1));
+        clock.flushMicrotasks();
+
+        expect(c.read(connectionProvider).reachable, isTrue);
+        final auth = c.read(authControllerProvider).value!;
+        expect(auth.session!.server, away);
+        expect(auth.server, away);
+        expect(app.store.values[SessionStore.sessionKey], contains(away.url));
+      });
+    });
+
     test('an answer from any call ends it, without waiting', () {
       fakeAsync((clock) {
         final c = start();
