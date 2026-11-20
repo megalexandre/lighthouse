@@ -3,6 +3,14 @@ import 'package:lighthouse/features/server/data/server_url.dart';
 
 void main() {
   const cases = {
+    // A host name alone: http, on Jellyfin's port.
+    'fedora.local': 'http://fedora.local:8096',
+    'fedora.local/': 'http://fedora.local:8096',
+    '192.168.1.10': 'http://192.168.1.10:8096',
+    'fedora.local:8096': 'http://fedora.local:8096',
+    'http://fedora.local:8096/': 'http://fedora.local:8096',
+    // A scheme written: its own port (a reverse proxy on 80 or 443).
+    'http://fedora.local': 'http://fedora.local',
     'jellyfin:8096': 'http://jellyfin:8096',
     '  http://jellyfin:8096/  ': 'http://jellyfin:8096',
     'https://media.example.com': 'https://media.example.com',

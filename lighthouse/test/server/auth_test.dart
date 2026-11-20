@@ -31,6 +31,14 @@ void main() {
       expect(info.version, startsWith('12.4'));
     });
 
+    test("the host name alone: found on Jellyfin's port, over http", () async {
+      // The test server listens on 8096, Jellyfin's own port.
+      final host = Uri.parse(server.url).host;
+      expect(server.url, 'http://$host:8096');
+      final info = await servers.probe(host);
+      expect(info.url, server.url);
+    });
+
     test('accepts the address copied from jellyfin-web', () async {
       final info = await servers.probe('${server.url}/web/#/home.html');
       expect(info.url, server.url);
