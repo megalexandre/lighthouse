@@ -2,6 +2,9 @@
 # Runs once, inside the "app" container, right after it is created.
 set -euo pipefail
 
+# Versioned git hooks (.githooks/pre-commit runs flutter analyze).
+git config core.hooksPath .githooks
+
 # Show what Flutter sees. The "Linux toolchain" line should be green.
 flutter doctor -v || true
 

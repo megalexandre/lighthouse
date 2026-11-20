@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+# Runs `flutter analyze` on the Dart files this commit adds or changes.
+# A quick guard, not a replacement for tool/check.sh (the full gate).
+# Skip once with `git commit --no-verify`.
+set -euo pipefail
+cd "$(git rev-parse --show-toplevel)/lighthouse"
+
+# Paths relative to lighthouse/; deleted files are left out (ACMR). The
+# analyzer checks a file named on its command line even when
+# analysis_options.yaml excludes it, so those are left out here too (keep
+# the two lists alike): generated code, vendored code, the packages.
+mapfile -t files < <(git diff --cached --name-only --diff-filter=ACMR --relative -- \
+  '*.dart' \
+  ':(exclude,glob)**/*.g.dart' \
+  ':(exclude,glob)**/*.freezed.dart' \
+  ':(exclude)lib/l10n/generated' \
+  ':(exclude)third_party' \
+  ':(exclude)packages' \
+  ':(exclude)build' \
+  ':(exclude)linux')
+((${#files[@]})) || exit 0
+
+# Note: the analyzer reads the working tree, so a partly staged file is
+# checked as it is on disk, not as it will be committed.
+printf '\033[1;35m== flutter analyze (%d staged files)\033[0m\n' "${#files[@]}"
+flutter analyze "${files[@]}"
