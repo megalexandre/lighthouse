@@ -208,4 +208,93 @@ void main() {
     expect(red, greaterThan(100));
     expect(other, 0);
   });
+
+  test('smaller headings further down; preformatted text smaller, in '
+      'monospace; a rule between them', () {
+    final layout = EpubLayout(
+      EpubBook.read(
+        buildEpub(['<h3>Three</h3><h4>Four</h4><hr/><pre>code here</pre>']),
+      ),
+      const Size(400, 600),
+    );
+    addTearDown(layout.dispose);
+    TextStyle styleOf(String text) =>
+        textPieces(layout)
+            .firstWhere((p) => p.painter.plainText == text)
+            .painter
+            .text!
+            .style!;
+    const base = EpubTypography();
+    expect(styleOf('Three').fontSize, base.fontSize * 1.2);
+    expect(styleOf('Four').fontSize, base.fontSize * 1.1);
+    expect(styleOf('code here').fontSize, base.fontSize * 0.85);
+    expect(styleOf('code here').fontFamily, 'monospace');
+    expect(layout.pages.single.pieces.whereType<RulePiece>(), hasLength(1));
+  });
+
+  test('a line taller than the page: on a page of its own, cut', () {
+    // 80 px tall: 48 px between the margins, for 58 px lines.
+    final layout = EpubLayout(
+      EpubBook.read(buildEpub(['<p>${'word ' * 12}</p>'])),
+      const Size(200, 80),
+      typography: const EpubTypography(fontSize: 40),
+    );
+    addTearDown(layout.dispose);
+    final painter = textPieces(layout).first.painter;
+    final lines = painter.computeLineMetrics().length;
+    expect(lines, greaterThan(1));
+    expect(layout.pages, hasLength(lines));
+    for (final page in layout.pages) {
+      final [piece] = page.pieces.whereType<TextPiece>().toList();
+      expect(piece.at.dy, 0);
+    }
+  });
+
+  test(
+    'a page is drawn with its images (those decoded) and its rules',
+    () async {
+      final layout = EpubLayout(
+        EpubBook.read(
+          buildEpub(
+            ['<img src="../blue.png"/><hr/><img src="../later.png"/>'],
+            files: {
+              'blue.png': pngHeader(100, 50),
+              'later.png': pngHeader(100, 50),
+            },
+          ),
+        ),
+        const Size(200, 400),
+      );
+      addTearDown(layout.dispose);
+      final recorder = ui.PictureRecorder();
+      ui.Canvas(recorder).drawColor(const Color(0xFF0000FF), BlendMode.src);
+      final blue = await recorder.endRecording().toImage(100, 50);
+      addTearDown(blue.dispose);
+
+      // later.png is not decoded yet: its space stays empty.
+      final page = ui.PictureRecorder();
+      layout.paint(Canvas(page), 0, {
+        'OEBPS/blue.png': blue,
+      }, ink: const Color(0xFFFF0000));
+      final image = await page.endRecording().toImage(200, 400);
+      final bytes = (await image.toByteData())!;
+      image.dispose();
+      var bluePixels = 0;
+      var inkPixels = 0;
+      for (var i = 0; i < bytes.lengthInBytes; i += 4) {
+        final (r, g, b, a) = (
+          bytes.getUint8(i),
+          bytes.getUint8(i + 1),
+          bytes.getUint8(i + 2),
+          bytes.getUint8(i + 3),
+        );
+        if (a == 255 && r == 0 && g == 0 && b == 255) bluePixels++;
+        // The rule, in the ink (premultiplied: red, faint or not).
+        if (a > 0 && r > 0 && g == 0 && b == 0) inkPixels++;
+      }
+      final [shown, _] = layout.pages.single.images.toList();
+      expect(bluePixels, closeTo(shown.rect.width * shown.rect.height, 400));
+      expect(inkPixels, greaterThan(10));
+    },
+  );
 }

@@ -255,9 +255,6 @@ class ThemeCatalogController extends Notifier<ThemeCatalog> {
       log.warning('theme', 'cannot read the themes folder', e);
     }
   }
-
-  /// Reads the folder again now.
-  Future<void> reload() => _loadUser(ref.read(userThemeSourceProvider));
 }
 
 /// No user themes (integration tests: the desktop's folder is left alone).

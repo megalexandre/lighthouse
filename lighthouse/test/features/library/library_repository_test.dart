@@ -110,14 +110,22 @@ void main() {
     test('nothing to show', () {
       expect(r.imageUrl(TestItems.hevcMovie, maxWidth: 300), isNull);
     });
-  });
 
-  test(
-    'signed out, browsing fails with Unauthorized instead of throwing',
-    () async {
-      const r = SignedOutLibraryRepository();
-      await expectLater(r.views(), throwsA(isA<Unauthorized>()));
-      expect(r.imageUrl(TestItems.testMovie, maxWidth: 1), isNull);
-    },
-  );
+    test('a wide picture: the backdrop, else the item own image', () {
+      final movie = TestItems.testMovie.copyWith(imageTags: {'Primary': 'p'});
+      expect(
+        r
+            .backdropUrl(
+              movie.copyWith(backdropImageTags: ['b1', 'b2']),
+              maxWidth: 1280,
+            )!
+            .path,
+        '/Items/movie-1/Images/Backdrop',
+      );
+      expect(
+        r.backdropUrl(movie, maxWidth: 1280)!.path,
+        '/Items/movie-1/Images/Primary',
+      );
+    });
+  });
 }

@@ -163,4 +163,109 @@ void main() {
     expect(parseCssShadow('inset 0 1px 2px #000'), isNull);
     expect(parseCssShadow('0 1px'), isNull);
   });
+
+  group('each value the app cannot use warns, and the fallback stands in', () {
+    Map<String, dynamic> type(Map<String, dynamic> json) =>
+        json['type'] as Map<String, dynamic>;
+    List<dynamic> groups(Map<String, dynamic> json) =>
+        type(json)['groups'] as List;
+    Map<dynamic, dynamic> firstStyle(Map<String, dynamic> json) =>
+        ((groups(json).first as Map)['styles'] as List).first as Map;
+
+    final cases = <String, (void Function(Map<String, dynamic>), String)>{
+      'a component form the app does not have': (
+        (json) => json['components'] = {'topBar': 'sideways'},
+        'components.topBar: "sideways" is not one of standard, floating',
+      ),
+      'a component switch that is not true or false': (
+        (json) => json['components'] = {'rowArrows': 'yes'},
+        'components.rowArrows: "yes" is not true or false',
+      ),
+      'a component the app does not know': (
+        (json) => json['components'] = {'sparkles': true},
+        'components.sparkles: not something the app has',
+      ),
+      'a type group on a family not given': (
+        (json) => (groups(json).first as Map)['family'] = 'serif',
+        'type group "Display": no family "serif"',
+      ),
+      'a font size that cannot be read': (
+        (json) => firstStyle(json)['fontSize'] = 'huge',
+        'text style "hero-title": fontSize unreadable',
+      ),
+      'no text styles at all': (
+        (json) => type(json)['groups'] = <Object>[],
+        'text style "hero-title" is missing',
+      ),
+      'a font family missing': (
+        (json) => (type(json)['families'] as Map).remove('mono'),
+        'font family "mono" is missing',
+      ),
+      'a shadow that cannot be read': (
+        (json) =>
+            (((json['shadow'] as Map)['tokens'] as List).first
+                    as Map)['value'] =
+                'inset 0 1px 2px #000',
+        'shadow "shadow-poster": "inset 0 1px 2px #000" unreadable',
+      ),
+      'no shadows at all': (
+        (json) => (json['shadow'] as Map)['tokens'] = <Object>[],
+        'shadow "shadow-poster" is missing',
+      ),
+    };
+
+    for (final MapEntry(key: name, value: (change, warning)) in cases.entries) {
+      test(name, () {
+        final tokens = DesignTokens.parse(variant(change), fallback: lanterna);
+        expect(tokens.warnings.join('\n'), contains(warning));
+      });
+    }
+
+    test('what stands in is the fallback\'s', () {
+      final tokens = DesignTokens.parse(
+        variant((json) {
+          type(json)['groups'] = <Object>[];
+          (json['shadow'] as Map)['tokens'] = <Object>[];
+        }),
+        fallback: lanterna,
+      );
+      expect(
+        tokens.textStyles['hero-title']!.fontSize,
+        lanterna.textStyles['hero-title']!.fontSize,
+      );
+      expect(
+        tokens.shadows['shadow-poster'],
+        lanterna.shadows['shadow-poster'],
+      );
+    });
+  });
+
+  test(
+    'a theme with no name: "Untitled theme" (the built-in one: "Theme")',
+    () {
+      final unnamed = variant((json) => json.remove('name'));
+      expect(
+        DesignTokens.parse(unnamed, fallback: lanterna).name,
+        'Untitled theme',
+      );
+      expect(DesignTokens.parse(unnamed).name, 'Theme');
+    },
+  );
+
+  test('a weight written with its name ("600 SemiBold") is read', () {
+    final tokens = DesignTokens.parse(
+      variant((json) {
+        final styles =
+            (((json['type'] as Map)['groups'] as List).first as Map)['styles']
+                as List;
+        (styles.first as Map)['fontWeight'] = '600 SemiBold';
+      }),
+      fallback: lanterna,
+    );
+    expect(tokens.textStyles['hero-title']!.fontWeight, 600);
+  });
+
+  test('rgb() with percentages', () {
+    expect(parseCssColor('rgb(100%, 0%, 100%)'), const Color(0xFFFF00FF));
+  });
 }

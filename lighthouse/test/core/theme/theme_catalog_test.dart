@@ -1,5 +1,7 @@
+import 'dart:convert';
 import 'dart:io';
 
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lighthouse/core/storage.dart';
@@ -44,6 +46,19 @@ void main() {
       await changed.timeout(const Duration(seconds: 5));
     });
 
+    test(
+      'a file that cannot be read is left out; the others are listed',
+      () async {
+        await source.directory();
+        File('${dir.path}/themes/a.json').writeAsStringSync(mine);
+        final locked = File('${dir.path}/themes/locked.json')
+          ..writeAsStringSync(mine);
+        await Process.run('chmod', ['000', locked.path]);
+        addTearDown(() => Process.run('chmod', ['644', locked.path]));
+        expect((await source.load()).map((f) => f.id), ['user:a.json']);
+      },
+    );
+
     test('a huge file is not read', () async {
       await source.directory();
       File('${dir.path}/themes/big.json')
@@ -86,6 +101,49 @@ void main() {
       expect(catalog.userDirectory, MemoryUserThemes.path);
     });
 
+    test(
+      'an empty file says why; one with gaps is used, the gaps filled',
+      () async {
+        user.files
+          ..clear()
+          ..['empty.json'] = ''
+          ..['partial.json'] = jsonEncode(
+            (jsonDecode(mine) as Map<String, dynamic>)
+              ..['name'] = 'Partial'
+              ..remove('spacing'),
+          );
+        final catalog = await settled();
+        expect(
+          catalog.byId('user:empty.json')!.error,
+          'empty, or larger than 1 MB',
+        );
+        final partial = catalog.byId('user:partial.json')!.tokens!;
+        expect(partial.name, 'Partial');
+        expect(partial.warnings, isNotEmpty);
+      },
+    );
+
+    test(
+      'a folder that cannot be read: the built-in themes all the same',
+      () async {
+        final unreadable = ProviderContainer.test(
+          overrides: [
+            builtInThemesProvider.overrideWithValue(builtInThemesForTests),
+            userThemeSourceProvider.overrideWithValue(_UnreadableFolder()),
+            appFilesStoreProvider.overrideWithValue(MemoryKeyValueStore()),
+          ],
+        );
+        unreadable.read(themeCatalogProvider);
+        await pumpEventQueue();
+        final catalog = unreadable.read(themeCatalogProvider);
+        expect(catalog.entries.map((e) => e.id), [
+          'builtin:lanterna.json',
+          'builtin:prime.json',
+        ]);
+        expect(catalog.userDirectory, isNull);
+      },
+    );
+
     test('a change in the folder: read again once it settles', () async {
       await settled();
       user.files['other.json'] = mine.replaceFirst('"Mine"', '"Other"');
@@ -117,4 +175,42 @@ void main() {
       },
     );
   });
+
+  testWidgets('the built-in themes are the files in assets/themes', (
+    tester,
+  ) async {
+    final files = (await tester.runAsync(() => loadBuiltInThemes(rootBundle)))!;
+    expect(
+      files.map((f) => f.id),
+      containsAll([ThemeCatalog.baseId, ThemeCatalog.defaultId]),
+    );
+    expect(files.every((f) => f.source.isNotEmpty), isTrue);
+  });
+
+  test('the default theme when Prime cannot be read: Lanterna', () {
+    const lanternaEntry = ThemeEntry(
+      id: ThemeCatalog.baseId,
+      path: 'assets/themes/lanterna.json',
+    );
+    const brokenPrime = ThemeEntry(
+      id: ThemeCatalog.defaultId,
+      path: 'assets/themes/prime.json',
+      error: 'not JSON',
+    );
+    const catalog = ThemeCatalog(entries: [lanternaEntry, brokenPrime]);
+    expect(catalog.fallback, same(lanternaEntry));
+  });
+}
+
+/// A themes folder the app may not read.
+class _UnreadableFolder implements UserThemeSource {
+  @override
+  Future<String> directory() async =>
+      throw const FileSystemException('Permission denied', '/themes');
+
+  @override
+  Future<List<ThemeFile>> load() async => const [];
+
+  @override
+  Stream<void> changes() => const Stream.empty();
 }

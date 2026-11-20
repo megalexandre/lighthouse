@@ -189,6 +189,20 @@ void main() {
     expect(next.map((e) => e.id), [e2.id]);
   });
 
+  test(
+    "one series' next up: its first episode before any is watched (so "
+    'it says nothing of the series being started), then the one after',
+    () async {
+      final show = await named('tvshows', Fixtures.testShow);
+      final season = (await library.seasons(show.id)).single;
+      final [e1, e2, _] = await library.episodes(show.id, season.id);
+      expect((await library.nextUpOf(show.id))?.id, e1.id);
+
+      await server.markPlayed(user, e1.id);
+      expect((await library.nextUpOf(show.id))?.id, e2.id);
+    },
+  );
+
   test('a revoked token ends the session', () async {
     await JellyfinAuthRepository(() async => client).logout(library.session);
     await expectLater(library.views(), throwsA(isA<Unauthorized>()));

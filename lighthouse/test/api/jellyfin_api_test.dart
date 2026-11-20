@@ -107,4 +107,64 @@ void main() {
       ),
     );
   });
+
+  group('how each kind of network error reaches the screens', () {
+    final cases = <String, (DioException Function(RequestOptions), Matcher)>{
+      'a timeout: the server cannot be reached': (
+        (o) => DioException.receiveTimeout(
+          timeout: const Duration(seconds: 30),
+          requestOptions: o,
+        ),
+        isA<ServerUnreachable>(),
+      ),
+      'a bad certificate: says so': (
+        (o) => DioException.badCertificate(requestOptions: o),
+        isA<ServerError>().having((e) => e.badCertificate, 'bad cert', isTrue),
+      ),
+      'cancelled': (
+        (o) => DioException.requestCancelled(requestOptions: o, reason: null),
+        isA<ServerError>(),
+      ),
+      'too slow to decode': (
+        (o) => DioException(
+          requestOptions: o,
+          type: DioExceptionType.transformTimeout,
+        ),
+        isA<ServerError>(),
+      ),
+      'a dropped connection: the server cannot be reached': (
+        (o) => DioException(
+          requestOptions: o,
+          error: const HttpException('Connection closed'),
+        ),
+        isA<ServerUnreachable>(),
+      ),
+      'anything else: a server error, with what happened': (
+        (o) => DioException(requestOptions: o, error: StateError('odd')),
+        isA<ServerError>().having((e) => e.detail, 'detail', contains('odd')),
+      ),
+    };
+    for (final MapEntry(key: name, value: (error, failure)) in cases.entries) {
+      test(name, () async {
+        final adapter = FakeAdapter((options) async => throw error(options));
+        await expectLater(api(adapter).publicSystemInfo(), throwsA(failure));
+      });
+    }
+  });
+
+  test('JSON that is broken is a ServerError', () async {
+    final adapter = FakeAdapter(
+      (_) async => ResponseBody.fromString(
+        '{"ServerName": ',
+        200,
+        headers: {
+          Headers.contentTypeHeader: ['application/json'],
+        },
+      ),
+    );
+    await expectLater(
+      api(adapter).publicSystemInfo(),
+      throwsA(isA<ServerError>()),
+    );
+  });
 }
