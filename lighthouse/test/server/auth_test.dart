@@ -39,6 +39,12 @@ void main() {
       expect(info.url, server.url);
     });
 
+    test('host and port without a scheme: https fails, http wins', () async {
+      final host = Uri.parse(server.url).host;
+      final info = await servers.probe('$host:8096');
+      expect(info.url, server.url);
+    });
+
     test('accepts the address copied from jellyfin-web', () async {
       final info = await servers.probe('${server.url}/web/#/home.html');
       expect(info.url, server.url);

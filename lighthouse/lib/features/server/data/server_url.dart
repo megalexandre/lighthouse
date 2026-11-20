@@ -1,23 +1,31 @@
-/// Jellyfin's own port, for an address typed without one.
-const defaultJellyfinPort = 8096;
+/// Jellyfin's own ports, for an address typed without one.
+const defaultJellyfinHttpPort = 8096;
+const defaultJellyfinHttpsPort = 8920;
 
-/// Turns what the user typed into a base URL, or null when it cannot be one.
+/// The base URLs to try, best first, for what the user typed; empty when it
+/// cannot be an address.
 ///
-///   fedora.local                        → http://fedora.local:8096
-///   jellyfin:8096                       → http://jellyfin:8096
-///   http://fedora.local                 → http://fedora.local
-///   https://media.example.com/          → https://media.example.com
-///   http://host:8096/web/#/home.html    → http://host:8096
-///   https://example.com/jellyfin/web/   → https://example.com/jellyfin
+///   fedora.local              → https://fedora.local, http://fedora.local,
+///                               https://fedora.local:8920,
+///                               http://fedora.local:8096
+///   fedora.local:8096         → https://fedora.local:8096,
+///                               http://fedora.local:8096
+///   http://fedora.local       → http://fedora.local, http://fedora.local:8096
+///   http://fedora.local:8096  → http://fedora.local:8096
+///   https://example.com/jellyfin/web/
+///                             → https://example.com/jellyfin,
+///                               https://example.com:8920/jellyfin
 ///
-/// A bare host name is a server on the local network: http, on Jellyfin's
-/// port. With a scheme written, the port is the scheme's (a server behind
-/// a reverse proxy, on 80 or 443). The last two are what people copy from
-/// the browser's address bar while using jellyfin-web; the base URL is
-/// everything before `/web`.
-String? normalizeServerUrl(String input) {
+/// Without a scheme, https comes before http so a server that offers both is
+/// reached securely. Without a port, the scheme's own (a reverse proxy on 443
+/// or 80) comes before Jellyfin's. What the user wrote is kept: a scheme
+/// written is the only one tried, and so is a port.
+/// The base URL is everything before the last `/web`, so what people copy
+/// from the browser's address bar while using jellyfin-web works too, even
+/// behind a proxy whose own path has a `web` in it.
+List<String> serverUrlCandidates(String input) {
   var text = input.trim();
-  if (text.isEmpty || text.contains(RegExp(r'\s'))) return null;
+  if (text.isEmpty || text.contains(RegExp(r'\s'))) return const [];
   final bare = !text.contains('://');
   if (bare) text = 'http://$text';
 
@@ -25,21 +33,25 @@ String? normalizeServerUrl(String input) {
   if (uri == null ||
       !(uri.isScheme('http') || uri.isScheme('https')) ||
       uri.host.isEmpty) {
-    return null;
+    return const [];
   }
 
   final segments = [...uri.pathSegments.where((s) => s.isNotEmpty)];
-  final web = segments.indexOf('web');
+  final web = segments.lastIndexOf('web');
   if (web >= 0) segments.removeRange(web, segments.length);
 
-  return Uri(
-    scheme: uri.scheme,
+  String url(String scheme, int? port) => Uri(
+    scheme: scheme,
     host: uri.host,
-    port: uri.hasPort
-        ? uri.port
-        : bare
-        ? defaultJellyfinPort
-        : null,
+    port: port,
     pathSegments: segments.isEmpty ? null : segments,
   ).toString();
+
+  final schemes = bare ? ['https', 'http'] : [uri.scheme];
+  if (uri.hasPort) return [for (final s in schemes) url(s, uri.port)];
+  return [
+    for (final s in schemes) url(s, null),
+    for (final s in schemes)
+      url(s, s == 'https' ? defaultJellyfinHttpsPort : defaultJellyfinHttpPort),
+  ];
 }

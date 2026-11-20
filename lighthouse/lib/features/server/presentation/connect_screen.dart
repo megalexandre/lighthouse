@@ -69,7 +69,7 @@ class _ConnectScreenState extends ConsumerState<ConnectScreen> {
           textInputAction: TextInputAction.go,
           decoration: InputDecoration(
             labelText: context.l10n.serverAddress,
-            hintText: 'http://192.168.1.10:8096',
+            hintText: 'https://192.168.1.10:8096',
             border: OutlineInputBorder(),
           ),
           onSubmitted: (_) => _submit(),
