@@ -25,5 +25,5 @@
   // Keeps the ARB key order (gen-l10n does not sort).
   "i18n-ally.sortKeys": false,
   // Translation services would send the app's texts out; off.
-  "i18n-ally.translate.engines": []
+  "i18n-ally.translate.engines": [],
 }

@@ -1,7 +1,7 @@
 // VS Code reads this file for "Reopen in Container".
 // The containers themselves are defined in docker-compose.yml.
 {
-  "name": "jellyfin-desktop (Flutter)",
+  "name": "Project Laghthouse",
 
   // 1. On the host: write .env with your user ids.
   "initializeCommand": "bash .devcontainer/initialize.sh",
@@ -13,6 +13,9 @@
   "workspaceFolder": "/workspace",
   "shutdownAction": "stopCompose",
   "remoteUser": "dev",
+  // The Dockerfile already creates "dev" with the host UID/GID (from .env,
+  // written by initialize.sh), so skip VS Code's extra image that remaps it.
+  "updateRemoteUserUID": false,
 
   // 3. Once, after the container is created.
   "postCreateCommand": "bash .devcontainer/postCreate.sh",
@@ -30,19 +33,24 @@
       "extensions": [
         "Dart-Code.dart-code",
         "Dart-Code.flutter",
+        
         // Gherkin syntax, formatting and outline for the bdd_widget_test
         // .feature files. Step navigation does not reach Dart steps.
         "CucumberOpen.cucumber-official",
+        
         // ARB files (lib/l10n): checks the JSON, the "@key" metadata and the
         // ICU placeholders.
         "Google.arb-editor",
+        
         // The text of each `l10n.<key>` inline, and the keys app_pt.arb
         // lacks. Set up in .vscode/settings.json and
         // .vscode/i18n-ally-custom-framework.yml.
         "lokalise.i18n-ally",
+        
         // Test coverage line by line in the editor, from the lcov.info that
         // `flutter test --coverage` writes (lighthouse/coverage/).
         "ryanluker.vscode-coverage-gutters",
+        
         // Claude Code. Its login and sessions live in the claude-config
         // volume (see docker-compose.yml), so they survive rebuilds.
         "anthropic.claude-code"

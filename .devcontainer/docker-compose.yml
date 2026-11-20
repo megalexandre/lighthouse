@@ -9,19 +9,29 @@ name: jellyfin-dev
 
 services:
   app:
+    # Explicit name: docker-compose over the podman socket would otherwise tag
+    # it docker.io/library/jellyfin-dev-app, but the devcontainer CLI looks for
+    # localhost/jellyfin-dev-app and tries to pull it (connection refused).
+    image: localhost/jellyfin-dev-app
     build:
       context: .
-      dockerfile: Dockerfile
       args:
         USER_UID: ${USER_UID}
         USER_GID: ${USER_GID}
-    command: sleep infinity
+    
+    # Rootless podman maps your host user to root inside the container, so the
+    # bind-mounted repo shows up owned by root and "dev" cannot read folders
+    # like third_party/media_kit_video (mode 700): pub get and analyze fail.
+    # keep-id maps your host uid/gid to the same ids in here, i.e. to "dev".
+    # Podman only; plain Docker rejects it (and does not need it).
+    userns_mode: keep-id
+    
     volumes:
       # The whole workspace, read/write. Same layout as on the host:
       #   /workspace/lighthouse      the Flutter client (we work here)
       #   /workspace/related-repos   jellyfin and jellyfin-desktop, reference
       #                              only; related_repos.sh keeps them current
-      - ..:/workspace:cached
+      - ..:/workspace
       # Dart package cache survives container rebuilds.
       - pub-cache:/home/dev/.pub-cache
       # Claude Code: login, settings and session history survive rebuilds.
@@ -58,6 +68,8 @@ services:
     depends_on:
       - jellyfin
       - jellyfin-test
+
+
 
   jellyfin:
     # Latest stable server. The source in ../related-repos/jellyfin is master (13.x),

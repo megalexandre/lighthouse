@@ -1,13 +1,37 @@
 # Image for the "app" container: everything needed to build and run
 # the Flutter rewrite of Jellyfin Desktop on Linux.
-FROM ubuntu:24.04
+#
+# Two stages. "flutter" downloads the SDK and its Linux artifacts on its own,
+# with only the few packages it needs, so it never depends on the apt list
+# below: adding a system package later reuses the cached SDK (a local copy)
+# instead of downloading ~3 GB again.
+
+# --- Stage 1: Flutter SDK ---------------------------------------------------
+FROM ubuntu:24.04 AS flutter
 
 # Pinned on purpose. Bump it deliberately, never implicitly.
+# Declared here, in this stage only: a build arg in scope is part of the cache
+# key of every RUN after it, so bumping it must not re-run the apt step below.
 ARG FLUTTER_VERSION=3.50.0
 
-# Filled from .devcontainer/.env (see initialize.sh).
-ARG USER_UID=1000
-ARG USER_GID=1000
+ENV PATH=/opt/flutter/bin:${PATH}
+
+# What the flutter tool itself needs to unpack and precache.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends ca-certificates curl git unzip xz-utils \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN curl -fsSL "https://storage.googleapis.com/flutter_infra_release/releases/stable/linux/flutter_linux_${FLUTTER_VERSION}-stable.tar.xz" \
+        | tar -xJ -C /opt
+
+# Pre-download the Linux desktop artifacts so the first `flutter run` does not
+# have to. They land in /opt/flutter/bin/cache and travel with the COPY below.
+# (Run as root here, hence its super-user warning; harmless.)
+RUN git config --global --add safe.directory /opt/flutter \
+    && flutter precache --linux
+
+# --- Stage 2: the dev image -------------------------------------------------
+FROM ubuntu:24.04
 
 ENV DEBIAN_FRONTEND=noninteractive
 ENV PATH=/opt/flutter/bin:${PATH}
@@ -28,7 +52,7 @@ RUN rm -f /etc/apt/apt.conf.d/docker-clean \
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     --mount=type=cache,target=/var/lib/apt,sharing=locked \
     apt-get update && apt-get install -y --no-install-recommends \
-        # Basic tools (Flutter itself is fetched with curl and managed by git)
+        # Basic tools (Flutter itself is managed by git)
         bash ca-certificates curl git unzip xz-utils zip sudo \
         # Toolchain required by `flutter build linux`
         clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev libstdc++-12-dev \
@@ -71,6 +95,11 @@ RUN curl -fsSL -o /tmp/ocr.tgz \
     && rm -rf /tmp/ocr.tgz /tmp/package
 
 # --- Non-root user "dev" ----------------------------------------------------
+# Filled from .devcontainer/.env (see initialize.sh). Declared here, not at
+# the top, so they are not part of the cache key of the steps above.
+ARG USER_UID=1000
+ARG USER_GID=1000
+
 # ubuntu:24.04 ships a user "ubuntu" with uid/gid 1000. Remove it first so
 # its ids never clash with yours, then create "dev" with your host ids.
 RUN userdel --remove ubuntu \
@@ -78,26 +107,21 @@ RUN userdel --remove ubuntu \
     && useradd --uid "${USER_UID}" --gid "${USER_GID}" --create-home --shell /bin/bash dev \
     && echo "dev ALL=(root) NOPASSWD:ALL" > /etc/sudoers.d/dev \
     && chmod 0440 /etc/sudoers.d/dev \
-    # Empty folder for the SDK, owned by dev (filled in the next step).
-    && install -d -o dev -g dev /opt/flutter \
     # Mount points for the named volumes in docker-compose.yml. A new volume
     # copies the owner of the folder it mounts over; without these folders
     # it would be owned by root and dev could not write to it.
     && install -d -o dev -g dev /home/dev/.pub-cache /home/dev/.claude
 
+# --- Flutter SDK ------------------------------------------------------------
+# Copied from stage 1, owned by dev in the same step. Why it matters: each
+# step is saved as an image layer, and changing the owner later (chown -R)
+# would store a second full copy of the SDK (~3 GB).
+COPY --from=flutter --chown=dev:dev /opt/flutter /opt/flutter
+
 USER dev
 WORKDIR /workspace
 
-# --- Flutter SDK ------------------------------------------------------------
-# Downloaded as "dev", so the files are owned by dev from the start.
-# Why it matters: each RUN is saved as an image layer. Changing the owner
-# later (chown -R) would store a second full copy of the SDK (~2.7 GB).
-RUN curl -fsSL "https://storage.googleapis.com/flutter_infra_release/releases/stable/linux/flutter_linux_${FLUTTER_VERSION}-stable.tar.xz" \
-        | tar -xJ -C /opt
-
-# Configure Flutter once, at build time, and pre-download the Linux desktop
-# artifacts so the first `flutter run` does not have to.
-RUN flutter config --no-analytics --enable-linux-desktop --no-enable-web \
-    && flutter precache --linux
+# Per-user settings (in ~/.config/flutter), so they are made as dev.
+RUN flutter config --no-analytics --enable-linux-desktop --no-enable-web
 
 CMD ["sleep", "infinity"]
