@@ -53,13 +53,34 @@ fi
 
 step "Server tests"
 (cd packages/jellyfin_test_server && dart test)
-flutter test --tags server
+# Only test/server/ is compiled for them (all of test/ took twice as long
+# just to find the tag), so a server test elsewhere would go unrun.
+if strays=$(grep -rl --include='*.dart' "@Tags(\['server'\])" test | grep -v '^test/server/'); then
+  echo "Server tests outside test/server/ (move them there):" >&2
+  echo "$strays" >&2
+  exit 1
+fi
+flutter test --tags server test/server
 
 step "Integration tests (Linux, Xvfb)"
 # They build the Linux app: no other Flutter Linux build meanwhile (an
 # AppImage built at the same time got this build's debug engine, and this
 # run hung). See tool/with_build_lock.sh.
 source tool/with_build_lock.sh
-xvfb-run -a flutter test integration_test -d linux
+# All in one app run: `flutter test integration_test` builds and starts the
+# app once per file, a third of the time. Made here, so a new test is in
+# it, and gone after (by hand, `flutter test integration_test` would run
+# every test twice).
+all=integration_test/all_in_one_test.dart
+trap 'rm -f "$all"' EXIT
+{
+  echo '// Made by tool/check.sh: every integration test in one app run.'
+  mapfile -t tests < <(cd integration_test && find . -name '*_test.dart' ! -name all_in_one_test.dart | sed 's|^\./||' | sort)
+  for i in "${!tests[@]}"; do echo "import '${tests[$i]}' as t$i;"; done
+  echo 'void main() {'
+  for i in "${!tests[@]}"; do echo "  t$i.main();"; done
+  echo '}'
+} > "$all"
+xvfb-run -a flutter test "$all" -d linux
 
 step "OK"

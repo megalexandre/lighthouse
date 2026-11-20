@@ -32,6 +32,8 @@ migrate_working_dir/
 .pub/
 /build/
 /coverage/
+# Made and removed by tool/check.sh while it runs.
+/integration_test/all_in_one_test.dart
 
 # Symbolication related
 app.*.symbols

@@ -82,7 +82,7 @@ Every phase is done only when `tool/check.sh` passes. It runs four layers:
 | --- | --- | --- | --- |
 | Unit | `test/` | nothing | `flutter test --exclude-tags server` |
 | Widget | `test/` | nothing (fake API through Riverpod overrides) | same |
-| API client vs real server | `test/server/` (tag `server`) | test server | `flutter test --tags server` |
+| API client vs real server | `test/server/` (tag `server`) | test server | `flutter test --tags server test/server` |
 | App integration | `integration_test/` | test server, Xvfb | `xvfb-run -a flutter test integration_test -d linux` |
 
 `tool/check.sh --fast` skips the last two.

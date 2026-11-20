@@ -65,7 +65,7 @@ Run commands from `lighthouse/`.
 | Full gate (must pass before a commit; CI runs the same) | `tool/check.sh` |
 | Format, analysis and the tests that need no server | `tool/check.sh --fast` |
 | Unit and widget tests | `flutter test --exclude-tags server` |
-| API client against the test server | `flutter test --tags server` |
+| API client against the test server | `flutter test --tags server test/server` |
 | Integration tests | `xvfb-run -a flutter test integration_test -d linux` |
 | Integration tests on an AOT (profile) build | `tool/profile_test.sh` |
 | Behaviour scenarios (`.feature`) | `tool/scenarios.sh [file] ["scenario name"]` |
@@ -73,7 +73,9 @@ Run commands from `lighthouse/`.
 | Run the app | `tool/dev_server.sh && flutter run -d linux --dart-define=JELLYFIN_SERVER=$JELLYFIN_URL` |
 | Release AppImage | `tool/build_appimage.sh` |
 
-A piece of work is done only when `tool/check.sh` is green. Integration tests and AppImage builds
+A piece of work is done only when `tool/check.sh` is green. It runs the integration tests in one
+app run (an entry file it makes and removes), which takes a third less time than one app per file;
+server tests (`@Tags(['server'])`) must live in `test/server/`, the only folder it runs them from. Integration tests and AppImage builds
 both build the Linux app and must not run at the same time (`tool/with_build_lock.sh`).
 `build/` after the integration tests holds the *test* app: `flutter build linux` before running
 the bundle by hand.
