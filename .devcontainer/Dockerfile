@@ -54,6 +54,9 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     apt-get update && apt-get install -y --no-install-recommends \
         # Basic tools (Flutter itself is managed by git)
         bash ca-certificates curl git unzip xz-utils zip sudo \
+        # ssh client for git over ssh. No keys in the image: VS Code forwards
+        # the host's ssh-agent (SSH_AUTH_SOCK).
+        openssh-client \
         # Toolchain required by `flutter build linux`
         clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev libstdc++-12-dev \
         # media_kit_libs_linux builds mimalloc with a nested "Unix Makefiles" CMake

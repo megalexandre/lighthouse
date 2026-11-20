@@ -167,7 +167,7 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
           key: ReaderScreen.backButton,
           color: context.tokens.osdInk,
           icon: const Icon(Icons.arrow_back),
-          onPressed: () => context.pop(),
+          onPressed: context.pop,
         ),
       ),
     ],
