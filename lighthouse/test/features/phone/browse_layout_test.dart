@@ -2,16 +2,14 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:lighthouse/api/models/base_item_dto.dart';
 import 'package:lighthouse/features/home/presentation/home_screen.dart';
 import 'package:lighthouse/features/item/presentation/item_screen.dart';
-import 'package:lighthouse/features/library/presentation/card_actions.dart';
 import 'package:lighthouse/features/library/presentation/item_card.dart';
-import 'package:lighthouse/features/player/presentation/player_screen.dart';
 import 'package:lighthouse/router.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../../support/fakes.dart';
 
-// The browsing pages laid out for a phone: what fits on its first screen,
-// and the long press that stands in for the hover panel.
+// The browsing pages laid out for a phone: what fits on its first screen.
+// What a finger does on them is in test/scenarios/browse/touch.feature.
 void main() {
   Rect rectOf(WidgetTester tester, Finder finder) => tester.getRect(finder);
 
@@ -76,51 +74,5 @@ void main() {
         .openOnPhone(tester, Routes.home, sideways: true);
     final row = find.byKey(HomeScreen.latestRow(TestItems.moviesView.id));
     expect(rectOf(tester, row).top, lessThan(TestWindows.phoneSideways.height));
-  });
-
-  group('a long press on a card', () {
-    final card = find.byKey(ItemCard.keyFor(TestItems.testMovie.id));
-
-    Future<TestApp> pressMovie(WidgetTester tester) async {
-      final app = TestApp(theme: TestApp.prime);
-      await app.openOnPhone(tester, Routes.library(TestItems.moviesView.id));
-      await tester.longPress(card);
-      await tester.pumpAndSettle();
-      return app;
-    }
-
-    testWidgets('plays', (tester) async {
-      await pressMovie(tester);
-      expect(find.byType(CardActions), findsOneWidget);
-      await tester.tap(find.byKey(CardActions.mainButton));
-      await tester.pumpAndSettle();
-      expect(find.byType(CardActions), findsNothing);
-      expect(find.byType(PlayerScreen), findsOneWidget);
-    });
-
-    testWidgets('marks it watched', (tester) async {
-      final app = await pressMovie(tester);
-      await tester.tap(find.byKey(CardActions.watchedButton));
-      await tester.pumpAndSettle();
-      expect(app.playback.played, {TestItems.testMovie.id: true});
-      expect(find.byType(CardActions), findsNothing);
-    });
-
-    testWidgets('opens the details', (tester) async {
-      await pressMovie(tester);
-      await tester.tap(find.byKey(CardActions.detailsButton));
-      await tester.pumpAndSettle();
-      expect(find.byType(ItemScreen), findsOneWidget);
-    });
-
-    testWidgets('does nothing with a mouse (the panel is the hover\'s)', (
-      tester,
-    ) async {
-      await TestApp(theme: TestApp.prime)
-          .open(tester, Routes.library(TestItems.moviesView.id));
-      await tester.longPress(card);
-      await tester.pumpAndSettle();
-      expect(find.byType(CardActions), findsNothing);
-    });
   });
 }

@@ -19,6 +19,10 @@ late WidgetTester tester;
 /// Where the mouse last went, for a click there.
 Offset? mouseAt;
 
+/// A finger kept on the screen, from `I slide a finger along the seek bar`
+/// to `I lift the finger`.
+TestGesture? finger;
+
 /// The keys the steps name, as the desktop client's keyboard.json does.
 const keys = {
   'Esc': LogicalKeyboardKey.escape,

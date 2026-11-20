@@ -95,14 +95,16 @@ Dois lugares:
 - **`test/scenarios/<área>/`**, com fakes (`TestApp`): rápido, sem rede. Os fluxos de usuário de todas as telas:
   - `auth/`: `connect`, `login` (sair, trocar de servidor, reabrir já logado).
   - `browse/`: `home`, `library`, `item`, `cards` (assistido, progresso, hover, painel do Prime) e `prime` (barra de
-    abas, carrossel, busca, menu de perfil, setas das fileiras). Uma pasta só, porque navegam pelas mesmas telas e
-    dividem os passos.
+    abas, carrossel, busca, menu de perfil, setas das fileiras), `phone_navigation` (barra embaixo, rail, folha do
+    perfil, voltar do sistema) e `touch` (toque longo no card, carrossel deslizado). Uma pasta só, porque navegam
+    pelas mesmas telas e dividem os passos.
   - `player/`: `playing` (play, retomar, pausa, setas, OSD, fim, erro), `playing_on` (próximo episódio, Next e
     Previous, álbum, tela cheia e volume entre episódios, autoplay desligado), `controls` (menus e teclas de áudio e
     legenda, volume, tela cheia, transcode), `on_screen_controls` (capítulos, ±10 s, velocidade, Esc), `up_next`,
-    `keyboard_tracks` e `connection_lost` (playback interrompido, reporte enviado na volta do servidor).
+    `keyboard_tracks`, `connection_lost` (playback interrompido, reporte enviado na volta do servidor) e `touch` (toque,
+    duplo toque, prévia da barra, voltar do sistema).
   - `reader/`: `reading` (quadrinho: virar página, salvar o lugar, lido, biblioteca e home), `epub` (diagramação,
-    sumário, marcadores, temas, fonte, links) e `reading_offline`.
+    sumário, marcadores, temas, fonte, links), `reading_offline` e `phone` (voltar do sistema).
   - `search/`, `server/connection` (o banner) e `settings/` (`settings`, `language`).
 
   Os testes Dart ficam em `test/features/<área>/`: só o que nenhum usuário vê (quantas vezes e com que páginas o
@@ -345,7 +347,7 @@ Dois eixos, decididos em lugares diferentes:
     - O carrossel se desliza; os pontos viram só indicadores e o leitor de tela o rola como lista.
   - No celular, o campo de busca inline não cabia e transbordava; a A1b tirou a busca da barra do topo abaixo do
     desktop.
-  - Voltar do sistema (`test/features/phone/system_back_test.dart`) faz o que o Esc faz:
+  - Voltar do sistema (cenários `browse/phone_navigation`, `player/touch`, `reader/phone`) faz o que o Esc faz:
     - no player, sobe um nível no menu, fecha o menu e só então sai, salvando o ponto de retomada;
     - no leitor, fecha o sumário antes de sair;
     - com o campo de busca da barra do topo aberto (tablet deitado), fecha o campo antes de sair da home.
@@ -364,8 +366,9 @@ Dois eixos, decididos em lugares diferentes:
     Bibliotecas marcado na navegação.
   - Buscar abre a página de busca. Perfil abre uma folha (`ProfileSheet`) com quem está conectado, o modo do tema,
     Configurações e Sair, os mesmos itens (e chaves) do menu do desktop.
-  - Testes em `test/features/phone/navigation_test.dart`.
-- **A1c, telas de navegação (feita):** testes em `test/features/phone/browse_layout_test.dart`.
+  - Cenários em `test/scenarios/browse/phone_navigation.feature`.
+- **A1c, telas de navegação (feita):** testes em `test/features/phone/browse_layout_test.dart`; o toque longo e o
+  carrossel em `test/scenarios/browse/touch.feature`.
   - Margens: `WindowSize.margin` (16 px no celular, 24 acima, como no Material 3).
   - Home:
     - No celular, os cards das linhas têm 75% da largura (cerca de 3 pôsteres à vista).
@@ -380,7 +383,7 @@ Dois eixos, decididos em lugares diferentes:
     celular.
   - Cards no toque: o toque longo abre `CardActions`, uma folha com a ação principal, "marcar como visto" e
     Detalhes, com as regras do painel do hover (`cardMainAction`, `setWatched`). Com o mouse, nada muda.
-- **A1d, player e leitor no toque (feita):** testes em `test/features/phone/player_touch_test.dart`.
+- **A1d, player e leitor no toque (feita):** cenários em `test/scenarios/player/touch.feature`.
   - Player no toque (vídeo):
     - Um toque mostra ou esconde os controles e não pausa. O play/pausa é o botão da fileira de transporte, e o botão
       central aparece com o vídeo pausado.
@@ -394,14 +397,14 @@ Dois eixos, decididos em lugares diferentes:
   - Leitor: já era guiado pelo toque. As barras de cima e de baixo respeitam as áreas seguras e os alvos de toque
     (`phone_layout_test`). O modo de duas páginas na paisagem continua com a L.
 - **Pronto (A1 feita):**
-  - `test/features/phone/` cobre em widget tests, no celular em pé e deitado e em modo toque:
-    - o layout: áreas seguras, alvos de toque, fonte grande e o que cabe na primeira tela;
-    - a navegação e o voltar do sistema;
-    - o toque longo e o player.
+  - No celular em pé e deitado e em modo toque:
+    - `test/features/phone/` (widget tests) cobre o layout, que é medida: áreas seguras, alvos de toque, fonte
+      grande e o que cabe na primeira tela;
+    - os cenários cobrem o comportamento: a navegação e o voltar do sistema, o toque longo, o carrossel e o player.
+      `Given the app runs on a {'phone'}` (`TestApp.runOn`, `TestDevice`) faz o `When` seguinte abrir o app no
+      celular, em Prime.
   - Nada mudou no desktop: os cenários e os testes de integração seguem verdes. A única mudança neles é o passo
     `i_press`, que envia as teclas como Android.
-  - Pendente: cenários `.feature` de celular (Gherkin), se quisermos o comportamento do celular também descrito
-    nessa forma.
 
 **A2, infraestrutura (planejar em detalhe ao chegar):**
 - Projeto e dependências:

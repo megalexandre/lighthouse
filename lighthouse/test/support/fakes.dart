@@ -1001,13 +1001,28 @@ class TestApp {
   ProviderContainer container() =>
       ProviderContainer.test(overrides: overrides, retry: noAutomaticRetry);
 
+  /// The touch device [open] opens on, once a scenario's `the app runs on
+  /// a {'phone'}` has set one ([runOn]); null, the desktop.
+  TestDevice? device;
+
+  /// Makes [open] open on [device], in Prime: the phone layout is made for
+  /// it only.
+  void runOn(TestDevice device) {
+    this.device = device;
+    appFiles.values['appearance'] = '{"chosenTheme":"$prime"}';
+  }
+
   /// Signed in, at [location], in a [window] of that size from the start
-  /// (a desktop one by default).
+  /// (a desktop one by default), or on the [device] when there is one.
   Future<void> open(
     WidgetTester tester,
     String location, {
     Size window = TestWindows.desktop,
   }) async {
+    if (device case final device?) {
+      usePhone(tester, sideways: device.sideways);
+      window = device.window;
+    }
     useWindow(tester, window);
     signIn();
     await pump(tester);
@@ -1075,6 +1090,28 @@ void useWindow(WidgetTester tester, Size size) {
     ..physicalSize = size
     ..devicePixelRatio = 1;
   addTearDown(tester.view.reset);
+}
+
+/// The touch devices the scenarios run the app on ([TestApp.runOn]), by
+/// the name a step gives them.
+enum TestDevice {
+  phone('phone', TestWindows.phone),
+  phoneSideways('phone on its side', TestWindows.phoneSideways, sideways: true),
+
+  /// Wide enough for the desktop's top bar, with its search field.
+  tabletSideways('tablet on its side', Size(1280, 800));
+
+  const TestDevice(this.called, this.window, {this.sideways = false});
+
+  /// The device a step names: 'phone', 'phone on its side'...
+  factory TestDevice.called(String name) =>
+      values.firstWhere((d) => d.called == name);
+
+  final String called;
+  final Size window;
+
+  /// Held sideways: the camera's notch is on the left ([PhoneInsets]).
+  final bool sideways;
 }
 
 /// What a phone's system takes from the window, in [TestPhone]: the
