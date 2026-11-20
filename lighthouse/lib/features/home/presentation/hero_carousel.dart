@@ -38,10 +38,16 @@ class HeroCarousel extends ConsumerStatefulWidget {
   static const swipeVelocity = 200.0;
 
   /// Its height in a window [size]: 16:9 of the width, at least 560 and at
-  /// most 86 % of the height (below expanded: 640).
-  static double heightFor(Size size) => isNarrow(size.width)
-      ? 640
-      : math.max(560.0, math.min(size.width * 9 / 16, size.height * 0.86));
+  /// most 86 % of the height (below expanded: 640). In a short window (a
+  /// phone on its side) 80 % of the height, so the first row shows below.
+  static double heightFor(Size size) {
+    if (size.height < WindowSize.shortHeight) {
+      return math.max(240.0, size.height * 0.8);
+    }
+    return isNarrow(size.width)
+        ? 640
+        : math.max(560.0, math.min(size.width * 9 / 16, size.height * 0.86));
+  }
 
   /// Below expanded: the phone and tablet layout (smaller title, no
   /// arrows).
@@ -124,7 +130,11 @@ class _HeroCarouselState extends ConsumerState<HeroCarousel> {
               Positioned(
                 left: 0,
                 right: 0,
-                bottom: narrow ? 48 : HeroCarousel.heightFor(size) * 0.15 - 40,
+                bottom: WindowSize.isShort(context)
+                    ? 8
+                    : narrow
+                    ? 48
+                    : HeroCarousel.heightFor(size) * 0.15 - 40,
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [

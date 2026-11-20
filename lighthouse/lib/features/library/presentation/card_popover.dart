@@ -97,19 +97,8 @@ class _CardPopoverState extends ConsumerState<CardPopover>
 
   Future<void> _toggleWatched(bool played) async {
     setState(() => _saving = true);
-    try {
-      await ref
-          .read(playbackRepositoryProvider)
-          .setPlayed(widget.item.id, played: !played);
-      ref.read(watchStateProvider.notifier).changed();
-    } on Failure catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.maybeOf(context)
-            ?.showSnackBar(SnackBar(content: Text(e.describe(context.l10n))));
-      }
-    } finally {
-      if (mounted) setState(() => _saving = false);
-    }
+    await setWatched(context, ref, widget.item.id, watched: !played);
+    if (mounted) setState(() => _saving = false);
   }
 
   @override
@@ -179,31 +168,13 @@ class _CardPopoverState extends ConsumerState<CardPopover>
     final theme = Theme.of(context);
     final data = item.userData;
     final played = data?.played ?? false;
-    final position = ticksToDuration(data?.playbackPositionTicks ?? 0);
     final progress = (data?.playedPercentage ?? 0) / 100;
-    final resumable = !played && position > Duration.zero;
     final pixels = (width * MediaQuery.devicePixelRatioOf(context)).round();
     final picture = ref
         .watch(libraryRepositoryProvider)
         .backdropUrl(item, maxWidth: pixels);
 
-    final (String label, IconData icon, String route) = switch (item.type) {
-      BaseItemKind.series => (
-        context.l10n.episodes,
-        Icons.list,
-        Routes.item(item.id),
-      ),
-      BaseItemKind.book => (
-        resumable ? context.l10n.continueReading : context.l10n.read,
-        Icons.auto_stories,
-        Routes.read(item.id),
-      ),
-      _ => (
-        resumable ? context.l10n.resume : context.l10n.play,
-        Icons.play_arrow,
-        Routes.play(item.id, start: resumable ? position : Duration.zero),
-      ),
-    };
+    final (:label, :icon, :route) = cardMainAction(item, context.l10n);
     final facts = [
       ?item.productionYear?.toString(),
       if (item.type == BaseItemKind.series && (item.childCount ?? 0) > 0)
@@ -478,5 +449,53 @@ class _Round extends StatelessWidget {
         overlayColor: const WidgetStatePropertyAll(Colors.transparent),
       ),
     );
+  }
+}
+
+/// A card's main action, on its panel and its long-press sheet: a series'
+/// episodes; a book read or read on; anything else played or resumed.
+({String label, IconData icon, String route}) cardMainAction(
+  BaseItemDto item,
+  AppLocalizations l10n,
+) {
+  final data = item.userData;
+  final position = ticksToDuration(data?.playbackPositionTicks ?? 0);
+  final resumable = !(data?.played ?? false) && position > Duration.zero;
+  return switch (item.type) {
+    BaseItemKind.series => (
+      label: l10n.episodes,
+      icon: Icons.list,
+      route: Routes.item(item.id),
+    ),
+    BaseItemKind.book => (
+      label: resumable ? l10n.continueReading : l10n.read,
+      icon: Icons.auto_stories,
+      route: Routes.read(item.id),
+    ),
+    _ => (
+      label: resumable ? l10n.resume : l10n.play,
+      icon: Icons.play_arrow,
+      route: Routes.play(item.id, start: resumable ? position : Duration.zero),
+    ),
+  };
+}
+
+/// Marks [itemId] watched or not on the server; a failure is said in a
+/// snack bar.
+Future<void> setWatched(
+  BuildContext context,
+  WidgetRef ref,
+  String itemId, {
+  required bool watched,
+}) async {
+  final messenger = ScaffoldMessenger.maybeOf(context);
+  final l10n = context.l10n;
+  try {
+    await ref
+        .read(playbackRepositoryProvider)
+        .setPlayed(itemId, played: watched);
+    ref.read(watchStateProvider.notifier).changed();
+  } on Failure catch (e) {
+    messenger?.showSnackBar(SnackBar(content: Text(e.describe(l10n))));
   }
 }

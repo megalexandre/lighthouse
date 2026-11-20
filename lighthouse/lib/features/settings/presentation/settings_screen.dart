@@ -393,7 +393,9 @@ class _SettingTile extends StatelessWidget {
         );
       }
       final theme = Theme.of(context);
-      return Padding(
+      return Container(
+        // The full width, so a row without help is not centred as narrow.
+        width: double.infinity,
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,

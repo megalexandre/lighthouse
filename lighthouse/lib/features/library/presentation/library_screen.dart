@@ -4,6 +4,7 @@ import 'package:material_ui/material_ui.dart';
 import '../../../core/failure.dart';
 import '../../../core/theme/app_tokens.dart';
 import '../../../core/theme/design_tokens.dart';
+import '../../../core/window_size.dart';
 import '../../../l10n/l10n.dart';
 import '../../../widgets/error_retry.dart';
 import '../../home/presentation/browse_navigation.dart';
@@ -91,6 +92,9 @@ class _Grid extends StatelessWidget {
   final VoidCallback loadMore;
 
   static const maxCardWidth = 180.0;
+
+  /// On a phone: three posters across.
+  static const compactMaxCardWidth = 120.0;
   static const spacing = 16.0;
 
   /// How many cards before the end the next page is asked for.
@@ -108,8 +112,13 @@ class _Grid extends StatelessWidget {
     final aspect = cardAspectRatio(page.items.first.type);
     return LayoutBuilder(
       builder: (context, constraints) {
-        final usable = constraints.maxWidth - 2 * 24;
-        final columns = ((usable + spacing) / (maxCardWidth + spacing))
+        final size = WindowSize.ofWidth(constraints.maxWidth);
+        final margin = size.margin;
+        final maxWidth = size == WindowSize.compact
+            ? compactMaxCardWidth
+            : maxCardWidth;
+        final usable = constraints.maxWidth - 2 * margin;
+        final columns = ((usable + spacing) / (maxWidth + spacing))
             .ceil()
             .clamp(2, 12);
         final cardWidth = (usable - (columns - 1) * spacing) / columns;
@@ -117,8 +126,9 @@ class _Grid extends StatelessWidget {
         return CustomScrollView(
           slivers: [
             SliverPadding(
-              padding: const EdgeInsets.all(24)
-                  .copyWith(bottom: 24 + MediaQuery.paddingOf(context).bottom),
+              padding: EdgeInsets.all(
+                margin,
+              ).copyWith(bottom: margin + MediaQuery.paddingOf(context).bottom),
               sliver: SliverGrid.builder(
                 gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                   crossAxisCount: columns,

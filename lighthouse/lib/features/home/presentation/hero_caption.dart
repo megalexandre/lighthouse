@@ -5,6 +5,7 @@ import 'package:material_ui/material_ui.dart';
 import '../../../api/models/base_item_dto.dart';
 import '../../../core/theme/app_tokens.dart';
 import '../../../core/ticks.dart';
+import '../../../core/window_size.dart';
 import '../../../l10n/l10n.dart';
 import '../../../router.dart';
 import '../../../widgets/focus_ring.dart';
@@ -26,6 +27,8 @@ class HeroCaption extends StatelessWidget {
     final tokens = context.tokens;
     final theme = Theme.of(context);
     final ink = tokens.osdInk;
+    // A short window (a phone on its side): one line of title, no overview.
+    final short = WindowSize.isShort(context);
     final movie = item.type != BaseItemKind.series;
     final facts = [
       ?item.productionYear?.toString(),
@@ -47,8 +50,8 @@ class HeroCaption extends StatelessWidget {
             ),
           ),
           SizedBox(height: tokens.space(3)),
-          _Title(name: item.name, narrow: narrow),
-          SizedBox(height: tokens.space(4)),
+          _Title(name: item.name, narrow: narrow, lines: short ? 1 : 3),
+          SizedBox(height: tokens.space(short ? 2 : 4)),
           if (facts.isNotEmpty)
             Text(
               facts,
@@ -58,7 +61,7 @@ class HeroCaption extends StatelessWidget {
               ),
             ),
           if (item.overview case final String overview
-              when overview.isNotEmpty) ...[
+              when overview.isNotEmpty && !short) ...[
             SizedBox(height: tokens.space(3)),
             Text(
               overview,
@@ -73,7 +76,7 @@ class HeroCaption extends StatelessWidget {
                       ?.copyWith(color: ink),
             ),
           ],
-          SizedBox(height: tokens.space(6)),
+          SizedBox(height: tokens.space(short ? 4 : 6)),
           _Actions(item: item, movie: movie, narrow: narrow),
         ],
       ),
@@ -84,10 +87,11 @@ class HeroCaption extends StatelessWidget {
 /// The item's name in capitals, sized to the window (so not a fixed step
 /// of the type scale), over a soft shadow.
 class _Title extends StatelessWidget {
-  const _Title({required this.name, required this.narrow});
+  const _Title({required this.name, required this.narrow, this.lines = 3});
 
   final String name;
   final bool narrow;
+  final int lines;
 
   @override
   Widget build(BuildContext context) {
@@ -97,7 +101,7 @@ class _Title extends StatelessWidget {
         : (MediaQuery.sizeOf(context).width * 0.042).clamp(36.0, 68.0);
     return Text(
       name.toUpperCase(),
-      maxLines: 3,
+      maxLines: lines,
       overflow: TextOverflow.ellipsis,
       style: Theme.of(context).textTheme.displayLarge?.copyWith(
         color: tokens.osdInk,

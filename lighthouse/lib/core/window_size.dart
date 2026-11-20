@@ -50,6 +50,9 @@ enum WindowSize implements Comparable<WindowSize> {
   static bool isShort(BuildContext context) =>
       MediaQuery.sizeOf(context).height < shortHeight;
 
+  /// The page's margin at the sides: 16 on a phone, 24 above (Material 3).
+  double get margin => this == compact ? 16 : 24;
+
   /// At least as roomy as [other].
   bool atLeast(WindowSize other) => index >= other.index;
 

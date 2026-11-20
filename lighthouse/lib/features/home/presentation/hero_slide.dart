@@ -5,6 +5,7 @@ import 'package:material_ui/material_ui.dart';
 
 import '../../../api/models/base_item_dto.dart';
 import '../../../core/theme/app_tokens.dart';
+import '../../../core/window_size.dart';
 import '../../library/data/library_repository.dart';
 import 'hero_caption.dart';
 import 'hero_carousel.dart';
@@ -64,7 +65,11 @@ class _SlideState extends ConsumerState<HeroSlide> {
         Positioned(
           left: left,
           right: widget.narrow ? margin + system.right : null,
-          bottom: widget.narrow ? 96 : HeroCarousel.heightFor(size) * 0.15,
+          bottom: WindowSize.isShort(context)
+              ? 36
+              : widget.narrow
+              ? 96
+              : HeroCarousel.heightFor(size) * 0.15,
           child: ConstrainedBox(
             constraints: BoxConstraints(
               maxWidth: widget.narrow

@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../../../api/models/base_item_dto.dart';
+import '../../../core/window_size.dart';
 import '../../../widgets/error_retry.dart';
 import '../../library/application/library_providers.dart';
 import 'item_actions.dart';
@@ -28,6 +29,7 @@ class ItemScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final item = ref.watch(itemProvider(itemId));
+    final margin = WindowSize.of(context).margin;
     return Scaffold(
       appBar: AppBar(title: Text(item.value?.name ?? '')),
       body: switch (item) {
@@ -36,8 +38,9 @@ class ItemScreen extends ConsumerWidget {
           top: false,
           bottom: false,
           child: ListView(
-            padding: const EdgeInsets.all(24)
-                .copyWith(bottom: 24 + MediaQuery.paddingOf(context).bottom),
+            padding: EdgeInsets.all(
+              margin,
+            ).copyWith(bottom: margin + MediaQuery.paddingOf(context).bottom),
             children: [
               ItemHeader(item: item),
               if (isPlayable(item)) ...[

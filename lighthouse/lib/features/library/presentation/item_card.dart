@@ -10,10 +10,12 @@ import '../../../api/models/base_item_dto.dart';
 import '../../../api/models/user_item_data_dto.dart';
 import '../../../core/theme/app_tokens.dart';
 import '../../../core/theme/design_tokens.dart';
+import '../../../core/touch.dart';
 import '../../../core/window_size.dart';
 import '../../../l10n/l10n.dart';
 import '../../../router.dart';
 import '../data/library_repository.dart';
+import 'card_actions.dart';
 import 'card_popover.dart';
 
 /// Shape of an item's picture: posters for movies and series, squares for
@@ -304,6 +306,10 @@ class _ItemCardState extends State<ItemCard> {
           onHover: (h) => setState(() => _hovered = h && !expands),
           onFocusChange: (f) => setState(() => _focused = f),
           onTap: () => openItem(context, item),
+          // On touch the long press does what the hover panel does.
+          onLongPress: isTouch(context) && CardActions.offeredFor(item)
+              ? () => unawaited(CardActions.show(context, item))
+              : null,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [

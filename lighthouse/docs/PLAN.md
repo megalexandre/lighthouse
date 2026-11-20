@@ -365,18 +365,21 @@ Dois eixos, decididos em lugares diferentes:
   - Buscar abre a página de busca. Perfil abre uma folha (`ProfileSheet`) com quem está conectado, o modo do tema,
     Configurações e Sair, os mesmos itens (e chaves) do menu do desktop.
   - Testes em `test/features/phone/navigation_test.dart`.
-- **A1c, telas de navegação:**
-  - Home: no celular, cards das linhas menores (cerca de 3 pôsteres visíveis por linha) e sem `hoverRoom` no modo
-    toque. Carrossel com altura máxima quando a janela é baixa (`isShort`), para a primeira linha aparecer.
-  - Biblioteca: colunas calculadas por largura mínima de card (cerca de 3 pôsteres no compact, mais deitado) e
-    margens de 16 px.
-  - Item: no compact, backdrop no topo com o pôster menor ao lado do título, e Play e ações logo na primeira tela.
-    Episódios e faixas como lista de largura total.
-  - Busca: resultados em grade no compact.
-  - Configurações: o que só existe no desktop some fora dele, por exemplo "Abrir pasta" (`xdg-open`) dos temas do
-    usuário.
-  - Cards no modo toque: sem lift e sem painel de hover. Um toque longo abre uma folha de ações (tocar, marcar como
-    visto, detalhes) com as ações do `CardPopover`.
+- **A1c, telas de navegação (feita):** testes em `test/features/phone/browse_layout_test.dart`.
+  - Margens: `WindowSize.margin` (16 px no celular, 24 acima, como no Material 3).
+  - Home:
+    - No celular, os cards das linhas têm 75% da largura (cerca de 3 pôsteres à vista).
+    - No toque, as linhas não reservam a folga do hover (`ItemCard.hoverRoom`).
+    - Em janela baixa (celular deitado), o carrossel tem 80% da altura e a legenda fica enxuta (título numa linha,
+      sem sinopse), então a primeira linha aparece embaixo.
+  - Biblioteca: no celular, cards de até 120 px, o que dá 3 colunas.
+  - Item: no celular e em janela baixa, o pôster fica pequeno ao lado do nome e dos dados, e os selos e a sinopse vão
+    para baixo, de largura total. O Play fica na primeira tela, em pé e deitado.
+  - Busca: as linhas por tipo continuam (rolagem horizontal, comum no celular), com os cards menores das linhas.
+  - Configurações: o "Abrir pasta" já só aparecia no Linux. Linhas sem texto de ajuda não ficam mais centralizadas no
+    celular.
+  - Cards no toque: o toque longo abre `CardActions`, uma folha com a ação principal, "marcar como visto" e
+    Detalhes, com as regras do painel do hover (`cardMainAction`, `setWatched`). Com o mouse, nada muda.
 - **A1d, player e leitor no toque:**
   - Player:
     - Um toque mostra ou esconde a OSD; o play/pause fica no botão central.

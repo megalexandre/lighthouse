@@ -6,6 +6,8 @@ import 'package:material_ui/material_ui.dart';
 import '../../../api/models/base_item_dto.dart';
 import '../../../core/theme/app_tokens.dart';
 import '../../../core/theme/design_tokens.dart';
+import '../../../core/touch.dart';
+import '../../../core/window_size.dart';
 import '../../../l10n/l10n.dart';
 import '../../../router.dart';
 import '../../../widgets/error_retry.dart';
@@ -269,6 +271,10 @@ class ItemRow extends StatelessWidget {
     this.aspectRatio,
   });
 
+  /// On a phone the cards are this much of [cardWidth]: about three
+  /// posters in view.
+  static const compactScale = 0.75;
+
   final String title;
   final AsyncValue<List<BaseItemDto>> items;
   final VoidCallback? onRetry;
@@ -280,31 +286,33 @@ class ItemRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final size = WindowSize.of(context);
+    final compact = size == WindowSize.compact;
+    final margin = size.margin;
     final Widget body;
     switch (items) {
       case AsyncData(value: final items) when items.isEmpty:
         return const SizedBox.shrink();
       case AsyncData(value: final items):
         final aspect = aspectRatio ?? cardAspectRatio(items.first.type);
-        // Room above and below: a card grows on hover.
+        final cardWidth = compact
+            ? (this.cardWidth * compactScale).roundToDouble()
+            : this.cardWidth;
+        // Room above and below: a card grows on hover (none on touch).
+        final room = isTouch(context) ? 0.0 : ItemCard.hoverRoom;
         body = SizedBox(
-          height:
-              ItemCard.heightFor(context, cardWidth, aspect) +
-              2 * ItemCard.hoverRoom,
+          height: ItemCard.heightFor(context, cardWidth, aspect) + 2 * room,
           // Arrows at the ends, when the theme has them.
           child: RowArrows(
-            inset: ItemCard.hoverRoom,
+            inset: room,
             builder: (controller) => ListView.separated(
               controller: controller,
               scrollDirection: Axis.horizontal,
               padding:
-                  const EdgeInsets.symmetric(
-                    horizontal: 24,
-                    vertical: ItemCard.hoverRoom,
-                  ) +
+                  EdgeInsets.symmetric(horizontal: margin, vertical: room) +
                   _sides(context),
               itemCount: items.length,
-              separatorBuilder: (_, _) => const SizedBox(width: 16),
+              separatorBuilder: (_, _) => SizedBox(width: compact ? 12 : 16),
               itemBuilder: (_, i) => ItemCard(
                 item: items[i],
                 width: cardWidth,
@@ -334,7 +342,8 @@ class ItemRow extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(24, 0, 24, 8) + _sides(context),
+            padding:
+                EdgeInsets.fromLTRB(margin, 0, margin, 8) + _sides(context),
             child: Text(title, style: Theme.of(context).textTheme.titleLarge),
           ),
           body,

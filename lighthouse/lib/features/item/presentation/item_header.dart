@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -55,28 +57,57 @@ String itemFacts(BaseItemDto item, AppLocalizations l10n) => [
   ?item.officialRating,
 ].join(' · ');
 
-/// The item's poster beside its text (above it in a narrow window).
+/// The item's poster beside its text. On a phone the poster is small,
+/// beside the name and the facts, and the rest (badges, overview) runs
+/// below at full width, so the actions under the header are in view.
 class ItemHeader extends StatelessWidget {
   const ItemHeader({super.key, required this.item});
 
   final BaseItemDto item;
 
+  /// The poster's width on a phone (at most a third of the width).
+  static const compactPosterWidth = 128.0;
+
+  /// Smaller in a short window (a phone on its side), so the actions under
+  /// the header are in view.
+  static const shortPosterWidth = 88.0;
+
   @override
   Widget build(BuildContext context) => LayoutBuilder(
     builder: (context, constraints) {
-      final wide = WindowSize.ofWidth(constraints.maxWidth)
-          .atLeast(WindowSize.medium);
-      final poster = _Poster(
-        item: item,
-        width: wide ? 240.0 : constraints.maxWidth,
-      );
-      final text = _HeaderText(item: item);
+      // A short window (a phone on its side) has no height for the large
+      // poster either.
+      final wide =
+          WindowSize.ofWidth(constraints.maxWidth).atLeast(WindowSize.medium) &&
+          !WindowSize.isShort(context);
       if (!wide) {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
-          children: [poster, const SizedBox(height: 16), text],
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _Poster(
+                  item: item,
+                  width: math.min(
+                    WindowSize.isShort(context)
+                        ? shortPosterWidth
+                        : compactPosterWidth,
+                    constraints.maxWidth / 3,
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: _HeaderText(item: item, part: _Part.top),
+                ),
+              ],
+            ),
+            _HeaderText(item: item, part: _Part.rest),
+          ],
         );
       }
+      final poster = _Poster(item: item, width: 240);
+      final text = _HeaderText(item: item);
       return Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -114,49 +145,61 @@ class _Poster extends StatelessWidget {
   }
 }
 
+/// Which of the header's text: all of it, or on a phone the [top] beside
+/// the poster and the [rest] below.
+enum _Part { all, top, rest }
+
 /// The series (a link), the name, the artist, the facts, the technical
 /// badges, "Watched", and the overview.
 class _HeaderText extends StatelessWidget {
-  const _HeaderText({required this.item});
+  const _HeaderText({required this.item, this.part = _Part.all});
 
   final BaseItemDto item;
+  final _Part part;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final facts = itemFacts(item, context.l10n);
     final badges = technicalBadges(item);
+    final top = part != _Part.rest;
+    final rest = part != _Part.top;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        if ((item.seriesId, item.seriesName) case (
-          final String seriesId,
-          final String seriesName,
-        ))
-          TextButton(
-            key: ItemScreen.seriesLink,
-            style: TextButton.styleFrom(padding: EdgeInsets.zero),
-            onPressed: () => context.push(Routes.item(seriesId)),
-            child: Text(seriesName, style: theme.textTheme.titleMedium),
+        if (top) ...[
+          if ((item.seriesId, item.seriesName) case (
+            final String seriesId,
+            final String seriesName,
+          ))
+            TextButton(
+              key: ItemScreen.seriesLink,
+              style: TextButton.styleFrom(padding: EdgeInsets.zero),
+              onPressed: () => context.push(Routes.item(seriesId)),
+              child: Text(seriesName, style: theme.textTheme.titleMedium),
+            ),
+          Text(
+            item.name,
+            key: ItemScreen.title,
+            // Beside the poster on a phone: a size that fits the column.
+            style: part == _Part.top
+                ? theme.textTheme.headlineSmall
+                : theme.textTheme.headlineLarge,
           ),
-        Text(
-          item.name,
-          key: ItemScreen.title,
-          style: theme.textTheme.headlineLarge,
-        ),
-        if (item.albumArtist case final String artist)
-          Text(artist, style: theme.textTheme.titleMedium),
-        if (facts.isNotEmpty)
-          Padding(
-            padding: const EdgeInsets.only(top: 8),
-            child: Text(
-              facts,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
+          if (item.albumArtist case final String artist)
+            Text(artist, style: theme.textTheme.titleMedium),
+          if (facts.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Text(
+                facts,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
               ),
             ),
-          ),
-        if (badges.isNotEmpty)
+        ],
+        if (rest && badges.isNotEmpty)
           Padding(
             padding: const EdgeInsets.only(top: 12),
             child: Wrap(
@@ -165,7 +208,7 @@ class _HeaderText extends StatelessWidget {
               children: [for (final b in badges) MediaBadge(b)],
             ),
           ),
-        if (item.userData?.played ?? false)
+        if (rest && (item.userData?.played ?? false))
           Padding(
             padding: const EdgeInsets.only(top: 8),
             child: Row(
@@ -176,7 +219,8 @@ class _HeaderText extends StatelessWidget {
               ],
             ),
           ),
-        if (item.overview case final String overview when overview.isNotEmpty)
+        if (item.overview case final String overview
+            when rest && overview.isNotEmpty)
           Padding(
             padding: const EdgeInsets.only(top: 16),
             child: Text(overview, style: theme.textTheme.bodyLarge),
