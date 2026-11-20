@@ -6,6 +6,7 @@ Feature: Reading while the server is away
 
   Background:
     Given the app is signed in
+    And the reader shows one page at a time
 
   Scenario: A page turned while the server is away is kept, and sent when it is back
     When I read {'book-comic'}

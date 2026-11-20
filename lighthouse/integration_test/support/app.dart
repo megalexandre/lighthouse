@@ -44,8 +44,14 @@ Future<void> launch(
         if (!asInstalled)
           defaultLanguageProvider.overrideWithValue(AppLanguage.en),
         keyValueStoreProvider.overrideWithValue(store),
+        // One page at a time for the flows: Xvfb's window is wide enough
+        // for two (the layouts are tested in
+        // test/scenarios/reader/layout.feature, and two pages turning in
+        // books_flow_test.dart).
         readerStoreProvider.overrideWithValue(
-          readerStore ?? MemoryKeyValueStore(),
+          readerStore ??
+              (MemoryKeyValueStore()
+                ..values['preferences'] = '{"layout":"single"}'),
         ),
         // The app's own files (the appearance) and themes folder: kept
         // off the desktop's.

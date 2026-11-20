@@ -6,6 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import './hook/hooks.dart';
 import './step/the_app_is_signed_in.dart';
+import './step/the_reader_shows_one_page_at_a_time.dart';
 import './step/i_read.dart';
 import './step/the_reader_shows.dart';
 import './step/i_turn_the_page_with_the_right_arrow_key.dart';
@@ -33,12 +34,14 @@ import './step/the_desk_is.dart';
 import './step/i_pick_the_theme.dart';
 import './step/the_paper_is.dart';
 import './step/i_close_the_display_settings.dart';
-import './step/the_reader_was_set_to_px_sans_serif.dart';
+import './step/the_reader_was_set_to_percent.dart';
 import './step/the_type_of_is_px.dart';
-import './step/the_type_of_is_sans_serif.dart';
+import './step/the_type_of_is.dart';
 import './step/i_open_the_display_settings.dart';
+import './step/the_display_settings_show_for.dart';
 import './step/i_make_the_type_bigger.dart';
-import './step/i_pick_sans_serif.dart';
+import './step/i_pick_the_font.dart';
+import './step/the_lines_of_are_percent_apart_the_letters_step_apart_flush_left.dart';
 import './step/i_can_pick_the_theme.dart';
 import './step/there_are_no_type_settings.dart';
 import './step/a_book_with_a_link_to_a_note_two_pages_on.dart';
@@ -57,6 +60,7 @@ void main() {
   group('''EPUB''', () {
     Future<void> bddSetUp(WidgetTester tester) async {
       await theAppIsSignedIn(tester);
+      await theReaderShowsOnePageAtATime(tester);
     }
 
     Future<void> beforeEach(String title, [List<String>? tags]) async {
@@ -316,17 +320,36 @@ void main() {
       try {
         await beforeEach('''What was set before applies from the start''');
         await bddSetUp(tester);
-        await theReaderWasSetToPxSansSerif(tester, 'sepia', 24);
+        await theReaderWasSetToPercent(tester, 'sepia', 135, 'literata');
         await iRead(tester, 'book-epub');
         await theDeskIs(tester, 'sepia');
-        await theTypeOfIsPx(tester, 'book-epub', 24);
-        await theTypeOfIsSansSerif(tester, 'book-epub');
+        await theTypeOfIsPx(tester, 'book-epub', 24.3);
+        await theTypeOfIs(tester, 'book-epub', 'Literata');
       } catch (_) {
         success = false;
         rethrow;
       } finally {
         await afterEach(
           '''What was set before applies from the start''',
+          success,
+        );
+      }
+    });
+    testWidgets('''The type is Noto Sans until another font is picked''',
+        (tester) async {
+      var success = true;
+      try {
+        await beforeEach(
+            '''The type is Noto Sans until another font is picked''');
+        await bddSetUp(tester);
+        await iRead(tester, 'book-epub');
+        await theTypeOfIs(tester, 'book-epub', 'Noto Sans');
+      } catch (_) {
+        success = false;
+        rethrow;
+      } finally {
+        await afterEach(
+          '''The type is Noto Sans until another font is picked''',
           success,
         );
       }
@@ -341,11 +364,11 @@ void main() {
         await iRead(tester, 'book-epub');
         await iPress(tester, 'Right');
         await iOpenTheDisplaySettings(tester);
-        await iSee(tester, '18 px');
+        await theDisplaySettingsShowFor(tester, '100%', 'Font size');
         await iMakeTheTypeBigger(tester);
         await iMakeTheTypeBigger(tester);
-        await iSee(tester, '22 px');
-        await theTypeOfIsPx(tester, 'book-epub', 22);
+        await theDisplaySettingsShowFor(tester, '120%', 'Font size');
+        await theTypeOfIsPx(tester, 'book-epub', 21.6);
         await theReaderShows(tester, 'Page 2 of 3');
       } catch (_) {
         success = false;
@@ -357,21 +380,48 @@ void main() {
         );
       }
     });
-    testWidgets('''Sans serif type is laid out at once''', (tester) async {
+    testWidgets('''Another font is laid out at once''', (tester) async {
       var success = true;
       try {
-        await beforeEach('''Sans serif type is laid out at once''');
+        await beforeEach('''Another font is laid out at once''');
         await bddSetUp(tester);
         await iRead(tester, 'book-epub');
         await iOpenTheDisplaySettings(tester);
-        await iPickSansSerif(tester);
-        await theTypeOfIsSansSerif(tester, 'book-epub');
+        await iPickTheFont(tester, 'Atkinson Hyperlegible');
+        await theTypeOfIs(tester, 'book-epub', 'Atkinson Hyperlegible');
       } catch (_) {
         success = false;
         rethrow;
       } finally {
         await afterEach(
-          '''Sans serif type is laid out at once''',
+          '''Another font is laid out at once''',
+          success,
+        );
+      }
+    });
+    testWidgets(
+        '''Line height, letter spacing and alignment are laid out at once''',
+        (tester) async {
+      var success = true;
+      try {
+        await beforeEach(
+            '''Line height, letter spacing and alignment are laid out at once''');
+        await bddSetUp(tester);
+        await iRead(tester, 'book-epub');
+        await iOpenTheDisplaySettings(tester);
+        await iTapTheButton(tester, 'More space between lines');
+        await theDisplaySettingsShowFor(tester, '115%', 'Line height');
+        await iTapTheButton(tester, 'More space between letters');
+        await theDisplaySettingsShowFor(tester, '1', 'Letter spacing');
+        await iTapTheButton(tester, 'Align left');
+        await theLinesOfArePercentApartTheLettersStepApartFlushLeft(
+            tester, 'book-epub', 115, 1);
+      } catch (_) {
+        success = false;
+        rethrow;
+      } finally {
+        await afterEach(
+          '''Line height, letter spacing and alignment are laid out at once''',
           success,
         );
       }

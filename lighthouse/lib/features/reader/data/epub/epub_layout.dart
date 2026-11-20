@@ -15,7 +15,9 @@ class EpubTypography {
   const EpubTypography({
     this.fontSize = 18,
     this.lineHeight = 1.45,
-    this.fontFamily = 'serif',
+    this.fontFamily = 'Noto Sans',
+    this.letterSpacing = 0,
+    this.justify = true,
   });
 
   final double fontSize;
@@ -23,8 +25,15 @@ class EpubTypography {
   /// Line height, as a multiple of [fontSize].
   final double lineHeight;
 
-  /// "serif" asks the system (fontconfig) for its serif face.
+  /// A bundled family (pubspec.yaml), or a generic one ("serif") that the
+  /// system (fontconfig) resolves.
   final String fontFamily;
+
+  /// Extra space between letters, in logical pixels.
+  final double letterSpacing;
+
+  /// Body text justified, or flush left.
+  final bool justify;
 
   /// The blank border of a page of [size]: wider on a big page.
   EdgeInsets margins(Size size) => EdgeInsets.symmetric(
@@ -47,10 +56,13 @@ class EpubTypography {
       other is EpubTypography &&
       other.fontSize == fontSize &&
       other.lineHeight == lineHeight &&
-      other.fontFamily == fontFamily;
+      other.fontFamily == fontFamily &&
+      other.letterSpacing == letterSpacing &&
+      other.justify == justify;
 
   @override
-  int get hashCode => Object.hash(fontSize, lineHeight, fontFamily);
+  int get hashCode =>
+      Object.hash(fontSize, lineHeight, fontFamily, letterSpacing, justify);
 }
 
 /// An [EpubBook] cut into pages of one [size]. Each chapter starts a page;
@@ -170,6 +182,9 @@ class EpubLayout {
           ? fontSize * 0.85
           : fontSize,
       height: t.lineHeight,
+      letterSpacing: block.kind == TextKind.preformatted
+          ? null
+          : t.letterSpacing,
       // Laid out black; drawn in the ink asked for (see [paint]).
       color: const Color(0xFF000000),
       fontWeight: heading ? FontWeight.bold : null,
@@ -194,7 +209,7 @@ class EpubLayout {
       ),
       textAlign: block.centered || heading
           ? TextAlign.center
-          : block.kind == TextKind.preformatted
+          : block.kind == TextKind.preformatted || !t.justify
           ? TextAlign.left
           : TextAlign.justify,
       textDirection: TextDirection.ltr,

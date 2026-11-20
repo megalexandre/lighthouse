@@ -8,6 +8,7 @@ Feature: EPUB
 
   Background:
     Given the app is signed in
+    And the reader shows one page at a time
 
   Scenario: Laid out a page per chapter; the place kept is the fraction read
     When I read {'book-epub'}
@@ -103,28 +104,42 @@ Feature: EPUB
     Then the desk is {'dark'}
 
   Scenario: What was set before applies from the start
-    Given the reader was set to {'sepia'}, {24} px, sans serif
+    Given the reader was set to {'sepia'}, {135} percent, {'literata'}
     When I read {'book-epub'}
     Then the desk is {'sepia'}
-    And the type of {'book-epub'} is {24} px
-    And the type of {'book-epub'} is sans serif
+    And the type of {'book-epub'} is {24.3} px
+    And the type of {'book-epub'} is {'Literata'}
+
+  Scenario: The type is Noto Sans until another font is picked
+    When I read {'book-epub'}
+    Then the type of {'book-epub'} is {'Noto Sans'}
 
   Scenario: Bigger type lays the book out again, at the same place
     When I read {'book-epub'}
     And I press {'Right'}
     And I open the display settings
-    Then I see {'18 px'}
+    Then the display settings show {'100%'} for {'Font size'}
     When I make the type bigger
     And I make the type bigger
-    Then I see {'22 px'}
-    And the type of {'book-epub'} is {22} px
+    Then the display settings show {'120%'} for {'Font size'}
+    And the type of {'book-epub'} is {21.6} px
     And the reader shows {'Page 2 of 3'}
 
-  Scenario: Sans serif type is laid out at once
+  Scenario: Another font is laid out at once
     When I read {'book-epub'}
     And I open the display settings
-    And I pick sans serif
-    Then the type of {'book-epub'} is sans serif
+    And I pick the font {'Atkinson Hyperlegible'}
+    Then the type of {'book-epub'} is {'Atkinson Hyperlegible'}
+
+  Scenario: Line height, letter spacing and alignment are laid out at once
+    When I read {'book-epub'}
+    And I open the display settings
+    And I tap the button {'More space between lines'}
+    Then the display settings show {'115%'} for {'Line height'}
+    When I tap the button {'More space between letters'}
+    Then the display settings show {'1'} for {'Letter spacing'}
+    When I tap the button {'Align left'}
+    Then the lines of {'book-epub'} are {115} percent apart, the letters {1} step apart, flush left
 
   Scenario: A comic has the themes, but no type settings
     When I read {'book-comic'}

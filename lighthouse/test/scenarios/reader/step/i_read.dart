@@ -9,7 +9,7 @@ import 'world.dart';
 ///
 /// From the book's page, its Read button.
 Future<void> iRead(WidgetTester tester, String itemId) async {
-  await app.open(tester, Routes.item(itemId));
+  await app.open(tester, Routes.item(itemId), window: window);
   await tester.tap(find.byKey(ItemScreen.readButton));
   await tester.pumpAndSettle();
   expect(find.byType(ReaderScreen), findsOneWidget);

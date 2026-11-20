@@ -1011,6 +1011,12 @@ abstract class AppLocalizations {
   /// **'Page {page} of {count}'**
   String pageOf(int page, int count);
 
+  /// Reader page counter with two pages side by side.
+  ///
+  /// In en, this message translates to:
+  /// **'Pages {first}–{last} of {count}'**
+  String pagesOf(int first, int last, int count);
+
   /// Reader tab.
   ///
   /// In en, this message translates to:
@@ -1047,11 +1053,11 @@ abstract class AppLocalizations {
   /// **'Smaller text'**
   String get smallerText;
 
-  /// The type size, e.g. 18 px.
+  /// A reader display setting in percent of its default, e.g. 100%.
   ///
   /// In en, this message translates to:
-  /// **'{size} px'**
-  String fontSizePx(int size);
+  /// **'{value}%'**
+  String percent(int value);
 
   /// Reader display.
   ///
@@ -1059,17 +1065,101 @@ abstract class AppLocalizations {
   /// **'Larger text'**
   String get largerText;
 
-  /// Reader typeface.
+  /// Reader display: heading of the light / sepia / dark choice.
   ///
   /// In en, this message translates to:
-  /// **'Serif'**
-  String get serif;
+  /// **'Theme'**
+  String get readerTheme;
 
-  /// Reader typeface.
+  /// Reader display: heading of the typeface menu.
   ///
   /// In en, this message translates to:
-  /// **'Sans'**
-  String get sans;
+  /// **'Font'**
+  String get readerFont;
+
+  /// Reader display: heading.
+  ///
+  /// In en, this message translates to:
+  /// **'Font size'**
+  String get fontSizeLabel;
+
+  /// Reader display: heading of the space between lines.
+  ///
+  /// In en, this message translates to:
+  /// **'Line height'**
+  String get lineHeight;
+
+  /// Reader display: button tooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Less space between lines'**
+  String get lessLineHeight;
+
+  /// Reader display: button tooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'More space between lines'**
+  String get moreLineHeight;
+
+  /// Reader display: heading of the space between letters.
+  ///
+  /// In en, this message translates to:
+  /// **'Letter spacing'**
+  String get letterSpacing;
+
+  /// Reader display: button tooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Less space between letters'**
+  String get lessLetterSpacing;
+
+  /// Reader display: button tooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'More space between letters'**
+  String get moreLetterSpacing;
+
+  /// Reader display: heading of the text alignment choice.
+  ///
+  /// In en, this message translates to:
+  /// **'Justify'**
+  String get justify;
+
+  /// Reader display: text flush left, ragged right (tooltip).
+  ///
+  /// In en, this message translates to:
+  /// **'Align left'**
+  String get alignLeft;
+
+  /// Reader display: text justified (tooltip).
+  ///
+  /// In en, this message translates to:
+  /// **'Justified'**
+  String get alignJustified;
+
+  /// Reader display: heading of the one / two pages choice.
+  ///
+  /// In en, this message translates to:
+  /// **'Page layout'**
+  String get pageLayout;
+
+  /// Reader page layout: two pages when the window is wide enough.
+  ///
+  /// In en, this message translates to:
+  /// **'Automatic'**
+  String get layoutAuto;
+
+  /// Reader page layout.
+  ///
+  /// In en, this message translates to:
+  /// **'One page'**
+  String get layoutSingle;
+
+  /// Reader page layout: side by side, as an open book.
+  ///
+  /// In en, this message translates to:
+  /// **'Two pages'**
+  String get layoutDouble;
 
   /// Reader theme.
   ///

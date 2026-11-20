@@ -574,6 +574,11 @@ class AppLocalizationsPt extends AppLocalizations {
   }
 
   @override
+  String pagesOf(int first, int last, int count) {
+    return 'Páginas $first–$last de $count';
+  }
+
+  @override
   String get contents => 'Sumário';
 
   @override
@@ -595,18 +600,60 @@ class AppLocalizationsPt extends AppLocalizations {
   String get smallerText => 'Texto menor';
 
   @override
-  String fontSizePx(int size) {
-    return '$size px';
+  String percent(int value) {
+    return '$value%';
   }
 
   @override
   String get largerText => 'Texto maior';
 
   @override
-  String get serif => 'Serifa';
+  String get readerTheme => 'Tema';
 
   @override
-  String get sans => 'Sem serifa';
+  String get readerFont => 'Fonte';
+
+  @override
+  String get fontSizeLabel => 'Tamanho da fonte';
+
+  @override
+  String get lineHeight => 'Altura da linha';
+
+  @override
+  String get lessLineHeight => 'Menos espaço entre as linhas';
+
+  @override
+  String get moreLineHeight => 'Mais espaço entre as linhas';
+
+  @override
+  String get letterSpacing => 'Espaçamento entre caracteres';
+
+  @override
+  String get lessLetterSpacing => 'Menos espaço entre as letras';
+
+  @override
+  String get moreLetterSpacing => 'Mais espaço entre as letras';
+
+  @override
+  String get justify => 'Justificar';
+
+  @override
+  String get alignLeft => 'Alinhar à esquerda';
+
+  @override
+  String get alignJustified => 'Justificado';
+
+  @override
+  String get pageLayout => 'Layout da página';
+
+  @override
+  String get layoutAuto => 'Automático';
+
+  @override
+  String get layoutSingle => 'Uma página';
+
+  @override
+  String get layoutDouble => 'Duas páginas';
 
   @override
   String get readerLight => 'Claro';

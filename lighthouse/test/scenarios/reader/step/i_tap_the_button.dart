@@ -4,6 +4,10 @@ import 'package:flutter_test/flutter_test.dart';
 ///
 /// By what it says under the mouse.
 Future<void> iTapTheButton(WidgetTester tester, String tooltip) async {
-  await tester.tap(find.byTooltip(tooltip));
+  final button = find.byTooltip(tooltip);
+  // The display settings scroll on a small window.
+  await tester.ensureVisible(button);
+  await tester.pumpAndSettle();
+  await tester.tap(button);
   await tester.pumpAndSettle();
 }

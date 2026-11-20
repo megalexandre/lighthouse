@@ -16,8 +16,11 @@ import 'contents_drawer.dart';
 import 'display_sheet.dart';
 import 'page_curl/page_curl_view.dart';
 import 'reader_chrome.dart';
+import 'spreads.dart';
 
-/// Reads a book page by page, as Google Play Books does: pages turn like
+/// Reads a book page by page, or two pages side by side as an open book
+/// when the window is wide enough or the user asks (see [Spreads]), as
+/// Google Play Books does: pages turn like
 /// paper under the finger (drag on the right half, or the left half to go
 /// back; see page_curl/); a tap on the left / right edge or the arrow keys
 /// turn them too; a tap in the middle shows or hides the bars; the slider
@@ -32,6 +35,9 @@ class ReaderScreen extends ConsumerStatefulWidget {
 
   static const backButton = Key('reader.back');
   static const pages = Key('reader.pages');
+
+  /// The page on the left, with two side by side.
+  static const leftPage = Key('reader.leftPage');
   static const slider = Key('reader.slider');
   static const pageText = Key('reader.pageText');
   static const chrome = Key('reader.chrome');
@@ -46,8 +52,17 @@ class ReaderScreen extends ConsumerStatefulWidget {
   static const fontSize = Key('reader.fontSize');
   static Key themeChoice(ReaderTheme theme) =>
       Key('reader.theme.${theme.name}');
-  static Key typefaceChoice({required bool sans}) =>
-      Key('reader.typeface.${sans ? 'sans' : 'serif'}');
+  static const fontMenu = Key('reader.font');
+  static const lineSpacingSmaller = Key('reader.lineSpacingSmaller');
+  static const lineSpacingBigger = Key('reader.lineSpacingBigger');
+  static const lineSpacing = Key('reader.lineSpacing');
+  static const letterSpacingSmaller = Key('reader.letterSpacingSmaller');
+  static const letterSpacingBigger = Key('reader.letterSpacingBigger');
+  static const letterSpacing = Key('reader.letterSpacing');
+  static Key justifyChoice({required bool justify}) =>
+      Key('reader.justify.$justify');
+  static Key layoutChoice(PageLayout layout) =>
+      Key('reader.layout.${layout.name}');
 
   /// Part of the width, at each side, where a tap turns the page.
   static const edge = 0.25;
@@ -116,8 +131,10 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
     return KeyEventResult.handled;
   }
 
-  ReaderTheme get _theme =>
-      ref.watch(readerPreferencesProvider).value?.theme ?? ReaderTheme.light;
+  ReaderPreferences get _prefs =>
+      ref.watch(readerPreferencesProvider).value ?? const ReaderPreferences();
+
+  ReaderTheme get _theme => _prefs.theme;
 
   @override
   Widget build(BuildContext context) {
@@ -126,7 +143,15 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
     return PopScope(
       canPop: false,
       onPopInvokedWithResult: (didPop, _) {
-        if (!didPop) unawaited(_close());
+        if (didPop) return;
+        // The system's Back (Android) closes the contents first: this scope
+        // keeps the route, so the drawer's own Back never runs.
+        final scaffold = _scaffold.currentState;
+        if (scaffold != null && scaffold.isDrawerOpen) {
+          scaffold.closeDrawer();
+        } else {
+          unawaited(_close());
+        }
       },
       child: Scaffold(
         key: _scaffold,
@@ -173,28 +198,45 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
     ],
   );
 
-  /// Sheet [index] at rest: the page on its paper.
-  Widget _sheet(ReaderSession session, int index, PageColors colors) =>
+  /// Page [index] at rest: the page on its paper; blank paper for none
+  /// (the back of the book, facing its last page).
+  Widget _sheet(ReaderSession session, int? index, PageColors colors) =>
       ColoredBox(
         color: colors.paper,
-        child: Center(child: session.document.buildPage(index, colors)),
+        child: index == null
+            ? const SizedBox.expand()
+            : Center(child: session.document.buildPage(index, colors)),
       );
 
-  /// A tap on a link in the page follows it. True when there was one.
-  bool _followLink(Offset global) {
-    final box = _curl.currentContext?.findRenderObject();
-    if (box is! RenderBox || !box.hasSize || box.size.isEmpty) return false;
-    final local = box.globalToLocal(global);
-    if (!(Offset.zero & box.size).contains(local)) return false;
-    return _controller.followLink(
-      Offset(local.dx / box.size.width, local.dy / box.size.height),
-    );
+  final _left = GlobalKey();
+
+  /// A tap on a link in a page follows it. True when there was one.
+  bool _followLink(Offset global, Spreads spreads, int spread) {
+    bool on(GlobalKey key, int? page) {
+      final box = key.currentContext?.findRenderObject();
+      if (page == null ||
+          box is! RenderBox ||
+          !box.hasSize ||
+          box.size.isEmpty) {
+        return false;
+      }
+      final local = box.globalToLocal(global);
+      if (!(Offset.zero & box.size).contains(local)) return false;
+      return _controller.followLink(
+        Offset(local.dx / box.size.width, local.dy / box.size.height),
+        page: page,
+      );
+    }
+
+    return on(_left, spreads.left(spread)) || on(_curl, spreads.right(spread));
   }
 
   Future<void> _showDisplaySettings(ReaderSession session) async {
     await showModalBottomSheet<void>(
       context: context,
       showDragHandle: true,
+      // Taller than half the window: it scrolls past that.
+      isScrollControlled: true,
       // The page stays as it is, to see each choice on it.
       barrierColor: Colors.transparent,
       constraints: const BoxConstraints(maxWidth: 480),
@@ -205,17 +247,15 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
 
   /// An EPUB's page: the shape of a book's, between 0.55 and 0.72 (wide
   /// enough for comfortable lines on a phone, not a wall of text on a
-  /// desktop), as large as fits in [screen].
-  static double _reflowAspect(Size screen) {
-    final room = ReaderScreen.margin.deflateSize(screen);
+  /// desktop), as large as fits in [room] (the space one page gets).
+  static double _reflowAspect(Size room) {
     if (room.isEmpty) return 2 / 3;
     return room.aspectRatio.clamp(0.55, 0.72);
   }
 
-  /// The sheet an EPUB is laid out for, in [screen].
-  static Size _reflowSheet(Size screen) {
-    final room = ReaderScreen.margin.deflateSize(screen);
-    final aspect = _reflowAspect(screen);
+  /// The sheet an EPUB is laid out for, in [room].
+  static Size _reflowSheet(Size room) {
+    final aspect = _reflowAspect(room);
     final width = room.width / room.height > aspect
         ? room.height * aspect
         : room.width;
@@ -239,8 +279,23 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
       onKeyEvent: (_, event) => _onKey(session, event),
       child: LayoutBuilder(
         builder: (context, constraints) {
-          if (session.document.reflowable) {
-            final sheet = _reflowSheet(constraints.biggest);
+          final document = session.document;
+          final room = ReaderScreen.margin.deflateSize(constraints.biggest);
+          final twoPages =
+              session.pageCount > 0 &&
+              showsTwoPages(
+                _prefs.layout,
+                room,
+                document.reflowable
+                    ? 0.72
+                    : document.pageAspectRatio(session.page),
+              );
+          final spreads = Spreads(session.pageCount, twoPages: twoPages);
+          final spread = spreads.of(session.page);
+          // The space each page gets.
+          final pageRoom = twoPages ? Size(room.width / 2, room.height) : room;
+          if (document.reflowable) {
+            final sheet = _reflowSheet(pageRoom);
             // Pages are cut for the sheet once its size is known (after
             // this frame: state cannot change while building).
             if (sheet != _laidOutFor && !sheet.isEmpty) {
@@ -250,7 +305,49 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
               });
             }
           }
+          final pageAspect = document.reflowable
+              ? _reflowAspect(pageRoom)
+              : session.pageCount == 0
+              ? 1.0
+              : document.pageAspectRatio(
+                  spreads.right(spread) ?? spreads.left(spread)!,
+                );
           final colors = _theme.pageColors;
+          // The sheet that turns: the page, or with two pages the one on the
+          // right, held at the spine between them.
+          final curl = session.pageCount == 0
+              ? const SizedBox.shrink()
+              : PageCurlView(
+                  key: _curl,
+                  pageCount: spreads.count,
+                  page: spread,
+                  paper: colors.paper,
+                  // New colours or a new layout: new pictures too.
+                  layoutVersion: Object.hash(
+                    document.layoutVersion,
+                    colors,
+                    spreads,
+                  ),
+                  sheetBuilder: (index) => KeyedSubtree(
+                    key: index == spread ? ReaderScreen.pages : null,
+                    child: _sheet(session, spreads.right(index), colors),
+                  ),
+                  sheetImage: (index, size, ratio) =>
+                      switch (spreads.right(index)) {
+                        final page? => sheetImage(
+                          session,
+                          page,
+                          size,
+                          ratio,
+                          colors,
+                        ),
+                        null => blankSheetImage(size, ratio, colors.paper),
+                      },
+                  onTurned: (index) => _controller.goTo(
+                    spreads.first(index),
+                    through: spreads.last(index),
+                  ),
+                );
           return Stack(
             fit: StackFit.expand,
             children: [
@@ -261,8 +358,8 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
                 child: GestureDetector(
                   behavior: HitTestBehavior.opaque,
                   onTapUp: (details) {
-                    if (session.document.reflowable &&
-                        _followLink(details.globalPosition)) {
+                    if (document.reflowable &&
+                        _followLink(details.globalPosition, spreads, spread)) {
                       return;
                     }
                     final x = details.localPosition.dx / constraints.maxWidth;
@@ -274,42 +371,34 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
                       setState(() => _chromeVisible = !_chromeVisible);
                     }
                   },
-                  // The sheet that turns is the page itself: its shape, as
-                  // large as fits, on the desk.
+                  // The page itself: its shape, as large as fits, on the
+                  // desk; with two, side by side as an open book.
                   child: Padding(
                     padding: ReaderScreen.margin,
                     child: Center(
                       child: AspectRatio(
-                        aspectRatio: session.document.reflowable
-                            ? _reflowAspect(constraints.biggest)
-                            : session.document.pageAspectRatio(session.page),
-                        child: session.pageCount == 0
-                            ? const SizedBox.shrink()
-                            : PageCurlView(
-                                key: _curl,
-                                pageCount: session.pageCount,
-                                page: session.page,
-                                paper: colors.paper,
-                                // New colours: new pictures too.
-                                layoutVersion: Object.hash(
-                                  session.document.layoutVersion,
-                                  colors,
-                                ),
-                                sheetBuilder: (index) => KeyedSubtree(
-                                  key: index == session.page
-                                      ? ReaderScreen.pages
-                                      : null,
-                                  child: _sheet(session, index, colors),
-                                ),
-                                sheetImage: (index, size, ratio) => sheetImage(
-                                  session,
-                                  index,
-                                  size,
-                                  ratio,
-                                  colors,
-                                ),
-                                onTurned: _controller.goTo,
-                              ),
+                        aspectRatio: twoPages ? pageAspect * 2 : pageAspect,
+                        child: twoPages
+                            ? Row(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  Expanded(
+                                    child: switch (spreads.left(spread)) {
+                                      final page? => KeyedSubtree(
+                                        key: _left,
+                                        child: KeyedSubtree(
+                                          key: ReaderScreen.leftPage,
+                                          child: _sheet(session, page, colors),
+                                        ),
+                                      ),
+                                      // The cover: nothing on its left.
+                                      null => const SizedBox.shrink(),
+                                    },
+                                  ),
+                                  Expanded(child: curl),
+                                ],
+                              )
+                            : curl,
                       ),
                     ),
                   ),
@@ -323,6 +412,9 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
                   ignoring: !_chromeVisible,
                   child: ReaderChrome(
                     session: session,
+                    shown: session.pageCount == 0
+                        ? null
+                        : (spreads.first(spread), spreads.last(spread)),
                     onBack: () => unawaited(_close()),
                     onSeek: _controller.goTo,
                     onContents: () => _scaffold.currentState?.openDrawer(),
@@ -355,6 +447,20 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
       ),
     );
   }
+}
+
+/// Blank paper as an image of [size] at [pixelRatio]: the back of the book,
+/// turning over its last page.
+Future<ui.Image> blankSheetImage(Size size, double pixelRatio, Color paper) {
+  final recorder = ui.PictureRecorder();
+  Canvas(recorder).drawColor(paper, BlendMode.src);
+  final picture = recorder.endRecording();
+  return picture
+      .toImage(
+        (size.width * pixelRatio).round(),
+        (size.height * pixelRatio).round(),
+      )
+      .whenComplete(picture.dispose);
 }
 
 /// Sheet [index] as one image, laid out exactly like [_ReaderScreenState]

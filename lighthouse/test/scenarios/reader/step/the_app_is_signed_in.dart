@@ -10,4 +10,5 @@ import 'world.dart' as world;
 Future<void> theAppIsSignedIn(WidgetTester tester) async {
   world.tester = tester;
   world.app = TestApp();
+  world.window = TestWindows.desktop;
 }

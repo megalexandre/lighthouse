@@ -6,6 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import './hook/hooks.dart';
 import './step/the_app_is_signed_in.dart';
+import './step/the_reader_shows_one_page_at_a_time.dart';
 import './step/i_open_the_page_of.dart';
 import './step/i_see.dart';
 import './step/i_read_it.dart';
@@ -50,6 +51,7 @@ void main() {
   group('''Reading''', () {
     Future<void> bddSetUp(WidgetTester tester) async {
       await theAppIsSignedIn(tester);
+      await theReaderShowsOnePageAtATime(tester);
     }
 
     Future<void> beforeEach(String title, [List<String>? tags]) async {

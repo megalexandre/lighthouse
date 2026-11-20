@@ -83,6 +83,37 @@ void main() {
     await waitFor(tester, find.byKey(ItemScreen.readButton));
   });
 
+  testWidgets('a PDF two pages side by side: they turn as a spread', (
+    tester,
+  ) async {
+    final readerStore = MemoryKeyValueStore()
+      ..values['preferences'] = '{"layout":"double"}';
+    await launch(tester, store, readerStore: readerStore);
+    await openBook(tester, Fixtures.testBook);
+    await tapOn(tester, find.byKey(ItemScreen.readButton));
+
+    await waitFor(tester, find.byKey(ReaderScreen.pageText));
+    // The cover alone, on the right.
+    expect(pageText(tester), 'Page 1 of ${Fixtures.bookPages}');
+    expect(find.byKey(ReaderScreen.leftPage), findsNothing);
+
+    await pressKey(tester, LogicalKeyboardKey.arrowRight);
+    await waitUntil(
+      tester,
+      () => pageText(tester) == 'Pages 2–3 of 5',
+      reason: 'the spread to turn',
+    );
+    expect(
+      find.descendant(
+        of: find.byKey(ReaderScreen.leftPage),
+        matching: find.byType(PdfPageView),
+      ),
+      findsOneWidget,
+    );
+    await tapOn(tester, find.byKey(ReaderScreen.backButton));
+    await waitFor(tester, find.byKey(ItemScreen.readButton));
+  });
+
   testWidgets('a PDF in the dark theme: PDFium draws it light on dark', (
     tester,
   ) async {

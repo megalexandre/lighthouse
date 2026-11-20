@@ -79,6 +79,13 @@ flutter:
           weight: 600
         - asset: assets/fonts/NotoSans-Bold.ttf
           weight: 700
+        # Italics: the book reader's default face (EPUB text has them).
+        - asset: assets/fonts/NotoSans-Italic.ttf
+          weight: 400
+          style: italic
+        - asset: assets/fonts/NotoSans-BoldItalic.ttf
+          weight: 700
+          style: italic
     - family: Noto Sans Mono
       fonts:
         - asset: assets/fonts/NotoSansMono-Medium.ttf
@@ -94,6 +101,32 @@ flutter:
           weight: 700
         - asset: assets/fonts/Inter-ExtraBold.ttf
           weight: 800
+    # The book reader's other faces (Display options): a serif made for
+    # reading on screens, and one for low vision.
+    - family: Literata
+      fonts:
+        - asset: assets/fonts/Literata-Regular.ttf
+          weight: 400
+        - asset: assets/fonts/Literata-Italic.ttf
+          weight: 400
+          style: italic
+        - asset: assets/fonts/Literata-Bold.ttf
+          weight: 700
+        - asset: assets/fonts/Literata-BoldItalic.ttf
+          weight: 700
+          style: italic
+    - family: Atkinson Hyperlegible
+      fonts:
+        - asset: assets/fonts/AtkinsonHyperlegible-Regular.ttf
+          weight: 400
+        - asset: assets/fonts/AtkinsonHyperlegible-Italic.ttf
+          weight: 400
+          style: italic
+        - asset: assets/fonts/AtkinsonHyperlegible-Bold.ttf
+          weight: 700
+        - asset: assets/fonts/AtkinsonHyperlegible-BoldItalic.ttf
+          weight: 700
+          style: italic
 
 # media_kit_video with a patch for video on Wayland: see third_party/README.md.
 dependency_overrides:

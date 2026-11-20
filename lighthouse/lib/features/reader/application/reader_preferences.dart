@@ -40,63 +40,145 @@ enum ReaderTheme {
   };
 }
 
+/// The faces offered for an EPUB, all bundled (assets/fonts/README.md).
+enum ReaderFont {
+  /// The default: a humanist sans, the free face closest to Amazon Ember.
+  notoSans('Noto Sans'),
+
+  /// A serif made for reading on screens.
+  literata('Literata'),
+
+  /// Made for low vision: letters that cannot be mistaken for each other.
+  atkinson('Atkinson Hyperlegible');
+
+  const ReaderFont(this.family);
+
+  /// The family in pubspec.yaml; also its name in the menu (a proper name,
+  /// the same in every language).
+  final String family;
+}
+
+/// One page at a time, two side by side (an open book), or two when the
+/// window is wide enough for them ([auto]).
+enum PageLayout { auto, single, double }
+
 /// How the user likes to read, on this device, for every book: the theme
-/// (any book), and the type an EPUB is set in.
+/// and the page layout (any book), and how an EPUB's type is set.
+///
+/// The type settings are steps, as the display sheet offers them: size and
+/// line height in percent of the defaults, letter spacing in steps of
+/// [letterSpacingStep] of an em.
 @immutable
 class ReaderPreferences {
   const ReaderPreferences({
     this.theme = ReaderTheme.light,
-    this.fontSize = defaultFontSize,
-    this.sansSerif = false,
+    this.font = ReaderFont.notoSans,
+    this.fontScale = 100,
+    this.lineSpacing = 100,
+    this.letterSpacing = 0,
+    this.justify = true,
+    this.layout = PageLayout.auto,
   });
 
-  /// The sizes offered, smallest to largest.
-  static const fontSizes = [14.0, 16.0, 18.0, 20.0, 22.0, 24.0, 28.0, 32.0];
-  static const defaultFontSize = 18.0;
+  /// The steps offered, smallest to largest.
+  static const fontScales = [80, 90, 100, 110, 120, 135, 150, 175];
+  static const lineSpacings = [80, 90, 100, 115, 130, 150];
+  static const letterSpacings = [0, 1, 2, 3, 4, 5];
+
+  /// What 100% is: the size and line height the type was set in before
+  /// these settings existed.
+  static const baseFontSize = 18.0;
+  static const baseLineHeight = 1.45;
+
+  /// One step of [letterSpacing], in ems.
+  static const letterSpacingStep = 0.025;
 
   final ReaderTheme theme;
-  final double fontSize;
-  final bool sansSerif;
+  final ReaderFont font;
+  final int fontScale;
+  final int lineSpacing;
+  final int letterSpacing;
+
+  /// Justified, or set flush left (ragged right).
+  final bool justify;
+  final PageLayout layout;
+
+  double get fontSize => baseFontSize * fontScale / 100;
 
   EpubTypography get typography => EpubTypography(
     fontSize: fontSize,
-    fontFamily: sansSerif ? 'sans-serif' : 'serif',
+    lineHeight: baseLineHeight * lineSpacing / 100,
+    fontFamily: font.family,
+    letterSpacing: fontSize * letterSpacing * letterSpacingStep,
+    justify: justify,
   );
 
-  /// One size step bigger ([steps] > 0) or smaller, within [fontSizes].
-  ReaderPreferences resized(int steps) {
-    var index = fontSizes.indexOf(fontSize);
-    if (index < 0) index = fontSizes.indexOf(defaultFontSize);
-    return copyWith(
-      fontSize: fontSizes[(index + steps).clamp(0, fontSizes.length - 1)],
-    );
+  /// [value] moved [steps] along [steps] list [values] (clamped at its
+  /// ends); a value not in it starts from [fallback].
+  static int step(List<int> values, int value, int steps, int fallback) {
+    var index = values.indexOf(value);
+    if (index < 0) index = values.indexOf(fallback);
+    return values[(index + steps).clamp(0, values.length - 1)];
   }
+
+  /// One size step bigger ([steps] > 0) or smaller, within [fontScales].
+  ReaderPreferences resized(int steps) =>
+      copyWith(fontScale: step(fontScales, fontScale, steps, 100));
 
   ReaderPreferences copyWith({
     ReaderTheme? theme,
-    double? fontSize,
-    bool? sansSerif,
+    ReaderFont? font,
+    int? fontScale,
+    int? lineSpacing,
+    int? letterSpacing,
+    bool? justify,
+    PageLayout? layout,
   }) => ReaderPreferences(
     theme: theme ?? this.theme,
-    fontSize: fontSize ?? this.fontSize,
-    sansSerif: sansSerif ?? this.sansSerif,
+    font: font ?? this.font,
+    fontScale: fontScale ?? this.fontScale,
+    lineSpacing: lineSpacing ?? this.lineSpacing,
+    letterSpacing: letterSpacing ?? this.letterSpacing,
+    justify: justify ?? this.justify,
+    layout: layout ?? this.layout,
   );
 
   Map<String, Object> toJson() => {
     'theme': theme.name,
-    'fontSize': fontSize,
-    'sansSerif': sansSerif,
+    'font': font.name,
+    'fontScale': fontScale,
+    'lineSpacing': lineSpacing,
+    'letterSpacing': letterSpacing,
+    'justify': justify,
+    'layout': layout.name,
   };
 
-  /// Unknown or broken values fall back to the defaults, one by one.
+  /// Unknown or broken values fall back to the defaults, one by one. A
+  /// size stored the old way (`fontSize` in pixels) becomes the nearest
+  /// step; the old serif / sans choice is not kept (both were the system's
+  /// generic faces, which the bundled ones replace).
   factory ReaderPreferences.fromJson(Map<String, dynamic> json) {
-    final size = json['fontSize'];
+    int pick(String key, List<int> values, int fallback) {
+      final v = json[key];
+      return v is int && values.contains(v) ? v : fallback;
+    }
+
+    var fontScale = pick('fontScale', fontScales, 100);
+    final oldSize = json['fontSize'];
+    if (!json.containsKey('fontScale') && oldSize is num && oldSize > 0) {
+      final percent = oldSize / baseFontSize * 100;
+      fontScale = fontScales.reduce(
+        (a, b) => (a - percent).abs() <= (b - percent).abs() ? a : b,
+      );
+    }
     return ReaderPreferences(
       theme: ReaderTheme.values.asNameMap()[json['theme']] ?? ReaderTheme.light,
-      fontSize: size is num && fontSizes.contains(size.toDouble())
-          ? size.toDouble()
-          : defaultFontSize,
-      sansSerif: json['sansSerif'] == true,
+      font: ReaderFont.values.asNameMap()[json['font']] ?? ReaderFont.notoSans,
+      fontScale: fontScale,
+      lineSpacing: pick('lineSpacing', lineSpacings, 100),
+      letterSpacing: pick('letterSpacing', letterSpacings, 0),
+      justify: json['justify'] != false,
+      layout: PageLayout.values.asNameMap()[json['layout']] ?? PageLayout.auto,
     );
   }
 
@@ -104,11 +186,23 @@ class ReaderPreferences {
   bool operator ==(Object other) =>
       other is ReaderPreferences &&
       other.theme == theme &&
-      other.fontSize == fontSize &&
-      other.sansSerif == sansSerif;
+      other.font == font &&
+      other.fontScale == fontScale &&
+      other.lineSpacing == lineSpacing &&
+      other.letterSpacing == letterSpacing &&
+      other.justify == justify &&
+      other.layout == layout;
 
   @override
-  int get hashCode => Object.hash(theme, fontSize, sansSerif);
+  int get hashCode => Object.hash(
+    theme,
+    font,
+    fontScale,
+    lineSpacing,
+    letterSpacing,
+    justify,
+    layout,
+  );
 }
 
 final readerPreferencesProvider =

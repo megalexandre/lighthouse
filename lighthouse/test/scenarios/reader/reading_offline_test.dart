@@ -6,6 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import './hook/hooks.dart';
 import './step/the_app_is_signed_in.dart';
+import './step/the_reader_shows_one_page_at_a_time.dart';
 import './step/i_read.dart';
 import './step/the_server_goes_away.dart';
 import './step/i_turn_the_page_with_the_right_arrow_key.dart';
@@ -28,6 +29,7 @@ void main() {
   group('''Reading while the server is away''', () {
     Future<void> bddSetUp(WidgetTester tester) async {
       await theAppIsSignedIn(tester);
+      await theReaderShowsOnePageAtATime(tester);
     }
 
     Future<void> beforeEach(String title, [List<String>? tags]) async {

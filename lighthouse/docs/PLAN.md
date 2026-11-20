@@ -217,14 +217,25 @@ bordas, teclado), progresso no servidor.
   meio volta, depois (ou com flick) vira, com ease-out; metade esquerda traz a anterior; teclado e toques nas bordas
   fazem a mesma animação; "reduzir animações" troca sem animar. Quadros de referência em
   `test/features/reader/goldens/` (conferidos a olho ao mudar o shader: `flutter test --update-goldens`).
-  Falta: modo de duas páginas com lombada (paisagem/tablet).
+- **Página dupla (feita):** duas páginas lado a lado, como um livro aberto, para todos os formatos. A capa fica
+  sozinha à direita, então as páginas ímpares ficam sempre à esquerda (`presentation/spreads.dart`, Dart puro e
+  testado). A página da esquerda fica parada e a da direita é a folha que vira, presa na lombada entre as duas; ao
+  fim da virada a da esquerda passa a ser a seguinte (o verso da folha ainda não é a página seguinte). O EPUB é
+  diagramado para a metade da largura. Layout nas opções de exibição: **Automático** (o padrão: duas páginas quando
+  a janela é mais larga que alta e cada página fica com pelo menos 420 px), **Uma página** ou **Duas páginas**.
+  Chegar à última abertura marca o livro como lido. Cenários em `test/scenarios/reader/layout.feature`; os outros
+  cenários do leitor e os de integração fixam uma página, porque as janelas de teste são largas.
 - **L3 (feita):** sumário, links internos, fonte, temas e marcadores.
   - Sumário: no EPUB vem do nav (EPUB 3) ou do NCX (EPUB 2); sem nenhum dos dois, são os capítulos que começam
     com título. No PDF vem do outline do PDFium; quadrinhos não têm. Os itens e os marcadores são frações do livro
     (`EpubBook.offsetOf`: caracteres até a âncora), então continuam certos depois de repaginar.
   - Links internos (EPUB): tocar no link vai até a âncora, e um botão "Back to page N" volta. Links externos são
     ignorados.
-  - Fonte (EPUB): 8 tamanhos de 14 a 32 px, serifa ou sem serifa. Mudar repagina e mantém o trecho.
+  - Opções de exibição (EPUB), no painel "Exibição", cada uma numa seção como no Play Livros: fonte (Noto Sans, o
+    padrão e a livre mais parecida com a Amazon Ember; Literata; Atkinson Hyperlegible; todas OFL, embutidas, ver
+    `assets/fonts/README.md`), tamanho (80 a 175%), altura da linha (80 a 150%), espaçamento entre caracteres (0 a 5
+    passos de 0,025 em) e justificar ou alinhar à esquerda. Mudar repagina e mantém o trecho. Preferências antigas
+    em px viram o degrau mais próximo; a escolha antiga serifa/sem serifa (fontes genéricas do sistema) é descartada.
   - Temas claro, sépia e escuro, para todos os formatos:
     - EPUB: o texto é diagramado em preto e pintado na tinta do tema, então trocar de tema não repagina.
     - PDF: recolorido por matriz (branco vira papel, preto vira tinta); no tema claro fica intacto.

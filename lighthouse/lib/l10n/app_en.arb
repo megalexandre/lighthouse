@@ -805,6 +805,21 @@
       }
     }
   },
+  "pagesOf": "Pages {first}–{last} of {count}",
+  "@pagesOf": {
+    "description": "Reader page counter with two pages side by side.",
+    "placeholders": {
+      "first": {
+        "type": "int"
+      },
+      "last": {
+        "type": "int"
+      },
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "contents": "Contents",
   "@contents": {
     "description": "Reader tab."
@@ -834,11 +849,11 @@
   "@smallerText": {
     "description": "Reader display."
   },
-  "fontSizePx": "{size} px",
-  "@fontSizePx": {
-    "description": "The type size, e.g. 18 px.",
+  "percent": "{value}%",
+  "@percent": {
+    "description": "A reader display setting in percent of its default, e.g. 100%.",
     "placeholders": {
-      "size": {
+      "value": {
         "type": "int"
       }
     }
@@ -847,13 +862,69 @@
   "@largerText": {
     "description": "Reader display."
   },
-  "serif": "Serif",
-  "@serif": {
-    "description": "Reader typeface."
+  "readerTheme": "Theme",
+  "@readerTheme": {
+    "description": "Reader display: heading of the light / sepia / dark choice."
   },
-  "sans": "Sans",
-  "@sans": {
-    "description": "Reader typeface."
+  "readerFont": "Font",
+  "@readerFont": {
+    "description": "Reader display: heading of the typeface menu."
+  },
+  "fontSizeLabel": "Font size",
+  "@fontSizeLabel": {
+    "description": "Reader display: heading."
+  },
+  "lineHeight": "Line height",
+  "@lineHeight": {
+    "description": "Reader display: heading of the space between lines."
+  },
+  "lessLineHeight": "Less space between lines",
+  "@lessLineHeight": {
+    "description": "Reader display: button tooltip."
+  },
+  "moreLineHeight": "More space between lines",
+  "@moreLineHeight": {
+    "description": "Reader display: button tooltip."
+  },
+  "letterSpacing": "Letter spacing",
+  "@letterSpacing": {
+    "description": "Reader display: heading of the space between letters."
+  },
+  "lessLetterSpacing": "Less space between letters",
+  "@lessLetterSpacing": {
+    "description": "Reader display: button tooltip."
+  },
+  "moreLetterSpacing": "More space between letters",
+  "@moreLetterSpacing": {
+    "description": "Reader display: button tooltip."
+  },
+  "justify": "Justify",
+  "@justify": {
+    "description": "Reader display: heading of the text alignment choice."
+  },
+  "alignLeft": "Align left",
+  "@alignLeft": {
+    "description": "Reader display: text flush left, ragged right (tooltip)."
+  },
+  "alignJustified": "Justified",
+  "@alignJustified": {
+    "description": "Reader display: text justified (tooltip)."
+  },
+  "pageLayout": "Page layout",
+  "@pageLayout": {
+    "description": "Reader display: heading of the one / two pages choice."
+  },
+  "layoutAuto": "Automatic",
+  "@layoutAuto": {
+    "description": "Reader page layout: two pages when the window is wide enough."
+  },
+  "layoutSingle": "One page",
+  "@layoutSingle": {
+    "description": "Reader page layout."
+  },
+  "layoutDouble": "Two pages",
+  "@layoutDouble": {
+    "description": "Reader page layout: side by side, as an open book."
   },
   "readerLight": "Light",
   "@readerLight": {

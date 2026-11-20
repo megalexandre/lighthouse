@@ -11,6 +11,7 @@ class ReaderChrome extends StatelessWidget {
   const ReaderChrome({
     super.key,
     required this.session,
+    this.shown,
     required this.onBack,
     required this.onSeek,
     required this.onContents,
@@ -19,6 +20,9 @@ class ReaderChrome extends StatelessWidget {
   });
 
   final ReaderSession session;
+
+  /// The first and last pages shown, when two are side by side.
+  final (int, int)? shown;
   final VoidCallback onBack;
   final ValueChanged<int> onSeek;
   final VoidCallback onContents;
@@ -36,7 +40,7 @@ class ReaderChrome extends StatelessWidget {
         onDisplay: onDisplay,
       ),
       const Spacer(),
-      _BottomBar(session: session, onSeek: onSeek),
+      _BottomBar(session: session, shown: shown, onSeek: onSeek),
     ],
   );
 }
@@ -116,9 +120,14 @@ class _TopBar extends StatelessWidget {
 
 /// The page slider (a book of more than one page) and "Page n of m".
 class _BottomBar extends StatelessWidget {
-  const _BottomBar({required this.session, required this.onSeek});
+  const _BottomBar({
+    required this.session,
+    required this.shown,
+    required this.onSeek,
+  });
 
   final ReaderSession session;
+  final (int, int)? shown;
   final ValueChanged<int> onSeek;
 
   @override
@@ -145,7 +154,11 @@ class _BottomBar extends StatelessWidget {
                     : const SizedBox.shrink(),
               ),
               Text(
-                context.l10n.pageOf(session.page + 1, count),
+                switch (shown) {
+                  (final first, final last) when first != last =>
+                    context.l10n.pagesOf(first + 1, last + 1, count),
+                  _ => context.l10n.pageOf(session.page + 1, count),
+                },
                 key: ReaderScreen.pageText,
                 style: Theme.of(context).textTheme.bodyMedium
                     ?.copyWith(color: context.tokens.osdInkMuted),

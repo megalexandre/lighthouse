@@ -7,6 +7,7 @@ Feature: Reading
 
   Background:
     Given the app is signed in
+    And the reader shows one page at a time
 
   Scenario: A new book opens on its first page
     When I open the page of {'book-comic'}

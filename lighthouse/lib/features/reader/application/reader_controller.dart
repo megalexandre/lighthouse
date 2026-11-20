@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:math' as math;
 import 'dart:ui' show Offset, Size;
 
 import 'package:flutter/foundation.dart';
@@ -209,13 +210,14 @@ class ReaderController extends AsyncNotifier<ReaderSession> {
     goTo(session.document.pageAt(fraction));
   }
 
-  /// Follows the link at [at] on the page shown ([at] in the page's unit
+  /// Follows the link at [at] on page [page] (the page shown unless said:
+  /// with two side by side, the one tapped; [at] in the page's unit
   /// square), if there is one there; remembers where it was followed from
   /// ([ReaderSession.linkedFrom]). True when there was one.
-  bool followLink(Offset at) {
+  bool followLink(Offset at, {int? page}) {
     final session = _session;
     if (session == null) return false;
-    final target = session.document.linkAt(session.page, at);
+    final target = session.document.linkAt(page ?? session.page, at);
     if (target == null) return false;
     final from = session.document.fractionOf(session.page);
     _set(session.copyWith(linkedFrom: () => from));
@@ -267,8 +269,10 @@ class ReaderController extends AsyncNotifier<ReaderSession> {
     }
   }
 
-  /// Shows [page] (0-based, clamped to the book).
-  void goTo(int page) {
+  /// Shows [page] (0-based, clamped to the book). [through]: the last page
+  /// shown with it, when there are two side by side; reaching the book's
+  /// last page that way marks it read too.
+  void goTo(int page, {int? through}) {
     final session = _session;
     if (session == null) return;
     final target = page.clamp(0, session.pageCount - 1);
@@ -290,7 +294,7 @@ class ReaderController extends AsyncNotifier<ReaderSession> {
         session.pageCount,
         session.item.runTimeTicks,
       ),
-      last: target == session.pageCount - 1,
+      last: math.max(target, through ?? target) >= session.pageCount - 1,
     );
     _saveTimer?.cancel();
     _saveTimer = Timer(saveDelay, () => unawaited(_save()));
