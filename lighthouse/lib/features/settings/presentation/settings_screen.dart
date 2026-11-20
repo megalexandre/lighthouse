@@ -42,44 +42,52 @@ class SettingsScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(title: Text(context.l10n.settings)),
-      body: ListView(
-        padding: const EdgeInsets.symmetric(vertical: 16),
-        children: [
-          _Heading(context.l10n.playback),
-          _Choice<int?>(
-            key: qualityField,
-            label: context.l10n.maxQuality,
-            help: context.l10n.maxQualityHelp,
-            value: quality,
-            options: [
-              for (final (bits, label) in qualityOptions)
-                (bits, bits == null ? context.l10n.qualityMaximum : label),
-            ],
-            onChanged: (v) =>
-                ref.read(maxStreamingBitrateProvider.notifier).set(v),
+      // Clear of a notch at the sides; the gesture bar is scrolled past.
+      body: SafeArea(
+        top: false,
+        bottom: false,
+        child: ListView(
+          padding: EdgeInsets.only(
+            top: 16,
+            bottom: 16 + MediaQuery.paddingOf(context).bottom,
           ),
-          switch (config) {
-            AsyncData(value: final config) => _UserSettings(config: config),
-            AsyncError(:final error) => ErrorRetry(
-              error: error,
-              onRetry: () => ref.invalidate(userConfigurationProvider),
+          children: [
+            _Heading(context.l10n.playback),
+            _Choice<int?>(
+              key: qualityField,
+              label: context.l10n.maxQuality,
+              help: context.l10n.maxQualityHelp,
+              value: quality,
+              options: [
+                for (final (bits, label) in qualityOptions)
+                  (bits, bits == null ? context.l10n.qualityMaximum : label),
+              ],
+              onChanged: (v) =>
+                  ref.read(maxStreamingBitrateProvider.notifier).set(v),
             ),
-            _ => const Padding(
-              padding: EdgeInsets.all(24),
-              child: Center(child: CircularProgressIndicator()),
-            ),
-          },
-          _Heading(context.l10n.appearance),
-          const _AppearanceSettings(),
-          if (session != null) ...[
-            _Heading(context.l10n.account),
-            ListTile(
-              leading: const Icon(Icons.person_outline),
-              title: Text(session.userName),
-              subtitle: Text(session.server.name),
-            ),
+            switch (config) {
+              AsyncData(value: final config) => _UserSettings(config: config),
+              AsyncError(:final error) => ErrorRetry(
+                error: error,
+                onRetry: () => ref.invalidate(userConfigurationProvider),
+              ),
+              _ => const Padding(
+                padding: EdgeInsets.all(24),
+                child: Center(child: CircularProgressIndicator()),
+              ),
+            },
+            _Heading(context.l10n.appearance),
+            const _AppearanceSettings(),
+            if (session != null) ...[
+              _Heading(context.l10n.account),
+              ListTile(
+                leading: const Icon(Icons.person_outline),
+                title: Text(session.userName),
+                subtitle: Text(session.server.name),
+              ),
+            ],
           ],
-        ],
+        ),
       ),
     );
   }

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/gestures.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -111,8 +112,33 @@ class ItemCard extends StatefulWidget {
   /// a season.
   static const watchedMark = Key('item.watchedMark');
 
-  /// Height of the two text lines under the picture.
+  /// Height of the two text lines under the picture at the default font
+  /// size, and the least they get.
   static const textHeight = 48.0;
+
+  /// Height of the two text lines under the picture at the user's font size
+  /// (a phone's accessibility setting makes it larger).
+  static double textHeightOf(BuildContext context) {
+    final theme = Theme.of(context);
+    final scaler = MediaQuery.textScalerOf(context);
+    double line(TextStyle? style) {
+      final painter = TextPainter(
+        text: TextSpan(text: 'Ag', style: style),
+        textDirection: TextDirection.ltr,
+        textScaler: scaler,
+        maxLines: 1,
+      )..layout();
+      final height = painter.height;
+      painter.dispose();
+      return height;
+    }
+
+    final lines =
+        context.tokens.space(2) +
+        line(theme.textTheme.titleSmall) +
+        line(theme.textTheme.bodySmall);
+    return math.max(textHeight, lines);
+  }
 
   /// Room a row leaves above and below its cards, so a card that grows on
   /// hover (and its focus ring) is not cut.
@@ -129,8 +155,11 @@ class ItemCard extends StatefulWidget {
   static const expandDelay = Duration(milliseconds: 450);
 
   /// Total height of a card [width] wide.
-  static double heightFor(double width, double aspectRatio) =>
-      width / aspectRatio + textHeight;
+  static double heightFor(
+    BuildContext context,
+    double width,
+    double aspectRatio,
+  ) => width / aspectRatio + textHeightOf(context);
 
   @override
   State<ItemCard> createState() => _ItemCardState();
@@ -440,7 +469,7 @@ class _Caption extends StatelessWidget {
     final theme = Theme.of(context);
     final subtitle = cardSubtitle(item, context.l10n);
     return SizedBox(
-      height: ItemCard.textHeight,
+      height: ItemCard.textHeightOf(context),
       child: Padding(
         padding: EdgeInsets.only(top: context.tokens.space(2)),
         child: Column(

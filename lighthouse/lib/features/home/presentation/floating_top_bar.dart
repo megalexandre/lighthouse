@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:ui' as ui;
 
 import 'package:flutter/services.dart';
@@ -7,6 +8,7 @@ import 'package:material_ui/material_ui.dart';
 
 import '../../../core/theme/app_tokens.dart';
 import '../../../core/theme/appearance.dart';
+import '../../../core/touch.dart';
 import '../../../core/window_size.dart';
 import '../../../l10n/l10n.dart';
 import '../../../router.dart';
@@ -32,6 +34,11 @@ class FloatingTopBar extends ConsumerStatefulWidget
   final String? activeView;
 
   static const height = 72.0;
+
+  /// The room the bar takes from the top of the window: [height] plus the
+  /// status bar it reaches under on a phone.
+  static double extentOf(BuildContext context) =>
+      height + MediaQuery.paddingOf(context).top;
 
   static const homeTab = Key('topBar.home');
   static const mark = Key('topBar.mark');
@@ -63,6 +70,11 @@ class _FloatingTopBarState extends ConsumerState<FloatingTopBar> {
   }
 
   void _openSearch() {
+    // A phone has no room for the field beside the tabs: the search page.
+    if (WindowSize.of(context) == WindowSize.compact) {
+      unawaited(context.push(Routes.search));
+      return;
+    }
     setState(() => _searching = true);
     _queryFocus.requestFocus();
   }
@@ -82,9 +94,17 @@ class _FloatingTopBarState extends ConsumerState<FloatingTopBar> {
   @override
   Widget build(BuildContext context) {
     final dark = ref.watch(appThemeProvider).dark;
-    return Theme(
-      data: dark,
-      child: Builder(builder: _bar),
+    // The system's Back (Android) closes the open search field, as Esc
+    // does, before it leaves the page (or the app, from Home).
+    return PopScope(
+      canPop: !_searching,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) _closeSearch();
+      },
+      child: Theme(
+        data: dark,
+        child: Builder(builder: _bar),
+      ),
     );
   }
 
@@ -137,7 +157,7 @@ class _FloatingTopBarState extends ConsumerState<FloatingTopBar> {
     );
 
     return SizedBox(
-      height: FloatingTopBar.height,
+      height: FloatingTopBar.extentOf(context),
       child: AnimatedPadding(
         duration: const Duration(milliseconds: 250),
         padding: EdgeInsets.symmetric(horizontal: inset),
@@ -193,7 +213,8 @@ class _FloatingTopBarState extends ConsumerState<FloatingTopBar> {
     final radius = BorderRadius.circular(tokens.radiusMd);
     return AnimatedContainer(
       duration: const Duration(milliseconds: 200),
-      height: 40,
+      // As tall as a finger needs on touch, inside the 1 px border.
+      height: isTouch(context) ? touchTarget + 2 : 40,
       decoration: BoxDecoration(
         color: _searching ? tokens.osdSurface : Colors.transparent,
         border: Border.all(
@@ -267,35 +288,45 @@ class _Mark extends StatelessWidget {
       child: GestureDetector(
         key: FloatingTopBar.mark,
         onTap: onTap,
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Transform.rotate(
-              angle: -0.785,
-              child: Container(
-                width: 18,
-                height: 18,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  border: Border(
-                    top: BorderSide(color: accent, width: 3),
-                    left: BorderSide(color: accent, width: 3),
-                    bottom: BorderSide(color: accent, width: 3),
+        behavior: HitTestBehavior.opaque,
+        child: ConstrainedBox(
+          // The ring alone is too small to tap.
+          constraints: isTouch(context)
+              ? const BoxConstraints(
+                  minWidth: touchTarget,
+                  minHeight: touchTarget,
+                )
+              : const BoxConstraints(),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Transform.rotate(
+                angle: -0.785,
+                child: Container(
+                  width: 18,
+                  height: 18,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border(
+                      top: BorderSide(color: accent, width: 3),
+                      left: BorderSide(color: accent, width: 3),
+                      bottom: BorderSide(color: accent, width: 3),
+                    ),
                   ),
                 ),
               ),
-            ),
-            if (showName) ...[
-              const SizedBox(width: 8),
-              Text(
-                context.l10n.appTitle,
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  color: context.tokens.osdInk,
-                  letterSpacing: -0.6,
+              if (showName) ...[
+                const SizedBox(width: 8),
+                Text(
+                  context.l10n.appTitle,
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    color: context.tokens.osdInk,
+                    letterSpacing: -0.6,
+                  ),
                 ),
-              ),
+              ],
             ],
-          ],
+          ),
         ),
       ),
     );
@@ -415,7 +446,15 @@ class _Profile extends ConsumerWidget {
           customBorder: const CircleBorder(),
           onTap: () =>
               controller.isOpen ? controller.close() : controller.open(),
-          child: disc,
+          // The disc is too small to tap: a ring of room around it.
+          child: isTouch(context)
+              ? Padding(
+                  padding: EdgeInsets.all(
+                    (touchTarget - _InitialDisc.size) / 2,
+                  ),
+                  child: disc,
+                )
+              : disc,
         ),
       ),
     );
@@ -426,14 +465,16 @@ class _Profile extends ConsumerWidget {
 class _InitialDisc extends StatelessWidget {
   const _InitialDisc({required this.name});
 
+  static const size = 36.0;
+
   final String name;
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     return Container(
-      width: 36,
-      height: 36,
+      width: size,
+      height: size,
       alignment: Alignment.center,
       decoration: BoxDecoration(
         shape: BoxShape.circle,

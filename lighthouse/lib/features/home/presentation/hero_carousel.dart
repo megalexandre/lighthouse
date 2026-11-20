@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../../../api/models/base_item_dto.dart';
+import '../../../core/touch.dart';
 import '../../../core/window_size.dart';
 import 'hero_controls.dart';
 import 'hero_slide.dart';
@@ -17,7 +18,8 @@ import 'hero_slide.dart';
 /// overview, a white Play button and a round "More info" one. The slides
 /// change every [interval] with a cross-fade (none with reduced motion),
 /// and hold still while the pointer is on the carousel; arrows and dots
-/// move through them by hand.
+/// move through them by hand. On touch the carousel is swiped instead, and
+/// the dots only show where it is.
 class HeroCarousel extends ConsumerStatefulWidget {
   const HeroCarousel({super.key, required this.items});
 
@@ -31,6 +33,9 @@ class HeroCarousel extends ConsumerStatefulWidget {
   static const nextButton = Key('hero.next');
   static const previousButton = Key('hero.previous');
   static Key dot(int index) => Key('hero.dot.$index');
+
+  /// How fast (logical px/s) a finger moves for a swipe to change slides.
+  static const swipeVelocity = 200.0;
 
   /// Its height in a window [size]: 16:9 of the width, at least 560 and at
   /// most 86 % of the height (below expanded: 640).
@@ -85,7 +90,8 @@ class _HeroCarouselState extends ConsumerState<HeroCarousel> {
     final size = MediaQuery.sizeOf(context);
     final still = MediaQuery.disableAnimationsOf(context);
     final narrow = HeroCarousel.isNarrow(size.width);
-    return MouseRegion(
+    final touch = isTouch(context);
+    final carousel = MouseRegion(
       onEnter: (_) => _held = true,
       onExit: (_) => _held = false,
       child: SizedBox(
@@ -126,13 +132,29 @@ class _HeroCarouselState extends ConsumerState<HeroCarousel> {
                       HeroDot(
                         key: HeroCarousel.dot(i),
                         on: i == _index,
-                        onTap: () => _go(i, byHand: true),
+                        onTap: touch ? null : () => _go(i, byHand: true),
                       ),
                   ],
                 ),
               ),
           ],
         ),
+      ),
+    );
+    if (!touch || items.length < 2) return carousel;
+    void next() => _go(_index + 1, byHand: true);
+    void previous() => _go(_index - 1, byHand: true);
+    return Semantics(
+      // Screen readers scroll it as a list.
+      onScrollLeft: next,
+      onScrollRight: previous,
+      child: GestureDetector(
+        onHorizontalDragEnd: (details) {
+          final velocity = details.primaryVelocity ?? 0;
+          if (velocity.abs() < HeroCarousel.swipeVelocity) return;
+          velocity < 0 ? next() : previous();
+        },
+        child: carousel,
       ),
     );
   }

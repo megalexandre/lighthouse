@@ -31,28 +31,34 @@ class ItemScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(title: Text(item.value?.name ?? '')),
       body: switch (item) {
-        AsyncData(value: final item) => ListView(
-          padding: const EdgeInsets.all(24),
-          children: [
-            ItemHeader(item: item),
-            if (isPlayable(item)) ...[
-              const SizedBox(height: 24),
-              PlayButtons(item: item),
-            ],
-            if (item.type == BaseItemKind.book) ...[
-              const SizedBox(height: 24),
-              ReadButtons(item: item),
-            ],
-            const SizedBox(height: 32),
-            ...switch (item.type) {
-              BaseItemKind.series => [SeasonList(seriesId: item.id)],
-              BaseItemKind.season when item.seriesId != null => [
-                EpisodeList(seriesId: item.seriesId!, seasonId: item.id),
+        // Clear of a notch at the sides; the gesture bar is scrolled past.
+        AsyncData(value: final item) => SafeArea(
+          top: false,
+          bottom: false,
+          child: ListView(
+            padding: const EdgeInsets.all(24)
+                .copyWith(bottom: 24 + MediaQuery.paddingOf(context).bottom),
+            children: [
+              ItemHeader(item: item),
+              if (isPlayable(item)) ...[
+                const SizedBox(height: 24),
+                PlayButtons(item: item),
               ],
-              BaseItemKind.musicAlbum => [TrackList(albumId: item.id)],
-              _ => const <Widget>[],
-            },
-          ],
+              if (item.type == BaseItemKind.book) ...[
+                const SizedBox(height: 24),
+                ReadButtons(item: item),
+              ],
+              const SizedBox(height: 32),
+              ...switch (item.type) {
+                BaseItemKind.series => [SeasonList(seriesId: item.id)],
+                BaseItemKind.season when item.seriesId != null => [
+                  EpisodeList(seriesId: item.seriesId!, seasonId: item.id),
+                ],
+                BaseItemKind.musicAlbum => [TrackList(albumId: item.id)],
+                _ => const <Widget>[],
+              },
+            ],
+          ),
         ),
         AsyncError(:final error) => Center(
           child: ErrorRetry(

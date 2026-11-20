@@ -4,6 +4,8 @@ import 'dart:io';
 import 'dart:typed_data';
 import 'dart:ui' as ui;
 
+import 'package:flutter/foundation.dart'
+    show TargetPlatform, debugDefaultTargetPlatformOverride;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -1015,8 +1017,30 @@ class TestApp {
     await tester.pumpAndSettle();
   }
 
+  /// [open] on an Android phone ([usePhone]). The phone layout is made for
+  /// Prime only, so build the app with `TestApp(theme: TestApp.prime)`.
+  Future<void> openOnPhone(
+    WidgetTester tester,
+    String location, {
+    bool sideways = false,
+    double textScale = 1,
+  }) async {
+    final size = sideways ? TestWindows.phoneSideways : TestWindows.phone;
+    usePhone(tester, sideways: sideways, textScale: textScale);
+    await open(tester, location, window: size);
+  }
+
+  /// Prime, the app's default theme and the only one with a phone layout.
+  static const prime = 'builtin:prime.json';
+
   /// Pumps a fresh app (new providers, same store): what a restart does.
   Future<void> pump(WidgetTester tester) async {
+    // As on the desktop the app runs on (flutter_test defaults to Android,
+    // which would make it a touch app); usePhone picks Android first.
+    if (debugDefaultTargetPlatformOverride == null) {
+      debugDefaultTargetPlatformOverride = TargetPlatform.linux;
+      addTearDown(() => debugDefaultTargetPlatformOverride = null);
+    }
     await tester.pumpWidget(
       ProviderScope(
         key: UniqueKey(),
@@ -1051,6 +1075,34 @@ void useWindow(WidgetTester tester, Size size) {
     ..physicalSize = size
     ..devicePixelRatio = 1;
   addTearDown(tester.view.reset);
+}
+
+/// What a phone's system takes from the window, in [TestPhone]: the
+/// status bar above and the gesture bar below when upright; on its side, the
+/// camera's notch on the left as well.
+abstract final class PhoneInsets {
+  static const upright = FakeViewPadding(top: 32, bottom: 24);
+  static const sideways = FakeViewPadding(left: 32, bottom: 24);
+}
+
+/// The test runs as on an Android phone, until it ends: the window of
+/// [TestWindows.phone] (or [TestWindows.phoneSideways]) with the system's
+/// bars and notch ([PhoneInsets]), touch input (the Android platform), and
+/// the user's font size ([textScale], 1.3 for a common large setting).
+void usePhone(
+  WidgetTester tester, {
+  bool sideways = false,
+  double textScale = 1,
+}) {
+  useWindow(tester, sideways ? TestWindows.phoneSideways : TestWindows.phone);
+  final insets = sideways ? PhoneInsets.sideways : PhoneInsets.upright;
+  tester.view
+    ..padding = insets
+    ..viewPadding = insets;
+  tester.platformDispatcher.textScaleFactorTestValue = textScale;
+  addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+  debugDefaultTargetPlatformOverride = TargetPlatform.android;
+  addTearDown(() => debugDefaultTargetPlatformOverride = null);
 }
 
 /// A 1600×1200 window instead of the 800×600 default, so whole screens

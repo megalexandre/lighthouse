@@ -90,42 +90,38 @@ class PlayerScreen extends ConsumerWidget {
 
     return _PlayerTheme(
       child: _FullscreenScope(
-        child: PopScope(
-          canPop: false,
-          onPopInvokedWithResult: (didPop, _) {
-            if (!didPop) unawaited(_close(context, ref));
+        // The system's Back is the PlayerView's while playing (it closes
+        // the menu first); before that, it just leaves.
+        child: Scaffold(
+          backgroundColor: Colors.black,
+          body: switch (session) {
+            AsyncData(value: final session) => PlayerView(
+              session: session,
+              controller: ref.read(provider.notifier),
+              upNext:
+                  session.item.type == BaseItemKind.episode && episodesPlayOn
+                  ? neighbors.next
+                  : null,
+              onBack: () => _close(context, ref),
+              onNext: neighbors.next == null
+                  ? null
+                  : () => _goTo(context, ref, neighbors.next!),
+              onPrevious: neighbors.previous == null
+                  ? null
+                  : () => _goTo(context, ref, neighbors.previous!),
+            ),
+            AsyncError(:final error) => PlayerMessage(
+              onBack: () => context.pop(),
+              child: ErrorRetry(
+                error: error,
+                onRetry: () => ref.invalidate(provider),
+              ),
+            ),
+            _ => PlayerMessage(
+              onBack: () => context.pop(),
+              child: const CircularProgressIndicator(),
+            ),
           },
-          child: Scaffold(
-            backgroundColor: Colors.black,
-            body: switch (session) {
-              AsyncData(value: final session) => PlayerView(
-                session: session,
-                controller: ref.read(provider.notifier),
-                upNext:
-                    session.item.type == BaseItemKind.episode && episodesPlayOn
-                    ? neighbors.next
-                    : null,
-                onBack: () => _close(context, ref),
-                onNext: neighbors.next == null
-                    ? null
-                    : () => _goTo(context, ref, neighbors.next!),
-                onPrevious: neighbors.previous == null
-                    ? null
-                    : () => _goTo(context, ref, neighbors.previous!),
-              ),
-              AsyncError(:final error) => PlayerMessage(
-                onBack: () => context.pop(),
-                child: ErrorRetry(
-                  error: error,
-                  onRetry: () => ref.invalidate(provider),
-                ),
-              ),
-              _ => PlayerMessage(
-                onBack: () => context.pop(),
-                child: const CircularProgressIndicator(),
-              ),
-            },
-          ),
         ),
       ),
     );

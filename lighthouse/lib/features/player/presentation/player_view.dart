@@ -178,12 +178,18 @@ class _PlayerViewState extends ConsumerState<PlayerView> {
     _scheduleHide();
   }
 
+  /// Esc or the system's Back: in the menu one level up, then closed (not
+  /// leaving the player); otherwise out of the player.
+  void _back() {
+    if (_menu == null) return widget.onBack();
+    if (!(_menuKey.currentState?.back() ?? false)) _closeMenu();
+  }
+
   KeyEventResult _onKey(FocusNode _, KeyEvent event) {
-    // Esc in the menu: one level up, then closed (not leaving the player).
     if (_menu != null &&
         event is KeyDownEvent &&
         event.logicalKey == LogicalKeyboardKey.escape) {
-      if (!(_menuKey.currentState?.back() ?? false)) _closeMenu();
+      _back();
       return KeyEventResult.handled;
     }
     final action = playerActionFor(event, HardwareKeyboard.instance);
@@ -229,76 +235,84 @@ class _PlayerViewState extends ConsumerState<PlayerView> {
     final session = widget.session;
     final c = widget.controller;
     final tokens = context.tokens;
-    return Focus(
-      autofocus: true,
-      onKeyEvent: _onKey,
-      child: MouseRegion(
-        cursor: _osdVisible ? MouseCursor.defer : SystemMouseCursors.none,
-        onHover: (_) => _show(),
-        child: Stack(
-          fit: StackFit.expand,
-          children: [
-            _Picture(
-              session: session,
-              onTap: () {
-                unawaited(engine.playOrPause());
-                _show();
-              },
-              onDoubleTap: _isAudio ? null : _toggleFullscreen,
-            ),
-            if (session.interruptedAt case final Duration at)
-              InterruptedNotice(
-                at: at,
-                onResume: c.resumeAfterInterruption,
-                onBack: widget.onBack,
+    // The system's Back (Android) does what Esc does; leaving saves the
+    // resume point first (onBack), so the route is never popped directly.
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) _back();
+      },
+      child: Focus(
+        autofocus: true,
+        onKeyEvent: _onKey,
+        child: MouseRegion(
+          cursor: _osdVisible ? MouseCursor.defer : SystemMouseCursors.none,
+          onHover: (_) => _show(),
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              _Picture(
+                session: session,
+                onTap: () {
+                  unawaited(engine.playOrPause());
+                  _show();
+                },
+                onDoubleTap: _isAudio ? null : _toggleFullscreen,
               ),
-            _Buffering(engine: engine),
-            AnimatedOpacity(
-              opacity: _osdVisible ? 1 : 0,
-              // In quickly, out slowly.
-              duration: Duration(milliseconds: _osdVisible ? 200 : 400),
-              child: IgnorePointer(
-                ignoring: !_osdVisible,
-                child: PlayerOsd(
-                  session: session,
-                  controller: c,
-                  chapters: _chapters,
-                  thumbnails: _thumbnails,
-                  fullscreen: ref.watch(playerFullscreenProvider),
-                  onFullscreen: _toggleFullscreen,
-                  onNext: widget.onNext == null ? null : _next,
-                  onPrevious: _previous,
-                  onSeekBy: _seekBy,
+              if (session.interruptedAt case final Duration at)
+                InterruptedNotice(
+                  at: at,
+                  onResume: c.resumeAfterInterruption,
                   onBack: widget.onBack,
-                  onInteract: _show,
-                  onMenu: _openMenu,
-                  showCenterPlay: !_isAudio,
+                ),
+              _Buffering(engine: engine),
+              AnimatedOpacity(
+                opacity: _osdVisible ? 1 : 0,
+                // In quickly, out slowly.
+                duration: Duration(milliseconds: _osdVisible ? 200 : 400),
+                child: IgnorePointer(
+                  ignoring: !_osdVisible,
+                  child: PlayerOsd(
+                    session: session,
+                    controller: c,
+                    chapters: _chapters,
+                    thumbnails: _thumbnails,
+                    fullscreen: ref.watch(playerFullscreenProvider),
+                    onFullscreen: _toggleFullscreen,
+                    onNext: widget.onNext == null ? null : _next,
+                    onPrevious: _previous,
+                    onSeekBy: _seekBy,
+                    onBack: widget.onBack,
+                    onInteract: _show,
+                    onMenu: _openMenu,
+                    showCenterPlay: !_isAudio,
+                  ),
                 ),
               ),
-            ),
-            if (widget.upNext case final BaseItemDto next when !_upNextHidden)
-              _UpNextLayer(
-                engine: engine,
-                next: next,
-                raised: _osdVisible,
-                onWatchNow: () => unawaited(_next()),
-                onHide: () => setState(() => _upNextHidden = true),
-              ),
-            if (_menu case final SettingsPage page) ...[
-              MenuBarrier(onDismiss: _closeMenu),
-              Positioned(
-                right: tokens.space(6),
-                bottom: 88,
-                child: TrackMenu(
-                  menuKey: _menuKey,
-                  page: page,
-                  session: session,
-                  controller: c,
-                  onClose: _closeMenu,
+              if (widget.upNext case final BaseItemDto next when !_upNextHidden)
+                _UpNextLayer(
+                  engine: engine,
+                  next: next,
+                  raised: _osdVisible,
+                  onWatchNow: () => unawaited(_next()),
+                  onHide: () => setState(() => _upNextHidden = true),
                 ),
-              ),
+              if (_menu case final SettingsPage page) ...[
+                MenuBarrier(onDismiss: _closeMenu),
+                Positioned(
+                  right: tokens.space(6),
+                  bottom: 88,
+                  child: TrackMenu(
+                    menuKey: _menuKey,
+                    page: page,
+                    session: session,
+                    controller: c,
+                    onClose: _closeMenu,
+                  ),
+                ),
+              ],
             ],
-          ],
+          ),
         ),
       ),
     );

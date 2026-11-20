@@ -91,18 +91,20 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         ? ref.watch(featuredProvider).value
         : null;
     final withHero = hero != null && hero.isNotEmpty;
+    final barExtent = FloatingTopBar.extentOf(context);
     return Scaffold(
       body: Stack(
         children: [
           switch (views) {
             AsyncData(value: final views) => RefreshIndicator(
-              edgeOffset: FloatingTopBar.height,
+              edgeOffset: barExtent,
               onRefresh: () async => _refresh(),
               child: ListView(
                 controller: _scroll,
                 padding: EdgeInsets.only(
-                  top: withHero ? 0 : FloatingTopBar.height + 16,
-                  bottom: 16,
+                  top: withHero ? 0 : barExtent + 16,
+                  // Scrolls past the gesture bar.
+                  bottom: 16 + MediaQuery.paddingOf(context).bottom,
                 ),
                 children: [
                   if (withHero) HeroCarousel(key: HomeScreen.hero, items: hero),
@@ -141,7 +143,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     ..invalidate(latestProvider);
 
   Widget get _noLibraries => Padding(
-    padding: const EdgeInsets.all(24),
+    padding: const EdgeInsets.all(24) + _sides(context),
     child: Text(context.l10n.noLibraries),
   );
 
@@ -221,7 +223,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         AsyncData(value: final views) => RefreshIndicator(
           onRefresh: () async => _refresh(),
           child: ListView(
-            padding: const EdgeInsets.symmetric(vertical: 16),
+            padding: EdgeInsets.only(
+              top: 16,
+              bottom: 16 + MediaQuery.paddingOf(context).bottom,
+            ),
             children: [
               if (views.isEmpty)
                 _noLibraries
@@ -279,17 +284,20 @@ class ItemRow extends StatelessWidget {
         // Room above and below: a card grows on hover.
         body = SizedBox(
           height:
-              ItemCard.heightFor(cardWidth, aspect) + 2 * ItemCard.hoverRoom,
+              ItemCard.heightFor(context, cardWidth, aspect) +
+              2 * ItemCard.hoverRoom,
           // Arrows at the ends, when the theme has them.
           child: RowArrows(
             inset: ItemCard.hoverRoom,
             builder: (controller) => ListView.separated(
               controller: controller,
               scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(
-                horizontal: 24,
-                vertical: ItemCard.hoverRoom,
-              ),
+              padding:
+                  const EdgeInsets.symmetric(
+                    horizontal: 24,
+                    vertical: ItemCard.hoverRoom,
+                  ) +
+                  _sides(context),
               itemCount: items.length,
               separatorBuilder: (_, _) => const SizedBox(width: 16),
               itemBuilder: (_, i) => ItemCard(
@@ -301,9 +309,12 @@ class ItemRow extends StatelessWidget {
           ),
         );
       case AsyncError(:final error):
-        body = Align(
-          alignment: Alignment.centerLeft,
-          child: ErrorRetry(error: error, onRetry: onRetry ?? () {}),
+        body = Padding(
+          padding: _sides(context),
+          child: Align(
+            alignment: Alignment.centerLeft,
+            child: ErrorRetry(error: error, onRetry: onRetry ?? () {}),
+          ),
         );
       default:
         body = const SizedBox(
@@ -318,7 +329,7 @@ class ItemRow extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(24, 0, 24, 8),
+            padding: const EdgeInsets.fromLTRB(24, 0, 24, 8) + _sides(context),
             child: Text(title, style: Theme.of(context).textTheme.titleLarge),
           ),
           body,
@@ -326,4 +337,12 @@ class ItemRow extends StatelessWidget {
       ),
     );
   }
+}
+
+/// What a notch or a rounded corner covers at the window's sides (a phone
+/// on its side). The rows still scroll under it, edge to edge; their first
+/// card and their title start clear of it.
+EdgeInsets _sides(BuildContext context) {
+  final padding = MediaQuery.paddingOf(context);
+  return EdgeInsets.only(left: padding.left, right: padding.right);
 }

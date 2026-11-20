@@ -81,7 +81,12 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                   key: SearchScreen.noResults,
                 ),
               ),
-              AsyncData(value: final items) => _Results(items: items),
+              // Clear of a notch at the sides.
+              AsyncData(value: final items) => SafeArea(
+                top: false,
+                bottom: false,
+                child: _Results(items: items),
+              ),
               AsyncError(:final error) => Center(
                 child: ErrorRetry(
                   error: error,
@@ -111,7 +116,11 @@ class _Results extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => ListView(
-    padding: const EdgeInsets.symmetric(vertical: 16),
+    // Scrolls past the gesture bar.
+    padding: EdgeInsets.only(
+      top: 16,
+      bottom: 16 + MediaQuery.paddingOf(context).bottom,
+    ),
     children: [
       for (final kind in searchKinds)
         if (items.where((i) => i.type == kind).toList() case final group

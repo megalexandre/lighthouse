@@ -5,6 +5,7 @@ import 'package:material_ui/material_ui.dart';
 
 import '../../../../core/theme/app_tokens.dart';
 import '../../../../core/ticks.dart';
+import '../../../../core/touch.dart';
 import '../../../../l10n/l10n.dart';
 import '../../application/trickplay.dart';
 import '../../data/player_engine.dart';
@@ -17,7 +18,7 @@ typedef SeekChapter = ({Duration start, String? name});
 /// `osd-accent`, cut by 2 px gaps where chapters start.
 ///
 /// 4 px at rest; 6 px with a 14 px thumb while hovered, dragged or focused
-/// (16 px of height to grab). Hovering shows a preview above the pointer:
+/// (16 px of height to grab; 48 px on touch). Hovering shows a preview above the pointer:
 /// the thumbnail there (when the server made them), the time and the
 /// chapter's name. A drag seeks once, on release; a click seeks at once.
 class SeekBar extends StatefulWidget {
@@ -124,6 +125,8 @@ class _SeekBarState extends State<SeekBar> {
     return LayoutBuilder(
       builder: (context, constraints) {
         final width = constraints.maxWidth;
+        // A finger needs more height than a pointer; the bar looks the same.
+        final grab = isTouch(context) ? touchTarget : 16.0;
         double fraction(Duration d) =>
             _max <= 0 ? 0 : (d.inMilliseconds / _max).clamp(0.0, 1.0);
         final bar = CustomPaint(
@@ -166,13 +169,21 @@ class _SeekBarState extends State<SeekBar> {
                     : (d) => _dragTo(d.localPosition.dx, width, hover: true),
                 onHorizontalDragEnd: (_) => unawaited(_endDrag()),
                 onHorizontalDragCancel: () => setState(() => _drag = null),
-                child: Stack(
-                  clipBehavior: Clip.none,
-                  children: [
-                    bar,
-                    if (_hoverX case final x? when _max > 0)
-                      _preview(context, x.clamp(0.0, width), width),
-                  ],
+                child: SizedBox(
+                  height: grab,
+                  child: Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      Center(child: bar),
+                      if (_hoverX case final x? when _max > 0)
+                        _preview(
+                          context,
+                          x.clamp(0.0, width),
+                          width,
+                          above: (grab + 16) / 2,
+                        ),
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -182,7 +193,13 @@ class _SeekBarState extends State<SeekBar> {
     );
   }
 
-  Widget _preview(BuildContext context, double x, double width) {
+  /// [above]: from the bottom of the grab area to the bar's top edge.
+  Widget _preview(
+    BuildContext context,
+    double x,
+    double width, {
+    required double above,
+  }) {
     final tokens = context.tokens;
     final at = _timeAt(x, width);
     final thumbnails = widget.thumbnails;
@@ -202,7 +219,7 @@ class _SeekBarState extends State<SeekBar> {
         .toDouble();
     return Positioned(
       left: left,
-      bottom: 22,
+      bottom: above + 6,
       width: boxWidth,
       child: IgnorePointer(
         child: Column(

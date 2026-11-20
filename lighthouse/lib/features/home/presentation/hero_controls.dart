@@ -37,34 +37,41 @@ class HeroArrow extends StatelessWidget {
   );
 }
 
+/// One slide's dot: a button to it, or only a mark of where the carousel
+/// is when [onTap] is null (on touch, where the carousel is swiped).
 class HeroDot extends StatelessWidget {
-  const HeroDot({super.key, required this.on, required this.onTap});
+  const HeroDot({super.key, required this.on, this.onTap});
 
   final bool on;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
 
   @override
-  Widget build(BuildContext context) => Semantics(
-    button: true,
-    selected: on,
-    label: context.l10n.slide,
-    child: GestureDetector(
-      onTap: onTap,
-      behavior: HitTestBehavior.opaque,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 8),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 250),
-          width: on ? 18 : 6,
-          height: 6,
-          decoration: BoxDecoration(
-            color: on
-                ? context.tokens.osdInk
-                : context.tokens.osdInk.withValues(alpha: 0.45),
-            borderRadius: BorderRadius.circular(3),
-          ),
+  Widget build(BuildContext context) {
+    final dot = Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 8),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 250),
+        width: on ? 18 : 6,
+        height: 6,
+        decoration: BoxDecoration(
+          color: on
+              ? context.tokens.osdInk
+              : context.tokens.osdInk.withValues(alpha: 0.45),
+          borderRadius: BorderRadius.circular(3),
         ),
       ),
-    ),
-  );
+    );
+    final onTap = this.onTap;
+    if (onTap == null) return ExcludeSemantics(child: dot);
+    return Semantics(
+      button: true,
+      selected: on,
+      label: context.l10n.slide,
+      child: GestureDetector(
+        onTap: onTap,
+        behavior: HitTestBehavior.opaque,
+        child: dot,
+      ),
+    );
+  }
 }

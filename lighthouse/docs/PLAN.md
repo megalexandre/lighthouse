@@ -291,6 +291,118 @@ gen-l10n exige o idioma base). O código usa `context.l10n.<chave>`; a classe ge
     app entra em `APP_LANGUAGES` do script.
 Títulos, sinopses e gêneros vêm do servidor, no idioma dos metadados do Jellyfin: não são do app.
 
+**A — Android (planejada)**
+Primeiro o layout de celular (A1), só depois a infraestrutura (A2). Por enquanto o celular só tem o tema **Prime**
+(o padrão): o Lanterna continua como está no desktop, sem layout de celular, e os testes de celular usam o Prime.
+Toda a A1 roda e se testa no Linux: as telas
+dependem do tamanho da janela e do tipo de entrada, não do sistema operacional. Por isso não precisa de SDK do
+Android, nem de emulador ou build de APK.
+
+Ponto de partida: `WindowSize` (`lib/core/window_size.dart`, classes de largura do Material 3, mais `isShort`) já
+existe e é usado em parte (barra do Prime, carrossel, cabeçalho do item, OSD, linhas de Configurações). Capturas a
+360×800 e a 800×360 (Prime e Lanterna) mostraram o seguinte:
+- Barra do Prime: as abas das bibliotecas não cabem e aparecem cortadas ("Sh") entre a busca e o perfil.
+- Detalhes do item: o pôster ocupa a largura toda e enche a primeira tela, então o título e o Play ficam abaixo da
+  dobra.
+- Biblioteca: grade de 2 colunas com cards de largura fixa e muito espaço vazio. Deitado (800 de largura) também
+  ficam só 2 colunas.
+- Home deitada (360 de altura): o carrossel toma a tela inteira.
+- Linhas da home: cards de 240 px e o espaço reservado para o hover (`ItemCard.hoverRoom`) desperdiçam espaço no
+  celular.
+- Mouse e teclado presumidos: o painel do card abre no hover, o card sobe no hover, um toque no vídeo pausa, o
+  duplo toque alterna tela cheia, o volume aparece na OSD e o Esc volta.
+
+Dois eixos, decididos em lugares diferentes:
+- **Tamanho** (`WindowSize`): quantas colunas, onde fica a navegação, quanto a capa ocupa. Vale também no desktop
+  com a janela estreita.
+- **Entrada** (toque ou mouse): hover, gestos, alvos de toque, atalhos. Vem de `Theme.of(context).platform`
+  (Android/iOS = toque). Os testes trocam com `debugDefaultTargetPlatformOverride` ou a variante
+  `TargetPlatformVariant`, sem provider novo.
+
+- **A1a, fundação e testes (feita):**
+  - Testes: `usePhone` / `TestApp.openOnPhone` (`test/support/fakes.dart`) abrem o app como num Android: janela de
+    celular (em pé ou deitado), barra de status, barra de gestos e o recorte da câmera (`PhoneInsets`), plataforma
+    Android e escala de fonte. O `flutter test` usa Android por padrão; por isso o `TestApp` passou a rodar como
+    Linux, e só o `usePhone` escolhe Android.
+  - Toque ou mouse: `isTouch(context)` (`lib/core/touch.dart`) segue a plataforma (`Theme.of(context).platform`).
+    Botões do Material já ganham alvo de 48 px no Android (`materialTapTargetSize.padded`).
+  - `test/features/phone/phone_layout_test.dart` passa em todas as telas, em pé e deitado:
+    - nenhum texto ou ícone fica sob a barra de status, o recorte ou a barra de gestos (o que rola pode passar sob a
+      barra de gestos);
+    - os alvos de toque seguem a diretriz do Android (`androidTapTargetGuideline`);
+    - nada transborda com fonte 1,3×.
+  - Áreas seguras:
+    - Biblioteca, item, busca, Configurações e login ficam fora do recorte lateral e rolam por baixo da barra de
+      gestos.
+    - Na home do Prime, o carrossel vai de ponta a ponta, mas a legenda e as linhas começam depois do recorte.
+    - A barra flutuante soma a barra de status à sua altura (`FloatingTopBar.extentOf`): antes ela espremia o
+      conteúdo em 40 px.
+  - Fonte grande: a legenda dos cards mede a altura com a fonte do usuário (`ItemCard.textHeightOf`), com 48 px de
+    mínimo, então o desktop não muda.
+  - Alvos de toque no modo toque:
+    - A barra de progresso do player tem 48 px de altura para pegar, com a mesma aparência.
+    - A marca, a busca e o perfil da barra do topo têm 48 px.
+    - O carrossel se desliza; os pontos viram só indicadores e o leitor de tela o rola como lista.
+  - No celular (compact), a busca da barra abre a página de busca: o campo inline não cabia e transbordava.
+  - Voltar do sistema (`test/features/phone/system_back_test.dart`) faz o que o Esc faz:
+    - no player, sobe um nível no menu, fecha o menu e só então sai, salvando o ponto de retomada;
+    - no leitor, fecha o sumário antes de sair;
+    - num tablet, fecha o campo de busca aberto antes de sair da home.
+    - Antes, o `PopScope(canPop: false)` da tela passava na frente da gaveta e do menu e fechava a tela inteira.
+  - Pendente para a A1d: no toque, a prévia da barra de progresso continua na tela depois de soltar o dedo (no mouse
+    ela some quando o ponteiro sai).
+- **A1b, navegação:**
+  - compact: barra de navegação inferior (`NavigationBar`) com Início, Bibliotecas (lista das bibliotecas), Busca e
+    Perfil (tema, Configurações, Sair).
+  - medium: `NavigationRail` à esquerda, como o comentário de `WindowSize.medium` já prevê.
+  - expanded ou mais: as barras de hoje.
+  - O tema decide o estilo, o tamanho decide o lugar: Prime e Lanterna usam a mesma estrutura no celular. O visual
+    sai dos tokens e, se faltar token, ele entra no Lanterna (THEMES.md).
+- **A1c, telas de navegação:**
+  - Home: no celular, cards das linhas menores (cerca de 3 pôsteres visíveis por linha) e sem `hoverRoom` no modo
+    toque. Carrossel com altura máxima quando a janela é baixa (`isShort`), para a primeira linha aparecer.
+  - Biblioteca: colunas calculadas por largura mínima de card (cerca de 3 pôsteres no compact, mais deitado) e
+    margens de 16 px.
+  - Item: no compact, backdrop no topo com o pôster menor ao lado do título, e Play e ações logo na primeira tela.
+    Episódios e faixas como lista de largura total.
+  - Busca: resultados em grade no compact.
+  - Configurações: o que só existe no desktop some fora dele, por exemplo "Abrir pasta" (`xdg-open`) dos temas do
+    usuário.
+  - Cards no modo toque: sem lift e sem painel de hover. Um toque longo abre uma folha de ações (tocar, marcar como
+    visto, detalhes) com as ações do `CardPopover`.
+- **A1d, player e leitor no toque:**
+  - Player:
+    - Um toque mostra ou esconde a OSD; o play/pause fica no botão central.
+    - Duplo toque na metade esquerda ou direita volta ou avança 10 s.
+    - Arrastar a barra de progresso mostra a prévia de trickplay.
+    - Sem botão de volume, que fica com as teclas do aparelho.
+    - O botão de tela cheia vira modo imersivo, ligado na A2.
+    - Altura dos controles e `_subtitleLift` revistos para retrato e paisagem.
+  - Leitor: já é guiado pelo toque. Conferir a barra de cima e a de baixo no retrato e com os recortes. O modo de
+    duas páginas na paisagem continua pendente (L).
+- **Pronto:**
+  - Cenários `.feature` de navegação, item, player e leitor rodam também em `TestWindows.phone` em modo toque.
+  - Widget tests cobrem as quebras de layout (compact, medium, curto).
+  - Nada muda no desktop: os cenários atuais seguem verdes sem alteração.
+
+**A2, infraestrutura (planejar em detalhe ao chegar):**
+- Projeto e dependências:
+  - `flutter create --platforms=android`.
+  - `media_kit_libs_android_video`.
+  - Conferir no Android: pdfrx/PDFium, `flutter_secure_storage` (Keystore), `path_provider` e o `FileKeyValueStore`
+    do leitor.
+  - `window_manager` e `xdg-open` só no desktop (`AppWindow` já é interface).
+- Rede, tela e reprodução:
+  - HTTP sem TLS para servidores na rede local (`network_security_config`).
+  - Orientação e modo imersivo no player.
+  - Áudio em segundo plano e notificação de mídia (análogo ao MPRIS).
+  - DeviceProfile do Android (decodificação por hardware via mediacodec).
+- Build e testes:
+  - Android SDK no dev container.
+  - Testes de integração em emulador (ou só os de widget e Linux, a decidir).
+  - Assinatura e APK/AAB de release.
+  - CI.
+
 **F5+ — Pós-MVP (planejar em detalhe ao chegar)**
 MPRIS (D-Bus), gamepads/remotes (demais inputmaps), WebSocket de sessão (controle remoto a partir de outro cliente),
 múltiplos servidores/perfis, troca de refresh rate e passthrough de áudio, Windows e macOS.

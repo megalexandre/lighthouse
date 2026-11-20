@@ -47,7 +47,11 @@ class _SlideState extends ConsumerState<HeroSlide> {
     final url = ref
         .watch(libraryRepositoryProvider)
         .backdropUrl(widget.item, maxWidth: pixels);
-    final left = widget.narrow ? context.tokens.space(4) : 72.0;
+    // Clear of a notch at the sides (a phone on its side); the picture
+    // still runs to the edges.
+    final system = MediaQuery.paddingOf(context);
+    final margin = widget.narrow ? context.tokens.space(4) : 72.0;
+    final left = margin + system.left;
     return Stack(
       fit: StackFit.expand,
       children: [
@@ -59,7 +63,7 @@ class _SlideState extends ConsumerState<HeroSlide> {
         const _Shades(),
         Positioned(
           left: left,
-          right: widget.narrow ? left : null,
+          right: widget.narrow ? margin + system.right : null,
           bottom: widget.narrow ? 96 : HeroCarousel.heightFor(size) * 0.15,
           child: ConstrainedBox(
             constraints: BoxConstraints(

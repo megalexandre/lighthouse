@@ -17,22 +17,25 @@ class AuthForm extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Scaffold(
-      body: Center(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 400),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Text(title, style: theme.textTheme.headlineMedium),
-                if (subtitle != null) ...[
-                  const SizedBox(height: 8),
-                  Text(subtitle!, style: theme.textTheme.bodyLarge),
+      // The form scrolls when the keyboard takes the bottom of the window.
+      body: SafeArea(
+        child: Center(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(24),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 400),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(title, style: theme.textTheme.headlineMedium),
+                  if (subtitle != null) ...[
+                    const SizedBox(height: 8),
+                    Text(subtitle!, style: theme.textTheme.bodyLarge),
+                  ],
+                  const SizedBox(height: 24),
+                  ...children,
                 ],
-                const SizedBox(height: 24),
-                ...children,
-              ],
+              ),
             ),
           ),
         ),

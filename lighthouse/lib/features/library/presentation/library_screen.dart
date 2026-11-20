@@ -37,9 +37,15 @@ class LibraryScreen extends ConsumerWidget {
       AsyncData(value: final page) when page.items.isEmpty => Center(
         child: Text(context.l10n.nothingHere, key: emptyText),
       ),
-      AsyncData(value: final page) => _Grid(
-        page: page,
-        loadMore: () => ref.read(provider.notifier).loadMore(),
+      // Clear of a notch at the sides; the bottom (the gesture bar) is
+      // scrolled past instead (_Grid).
+      AsyncData(value: final page) => SafeArea(
+        top: false,
+        bottom: false,
+        child: _Grid(
+          page: page,
+          loadMore: () => ref.read(provider.notifier).loadMore(),
+        ),
       ),
       AsyncError(:final error) => Center(
         child: ErrorRetry(
@@ -59,7 +65,7 @@ class LibraryScreen extends ConsumerWidget {
       body: Stack(
         children: [
           Padding(
-            padding: const EdgeInsets.only(top: FloatingTopBar.height),
+            padding: EdgeInsets.only(top: FloatingTopBar.extentOf(context)),
             child: body,
           ),
           Positioned(
@@ -107,13 +113,18 @@ class _Grid extends StatelessWidget {
         return CustomScrollView(
           slivers: [
             SliverPadding(
-              padding: const EdgeInsets.all(24),
+              padding: const EdgeInsets.all(24)
+                  .copyWith(bottom: 24 + MediaQuery.paddingOf(context).bottom),
               sliver: SliverGrid.builder(
                 gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                   crossAxisCount: columns,
                   mainAxisSpacing: spacing,
                   crossAxisSpacing: spacing,
-                  mainAxisExtent: ItemCard.heightFor(cardWidth, aspect),
+                  mainAxisExtent: ItemCard.heightFor(
+                    context,
+                    cardWidth,
+                    aspect,
+                  ),
                 ),
                 itemCount: page.items.length,
                 itemBuilder: (_, i) {
