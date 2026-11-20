@@ -37,3 +37,4 @@ Em **Terminal → Run Task**:
 - **lighthouse: scenarios (regenerate on save)**: deixa o build_runner
   regenerando os testes a cada vez que um `.feature` é salvo, e cria o
   esqueleto de um passo novo em `step/`. Pare-o pela lixeira do terminal.
+`
