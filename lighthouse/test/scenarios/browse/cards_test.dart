@@ -39,6 +39,9 @@ import './step/i_see_a_button.dart';
 import './step/the_server_is_told_was_not_watched.dart';
 import './step/the_server_cannot_save_what_was_watched_or_read.dart';
 import './step/i_see_a_message.dart';
+import './step/the_panel_shows_how_much_is_watched.dart';
+import './step/the_reader_is_open.dart';
+import './step/was_left_on_page.dart';
 
 void main() {
   setUpAll(() async {
@@ -379,6 +382,75 @@ void main() {
       } finally {
         await afterEach(
           '''In Prime, marking watched when the server cannot save it says so''',
+          success,
+        );
+      }
+    });
+    testWidgets(
+        '''In Prime, a started movie's panel shows how much is watched''',
+        (tester) async {
+      var success = true;
+      try {
+        await beforeEach(
+            '''In Prime, a started movie's panel shows how much is watched''');
+        await bddSetUp(tester);
+        await theThemeIs(tester, 'Prime');
+        await isPercentWatched(tester, 'Test Movie', 40);
+        await iOpenTheLibrary(tester, 'Movies');
+        await iRestTheMouseOn(tester, 'Test Movie');
+        await afterAMomentThePanelOpens(tester);
+        await thePanelShowsHowMuchIsWatched(tester);
+      } catch (_) {
+        success = false;
+        rethrow;
+      } finally {
+        await afterEach(
+          '''In Prime, a started movie's panel shows how much is watched''',
+          success,
+        );
+      }
+    });
+    testWidgets('''In Prime, a book's panel reads it''', (tester) async {
+      var success = true;
+      try {
+        await beforeEach('''In Prime, a book's panel reads it''');
+        await bddSetUp(tester);
+        await theThemeIs(tester, 'Prime');
+        await iOpenTheLibrary(tester, 'Books');
+        await iRestTheMouseOn(tester, 'Test Comic');
+        await afterAMomentThePanelOpens(tester);
+        await thePanelShows(tester, 'Read');
+        await iTapInThePanel(tester, 'play');
+        await theReaderIsOpen(tester);
+      } catch (_) {
+        success = false;
+        rethrow;
+      } finally {
+        await afterEach(
+          '''In Prime, a book's panel reads it''',
+          success,
+        );
+      }
+    });
+    testWidgets('''In Prime, a started book's panel goes on reading''',
+        (tester) async {
+      var success = true;
+      try {
+        await beforeEach(
+            '''In Prime, a started book's panel goes on reading''');
+        await bddSetUp(tester);
+        await theThemeIs(tester, 'Prime');
+        await wasLeftOnPage(tester, 'Test Comic', 3);
+        await iOpenTheLibrary(tester, 'Books');
+        await iRestTheMouseOn(tester, 'Test Comic');
+        await afterAMomentThePanelOpens(tester);
+        await thePanelShows(tester, 'Continue reading');
+      } catch (_) {
+        success = false;
+        rethrow;
+      } finally {
+        await afterEach(
+          '''In Prime, a started book's panel goes on reading''',
           success,
         );
       }

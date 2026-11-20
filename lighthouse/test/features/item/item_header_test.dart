@@ -31,6 +31,7 @@ void main() {
       'Dolby Vision',
       '7.1',
     ]);
+    expect(of([video(width: 1280, range: 'HLG')]), ['720P', 'HLG']);
     // SD, SDR, stereo: nothing worth a badge.
     expect(of([video(width: 640, range: 'SDR'), audio(2)]), isEmpty);
     expect(of(const []), isEmpty);

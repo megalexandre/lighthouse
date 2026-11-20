@@ -20,6 +20,17 @@ Feature: Login
     Then I see the error {'Wrong username or password.'}
     And I am still on the login screen
 
+  Scenario: A blank username is not sent
+    When I sign in as {'  '} with password {'secret'}
+    Then I see the error {'Enter your username.'}
+    And I am still on the login screen
+
+  Scenario: The keyboard alone signs in
+    When I type the username {'alice'} and press Enter
+    Then the password field has the focus
+    When I type the password {'secret'} and press Enter
+    Then I see the home screen signed in as {'alice'}
+
   Scenario: The password is hidden
     When I type the password {'secret'}
     Then the password is hidden

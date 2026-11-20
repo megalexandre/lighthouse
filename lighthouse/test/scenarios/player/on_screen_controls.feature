@@ -28,6 +28,22 @@ Feature: On-screen controls
     And I hover three quarters along the seek bar
     Then I see the picture of that moment
 
+  Scenario: Dragging the volume all the way down
+    When I play {'movie-1'}
+    And I drag the volume all the way down
+    Then the volume is {0}
+
+  Scenario Outline: The player shows the resolution, <badge>
+    Given the video is {<height>} pixels high
+    When I play {'movie-1'}
+    Then the player shows the badge {<badge>}
+
+    Examples:
+      | height | badge   |
+      | 2160   | '4K'    |
+      | 1080   | '1080P' |
+      | 720    | '720P'  |
+
   Scenario: The buttons skip 10 seconds back and forth
     When I play {'movie-1'}
     And {30} seconds have played
@@ -43,6 +59,13 @@ Feature: On-screen controls
     When I pick the speed {1.5}
     Then it plays at {1.5} times
     And the settings panel is closed
+
+  Scenario: The subtitles in the settings panel, and back to its list
+    When I play {'movie-1'}
+    And I open the subtitles in the settings panel
+    Then I see {'Off'}
+    When I go back in the settings panel
+    Then the settings panel shows its list
 
   Scenario: Esc closes the settings panel a level at a time, then leaves
     When I play {'movie-1'}

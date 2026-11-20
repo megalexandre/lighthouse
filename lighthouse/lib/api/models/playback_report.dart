@@ -11,7 +11,7 @@ enum PlayMethod { directPlay, directStream, transcode }
 
 /// Body of the start and progress reports (`POST /Sessions/Playing` and
 /// `/Sessions/Playing/Progress`): where playback is and in which state.
-@freezed
+@Freezed(toJson: true)
 abstract class PlaybackProgressInfo with _$PlaybackProgressInfo {
   const factory PlaybackProgressInfo({
     required String itemId,
@@ -29,16 +29,13 @@ abstract class PlaybackProgressInfo with _$PlaybackProgressInfo {
     int? volumeLevel,
   }) = _PlaybackProgressInfo;
 
-  factory PlaybackProgressInfo.fromJson(Map<String, dynamic> json) =>
-      _$PlaybackProgressInfoFromJson(json);
-
   static const jsonShape = JsonShape(_$PlaybackProgressInfoFieldMap);
 }
 
 /// Body of `POST /Sessions/Playing/Stopped`. The server saves
 /// [positionTicks] as the resume point, or marks the item watched when it
 /// is near the end.
-@freezed
+@Freezed(toJson: true)
 abstract class PlaybackStopInfo with _$PlaybackStopInfo {
   const factory PlaybackStopInfo({
     required String itemId,
@@ -47,9 +44,6 @@ abstract class PlaybackStopInfo with _$PlaybackStopInfo {
     required int positionTicks,
     @Default(false) bool failed,
   }) = _PlaybackStopInfo;
-
-  factory PlaybackStopInfo.fromJson(Map<String, dynamic> json) =>
-      _$PlaybackStopInfoFromJson(json);
 
   static const jsonShape = JsonShape(_$PlaybackStopInfoFieldMap);
 }

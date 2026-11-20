@@ -229,6 +229,9 @@ abstract final class TestItems {
 /// Serves [TestItems]; [movies] can be replaced (e.g. by hundreds, to
 /// page). A method listed in [failures] throws that failure instead.
 class FakeLibraryRepository implements LibraryRepository {
+  /// The libraries the user sees.
+  List<BaseItemDto> viewItems = TestItems.views;
+
   List<BaseItemDto> movies = [TestItems.testMovie, TestItems.hevcMovie];
 
   /// The one series (replace it to give it the user's progress).
@@ -268,7 +271,7 @@ class FakeLibraryRepository implements LibraryRepository {
   };
 
   List<BaseItemDto> get _all => [
-    ...TestItems.views,
+    ...viewItems,
     TestItems.booksView,
     ...books,
     ...movies,
@@ -280,7 +283,7 @@ class FakeLibraryRepository implements LibraryRepository {
   ];
 
   @override
-  Future<List<BaseItemDto>> views() => _answer('views', () => TestItems.views);
+  Future<List<BaseItemDto>> views() => _answer('views', () => viewItems);
 
   @override
   Future<BaseItemDtoQueryResult> children(
@@ -392,6 +395,9 @@ class FakePlaybackRepository implements PlaybackRepository {
 
   /// Tiles asked for, as `itemId/width/index`, and what they return.
   final tilesAsked = <String>[];
+
+  /// The media source of each tile asked for.
+  final tileSources = <String>[];
   Uint8List? tile;
 
   @override
@@ -402,6 +408,7 @@ class FakePlaybackRepository implements PlaybackRepository {
     required int index,
   }) async {
     tilesAsked.add('$itemId/$width/$index');
+    tileSources.add(mediaSourceId);
     if (failures['tile'] case final Failure f) throw f;
     return tile ?? Uint8List(0);
   }
@@ -452,6 +459,9 @@ class FakePlaybackRepository implements PlaybackRepository {
   /// Subtitle the server suggests (null: none).
   int? defaultSubtitle;
 
+  /// How high the video of every plan is, in pixels (null: not said).
+  int? videoHeight;
+
   /// (start, audio, subtitle) of every prepare() call.
   final prepareCalls = <(Duration, int?, int?)>[];
 
@@ -470,7 +480,12 @@ class FakePlaybackRepository implements PlaybackRepository {
       source: MediaSourceInfo(
         id: item.id,
         supportsDirectPlay: method != PlayMethod.transcode,
-        mediaStreams: streams,
+        mediaStreams: [
+          for (final s in streams)
+            s.type == MediaStreamType.video && videoHeight != null
+                ? s.copyWith(height: videoHeight)
+                : s,
+        ],
         defaultAudioStreamIndex: 2,
       ),
       playSessionId: 'play-session',

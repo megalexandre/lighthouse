@@ -18,6 +18,15 @@ Feature: Playing while the server goes away
     Then it started at {30} seconds
     And I do not see {'Resume from 0:30'}
 
+  Scenario: Resuming while the server is still away says why
+    When I play {'movie-1'}
+    And {30} seconds have played
+    And the playback breaks off
+    And the server stops answering
+    And I tap the {'resume after break'} button
+    Then I see {'The server answered with error 503.'}
+    And the player is still open
+
   Scenario: Where it stopped while the server was away reaches it later
     When I play {'movie-1'}
     And {42} seconds have played

@@ -151,6 +151,10 @@ void main() {
     test('no length: 10000 a page', () {
       expect(positionForPage(3, 10, null), 30000);
       expect(pageForPosition(30000, 10, null), 3);
+      // An EPUB's place, as a fraction, the same way.
+      expect(positionForFraction(0.3, 10, null), 30000);
+      expect(fractionForPosition(30000, 10, null), 0.3);
+      expect(fractionForPosition(30000, 0, null), 0, reason: 'no pages yet');
     });
 
     test('out of range is clamped to the book', () {

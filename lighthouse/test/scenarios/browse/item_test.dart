@@ -23,6 +23,7 @@ import './step/was_watched.dart';
 import './step/is_about.dart';
 import './step/the_episode_shows_it_was_watched.dart';
 import './step/the_episode_does_not_show_it_was_watched.dart';
+import './step/has_no_number.dart';
 import './step/the_server_cannot_save_what_was_watched_or_read.dart';
 import './step/i_tap_the_button.dart';
 import './step/i_see_a_message.dart';
@@ -247,6 +248,27 @@ void main() {
       } finally {
         await afterEach(
           '''A season's episodes show which were watched, and what each is about''',
+          success,
+        );
+      }
+    });
+    testWidgets('''An episode without a number goes by its name alone''',
+        (tester) async {
+      var success = true;
+      try {
+        await beforeEach(
+            '''An episode without a number goes by its name alone''');
+        await bddSetUp(tester);
+        await hasNoNumber(tester, 'Episode 3');
+        await iOpenThePageOf(tester, 'Season 1');
+        await iSee(tester, 'Episode 3');
+        await iSee(tester, '1. Episode 1');
+      } catch (_) {
+        success = false;
+        rethrow;
+      } finally {
+        await afterEach(
+          '''An episode without a number goes by its name alone''',
           success,
         );
       }

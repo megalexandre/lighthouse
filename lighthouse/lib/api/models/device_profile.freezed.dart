@@ -11,7 +11,6 @@ part of 'device_profile.dart';
 
 // dart format off
 T _$identity<T>(T value) => value;
-
 /// @nodoc
 mixin _$DeviceProfile {
 
@@ -212,11 +211,11 @@ return $default(_that.name,_that.maxStaticBitrate,_that.maxStreamingBitrate,_tha
 }
 
 /// @nodoc
-@JsonSerializable()
+@JsonSerializable(createFactory: false)
 
 class _DeviceProfile implements DeviceProfile {
   const _DeviceProfile({required this.name, this.maxStaticBitrate, this.maxStreamingBitrate, this.musicStreamingTranscodingBitrate, this.directPlayProfiles = const [], this.transcodingProfiles = const [], this.subtitleProfiles = const []});
-  factory _DeviceProfile.fromJson(Map<String, dynamic> json) => _$DeviceProfileFromJson(json);
+  
 
 @override final  String name;
 @override final  int? maxStaticBitrate;
@@ -291,7 +290,6 @@ as List<SubtitleProfile>,
 
 
 }
-
 
 /// @nodoc
 mixin _$DirectPlayProfile {
@@ -490,11 +488,11 @@ return $default(_that.type,_that.container,_that.videoCodec,_that.audioCodec);ca
 }
 
 /// @nodoc
-@JsonSerializable()
+@JsonSerializable(createFactory: false)
 
 class _DirectPlayProfile implements DirectPlayProfile {
   const _DirectPlayProfile({required this.type, this.container, this.videoCodec, this.audioCodec});
-  factory _DirectPlayProfile.fromJson(Map<String, dynamic> json) => _$DirectPlayProfileFromJson(json);
+  
 
 @override final  String type;
 @override final  String? container;
@@ -563,7 +561,6 @@ as String?,
 
 
 }
-
 
 /// @nodoc
 mixin _$TranscodingProfile {
@@ -764,11 +761,11 @@ return $default(_that.type,_that.container,_that.protocol,_that.videoCodec,_that
 }
 
 /// @nodoc
-@JsonSerializable()
+@JsonSerializable(createFactory: false)
 
 class _TranscodingProfile implements TranscodingProfile {
   const _TranscodingProfile({required this.type, this.container, this.protocol, this.videoCodec, this.audioCodec, this.maxAudioChannels});
-  factory _TranscodingProfile.fromJson(Map<String, dynamic> json) => _$TranscodingProfileFromJson(json);
+  
 
 @override final  String type;
 @override final  String? container;
@@ -841,7 +838,6 @@ as String?,
 
 
 }
-
 
 /// @nodoc
 mixin _$SubtitleProfile {
@@ -1038,11 +1034,11 @@ return $default(_that.format,_that.method);case _:
 }
 
 /// @nodoc
-@JsonSerializable()
+@JsonSerializable(createFactory: false)
 
 class _SubtitleProfile implements SubtitleProfile {
   const _SubtitleProfile({required this.format, required this.method});
-  factory _SubtitleProfile.fromJson(Map<String, dynamic> json) => _$SubtitleProfileFromJson(json);
+  
 
 @override final  String format;
 @override final  String method;

@@ -6,13 +6,6 @@ part of 'authenticate_user_by_name.dart';
 // JsonSerializableGenerator
 // **************************************************************************
 
-_AuthenticateUserByName _$AuthenticateUserByNameFromJson(
-  Map<String, dynamic> json,
-) => _AuthenticateUserByName(
-  username: json['Username'] as String,
-  pw: json['Pw'] as String,
-);
-
 const _$AuthenticateUserByNameFieldMap = <String, String>{
   'username': 'Username',
   'pw': 'Pw',

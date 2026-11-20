@@ -43,6 +43,13 @@ void main() {
       );
     });
 
+    test('what is not an address at all is NotJellyfinServer', () async {
+      await expectLater(
+        servers.probe('http://'),
+        throwsA(isA<NotJellyfinServer>()),
+      );
+    });
+
     test('a web page that is not Jellyfin is NotJellyfinServer', () async {
       // Under /api-docs the server serves other things, but no /System API.
       await expectLater(

@@ -51,6 +51,7 @@ class CardPopover extends ConsumerStatefulWidget {
   static const infoButton = Key('card.popover.info');
   static const picture = Key('card.popover.picture');
   static const title = Key('card.popover.title');
+  static const progress = Key('card.popover.progress');
 
   /// Its width for a card picture [width] wide.
   static double widthFor(double width) => (width * 1.55).clamp(380, 520);
@@ -272,6 +273,7 @@ class _CardPopoverState extends ConsumerState<CardPopover>
             ),
             if (progress > 0 && progress < 1)
               SizedBox(
+                key: CardPopover.progress,
                 height: 4,
                 child: ColoredBox(
                   color: ink.withValues(alpha: 0.25),

@@ -6,22 +6,6 @@ part of 'playback_report.dart';
 // JsonSerializableGenerator
 // **************************************************************************
 
-_PlaybackProgressInfo _$PlaybackProgressInfoFromJson(
-  Map<String, dynamic> json,
-) => _PlaybackProgressInfo(
-  itemId: json['ItemId'] as String,
-  mediaSourceId: json['MediaSourceId'] as String,
-  playSessionId: json['PlaySessionId'] as String?,
-  positionTicks: (json['PositionTicks'] as num).toInt(),
-  isPaused: json['IsPaused'] as bool? ?? false,
-  isMuted: json['IsMuted'] as bool? ?? false,
-  canSeek: json['CanSeek'] as bool? ?? true,
-  playMethod: $enumDecode(_$PlayMethodEnumMap, json['PlayMethod']),
-  audioStreamIndex: (json['AudioStreamIndex'] as num?)?.toInt(),
-  subtitleStreamIndex: (json['SubtitleStreamIndex'] as num?)?.toInt(),
-  volumeLevel: (json['VolumeLevel'] as num?)?.toInt(),
-);
-
 const _$PlaybackProgressInfoFieldMap = <String, String>{
   'itemId': 'ItemId',
   'mediaSourceId': 'MediaSourceId',
@@ -57,15 +41,6 @@ const _$PlayMethodEnumMap = {
   PlayMethod.directStream: 'DirectStream',
   PlayMethod.transcode: 'Transcode',
 };
-
-_PlaybackStopInfo _$PlaybackStopInfoFromJson(Map<String, dynamic> json) =>
-    _PlaybackStopInfo(
-      itemId: json['ItemId'] as String,
-      mediaSourceId: json['MediaSourceId'] as String,
-      playSessionId: json['PlaySessionId'] as String?,
-      positionTicks: (json['PositionTicks'] as num).toInt(),
-      failed: json['Failed'] as bool? ?? false,
-    );
 
 const _$PlaybackStopInfoFieldMap = <String, String>{
   'itemId': 'ItemId',

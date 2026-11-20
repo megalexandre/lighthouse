@@ -22,6 +22,7 @@ const unreachable = ServerUnreachable(testUrl);
 /// The item of the fake library with that name.
 BaseItemDto itemNamed(String name) => [
   ...TestItems.views,
+  TestItems.booksView,
   ...app.library.movies,
   ...app.library.books,
   app.library.show,

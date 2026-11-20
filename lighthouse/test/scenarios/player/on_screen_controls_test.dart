@@ -16,14 +16,20 @@ import './step/i_drag_the_seek_bar_from_a_quarter_to_halfway.dart';
 import './step/it_seeks_once_to_seconds.dart';
 import './step/has_trickplay_pictures.dart';
 import './step/i_see_the_picture_of_that_moment.dart';
+import './step/i_drag_the_volume_all_the_way_down.dart';
+import './step/the_volume_is.dart';
+import './step/the_video_is_pixels_high.dart';
+import './step/the_player_shows_the_badge.dart';
 import './step/seconds_have_played.dart';
 import './step/i_tap_the_button.dart';
 import './step/i_pick_the_speed.dart';
 import './step/it_plays_at_times.dart';
 import './step/the_settings_panel_is_closed.dart';
+import './step/i_open_the_subtitles_in_the_settings_panel.dart';
+import './step/i_go_back_in_the_settings_panel.dart';
+import './step/the_settings_panel_shows_its_list.dart';
 import './step/i_open_the_speed_list.dart';
 import './step/i_press.dart';
-import './step/the_settings_panel_shows_its_list.dart';
 import './step/is_playing.dart';
 import './step/the_player_is_closed.dart';
 import './step/i_do_not_see_the_big_play_button.dart';
@@ -123,6 +129,84 @@ void main() {
         );
       }
     });
+    testWidgets('''Dragging the volume all the way down''', (tester) async {
+      var success = true;
+      try {
+        await beforeEach('''Dragging the volume all the way down''');
+        await bddSetUp(tester);
+        await iPlay(tester, 'movie-1');
+        await iDragTheVolumeAllTheWayDown(tester);
+        await theVolumeIs(tester, 0);
+      } catch (_) {
+        success = false;
+        rethrow;
+      } finally {
+        await afterEach(
+          '''Dragging the volume all the way down''',
+          success,
+        );
+      }
+    });
+    testWidgets('''The player shows the resolution, <badge> (2160, '4K')''',
+        (tester) async {
+      var success = true;
+      try {
+        await beforeEach(
+            '''The player shows the resolution, <badge> (2160, '4K')''');
+        await bddSetUp(tester);
+        await theVideoIsPixelsHigh(tester, 2160);
+        await iPlay(tester, 'movie-1');
+        await thePlayerShowsTheBadge(tester, '4K');
+      } catch (_) {
+        success = false;
+        rethrow;
+      } finally {
+        await afterEach(
+          '''The player shows the resolution, <badge> (2160, '4K')''',
+          success,
+        );
+      }
+    });
+    testWidgets('''The player shows the resolution, <badge> (1080, '1080P')''',
+        (tester) async {
+      var success = true;
+      try {
+        await beforeEach(
+            '''The player shows the resolution, <badge> (1080, '1080P')''');
+        await bddSetUp(tester);
+        await theVideoIsPixelsHigh(tester, 1080);
+        await iPlay(tester, 'movie-1');
+        await thePlayerShowsTheBadge(tester, '1080P');
+      } catch (_) {
+        success = false;
+        rethrow;
+      } finally {
+        await afterEach(
+          '''The player shows the resolution, <badge> (1080, '1080P')''',
+          success,
+        );
+      }
+    });
+    testWidgets('''The player shows the resolution, <badge> (720, '720P')''',
+        (tester) async {
+      var success = true;
+      try {
+        await beforeEach(
+            '''The player shows the resolution, <badge> (720, '720P')''');
+        await bddSetUp(tester);
+        await theVideoIsPixelsHigh(tester, 720);
+        await iPlay(tester, 'movie-1');
+        await thePlayerShowsTheBadge(tester, '720P');
+      } catch (_) {
+        success = false;
+        rethrow;
+      } finally {
+        await afterEach(
+          '''The player shows the resolution, <badge> (720, '720P')''',
+          success,
+        );
+      }
+    });
     testWidgets('''The buttons skip 10 seconds back and forth''',
         (tester) async {
       var success = true;
@@ -162,6 +246,28 @@ void main() {
       } finally {
         await afterEach(
           '''The speed, from the settings panel''',
+          success,
+        );
+      }
+    });
+    testWidgets('''The subtitles in the settings panel, and back to its list''',
+        (tester) async {
+      var success = true;
+      try {
+        await beforeEach(
+            '''The subtitles in the settings panel, and back to its list''');
+        await bddSetUp(tester);
+        await iPlay(tester, 'movie-1');
+        await iOpenTheSubtitlesInTheSettingsPanel(tester);
+        await iSee(tester, 'Off');
+        await iGoBackInTheSettingsPanel(tester);
+        await theSettingsPanelShowsItsList(tester);
+      } catch (_) {
+        success = false;
+        rethrow;
+      } finally {
+        await afterEach(
+          '''The subtitles in the settings panel, and back to its list''',
           success,
         );
       }

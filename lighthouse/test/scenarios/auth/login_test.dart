@@ -11,6 +11,9 @@ import './step/i_sign_in_as_with_password.dart';
 import './step/i_see_the_home_screen_signed_in_as.dart';
 import './step/i_see_the_error.dart';
 import './step/i_am_still_on_the_login_screen.dart';
+import './step/i_type_the_username_and_press_enter.dart';
+import './step/the_password_field_has_the_focus.dart';
+import './step/i_type_the_password_and_press_enter.dart';
 import './step/i_type_the_password.dart';
 import './step/the_password_is_hidden.dart';
 import './step/i_restart_the_app.dart';
@@ -92,6 +95,43 @@ void main() {
       } finally {
         await afterEach(
           '''A wrong password shows an error''',
+          success,
+        );
+      }
+    });
+    testWidgets('''A blank username is not sent''', (tester) async {
+      var success = true;
+      try {
+        await beforeEach('''A blank username is not sent''');
+        await bddSetUp(tester);
+        await iSignInAsWithPassword(tester, '  ', 'secret');
+        await iSeeTheError(tester, 'Enter your username.');
+        await iAmStillOnTheLoginScreen(tester);
+      } catch (_) {
+        success = false;
+        rethrow;
+      } finally {
+        await afterEach(
+          '''A blank username is not sent''',
+          success,
+        );
+      }
+    });
+    testWidgets('''The keyboard alone signs in''', (tester) async {
+      var success = true;
+      try {
+        await beforeEach('''The keyboard alone signs in''');
+        await bddSetUp(tester);
+        await iTypeTheUsernameAndPressEnter(tester, 'alice');
+        await thePasswordFieldHasTheFocus(tester);
+        await iTypeThePasswordAndPressEnter(tester, 'secret');
+        await iSeeTheHomeScreenSignedInAs(tester, 'alice');
+      } catch (_) {
+        success = false;
+        rethrow;
+      } finally {
+        await afterEach(
+          '''The keyboard alone signs in''',
           success,
         );
       }

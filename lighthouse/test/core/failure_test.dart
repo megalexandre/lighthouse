@@ -14,6 +14,7 @@ void main() {
       PlayerError("MpvException: Failed to open 'http://x/stream'"),
       ServerError("type 'Null' is not a subtype of type 'String'"),
       StorageFailure('org.freedesktop.Secret.Error.IsLocked'),
+      NotReadable('zip: bad central directory'),
     ];
     for (final failure in failures) {
       for (final l10n in [en, pt]) {

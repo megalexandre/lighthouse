@@ -11,7 +11,6 @@ part of 'authenticate_user_by_name.dart';
 
 // dart format off
 T _$identity<T>(T value) => value;
-
 /// @nodoc
 mixin _$AuthenticateUserByName {
 
@@ -207,11 +206,11 @@ return $default(_that.username,_that.pw);case _:
 }
 
 /// @nodoc
-@JsonSerializable()
+@JsonSerializable(createFactory: false)
 
 class _AuthenticateUserByName implements AuthenticateUserByName {
   const _AuthenticateUserByName({required this.username, required this.pw});
-  factory _AuthenticateUserByName.fromJson(Map<String, dynamic> json) => _$AuthenticateUserByNameFromJson(json);
+  
 
 @override final  String username;
 @override final  String pw;

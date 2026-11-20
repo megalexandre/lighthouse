@@ -38,6 +38,7 @@ import './step/the_type_of_is_px.dart';
 import './step/the_type_of_is_sans_serif.dart';
 import './step/i_open_the_display_settings.dart';
 import './step/i_make_the_type_bigger.dart';
+import './step/i_pick_sans_serif.dart';
 import './step/i_can_pick_the_theme.dart';
 import './step/there_are_no_type_settings.dart';
 import './step/a_book_with_a_link_to_a_note_two_pages_on.dart';
@@ -352,6 +353,25 @@ void main() {
       } finally {
         await afterEach(
           '''Bigger type lays the book out again, at the same place''',
+          success,
+        );
+      }
+    });
+    testWidgets('''Sans serif type is laid out at once''', (tester) async {
+      var success = true;
+      try {
+        await beforeEach('''Sans serif type is laid out at once''');
+        await bddSetUp(tester);
+        await iRead(tester, 'book-epub');
+        await iOpenTheDisplaySettings(tester);
+        await iPickSansSerif(tester);
+        await theTypeOfIsSansSerif(tester, 'book-epub');
+      } catch (_) {
+        success = false;
+        rethrow;
+      } finally {
+        await afterEach(
+          '''Sans serif type is laid out at once''',
           success,
         );
       }

@@ -8,7 +8,7 @@ part 'device_profile.g.dart';
 /// What this client can play, sent with PlaybackInfo so the server can
 /// decide between direct play and a transcode. Only the parts the app
 /// fills are modelled.
-@freezed
+@Freezed(toJson: true)
 abstract class DeviceProfile with _$DeviceProfile {
   const factory DeviceProfile({
     required String name,
@@ -19,9 +19,6 @@ abstract class DeviceProfile with _$DeviceProfile {
     @Default([]) List<TranscodingProfile> transcodingProfiles,
     @Default([]) List<SubtitleProfile> subtitleProfiles,
   }) = _DeviceProfile;
-
-  factory DeviceProfile.fromJson(Map<String, dynamic> json) =>
-      _$DeviceProfileFromJson(json);
 
   static const jsonShape = JsonShape(
     _$DeviceProfileFieldMap,
@@ -34,7 +31,7 @@ abstract class DeviceProfile with _$DeviceProfile {
 }
 
 /// Played as-is. Empty container/codecs mean "any".
-@freezed
+@Freezed(toJson: true)
 abstract class DirectPlayProfile with _$DirectPlayProfile {
   const factory DirectPlayProfile({
     required String type,
@@ -43,14 +40,11 @@ abstract class DirectPlayProfile with _$DirectPlayProfile {
     String? audioCodec,
   }) = _DirectPlayProfile;
 
-  factory DirectPlayProfile.fromJson(Map<String, dynamic> json) =>
-      _$DirectPlayProfileFromJson(json);
-
   static const jsonShape = JsonShape(_$DirectPlayProfileFieldMap);
 }
 
 /// What to transcode to when direct play is not possible.
-@freezed
+@Freezed(toJson: true)
 abstract class TranscodingProfile with _$TranscodingProfile {
   const factory TranscodingProfile({
     required String type,
@@ -61,22 +55,16 @@ abstract class TranscodingProfile with _$TranscodingProfile {
     String? maxAudioChannels,
   }) = _TranscodingProfile;
 
-  factory TranscodingProfile.fromJson(Map<String, dynamic> json) =>
-      _$TranscodingProfileFromJson(json);
-
   static const jsonShape = JsonShape(_$TranscodingProfileFieldMap);
 }
 
 /// A subtitle format and how the player takes it (Embed, External...).
-@freezed
+@Freezed(toJson: true)
 abstract class SubtitleProfile with _$SubtitleProfile {
   const factory SubtitleProfile({
     required String format,
     required String method,
   }) = _SubtitleProfile;
-
-  factory SubtitleProfile.fromJson(Map<String, dynamic> json) =>
-      _$SubtitleProfileFromJson(json);
 
   static const jsonShape = JsonShape(_$SubtitleProfileFieldMap);
 }

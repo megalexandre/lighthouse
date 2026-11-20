@@ -24,6 +24,11 @@ Feature: Search
     And I see {'Test Album'} among the {'Albums'}
     And there is no {'Songs'} row
 
+  Scenario: Enter searches at once, without the pause
+    Given I am on the search screen
+    When I type {'movie'} and press Enter
+    Then I see {'Test Movie'} among the {'Movies'}
+
   Scenario: A search that finds nothing says so
     Given I am on the search screen
     When I search for {'zzz'}

@@ -11,7 +11,6 @@ part of 'update_user_item_data_dto.dart';
 
 // dart format off
 T _$identity<T>(T value) => value;
-
 /// @nodoc
 mixin _$UpdateUserItemDataDto {
 
@@ -207,11 +206,11 @@ return $default(_that.playbackPositionTicks,_that.played);case _:
 }
 
 /// @nodoc
-@JsonSerializable()
+@JsonSerializable(createFactory: false)
 
 class _UpdateUserItemDataDto implements UpdateUserItemDataDto {
   const _UpdateUserItemDataDto({this.playbackPositionTicks, this.played});
-  factory _UpdateUserItemDataDto.fromJson(Map<String, dynamic> json) => _$UpdateUserItemDataDtoFromJson(json);
+  
 
 @override final  int? playbackPositionTicks;
 @override final  bool? played;

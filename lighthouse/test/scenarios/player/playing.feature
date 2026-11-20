@@ -79,6 +79,14 @@ Feature: Playing
     When I tap the {'back'} button
     Then I am back on the page of {'Test Movie'}
 
+  Scenario: A stream the server cannot give can be asked for again
+    Given the server stops answering
+    When I play {'movie-1'}
+    Then I see {'The server answered with error 503.'}
+    When the server answers again
+    And I tap Retry
+    Then {'movie-1'} is playing
+
   Scenario: Marking as watched tells the server
     When I open the page of {'movie-1'}
     And I tap the {'watched'} button

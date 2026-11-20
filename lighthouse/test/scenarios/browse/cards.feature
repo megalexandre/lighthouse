@@ -118,3 +118,28 @@ Feature: Cards
     And after a moment the panel opens
     And I tap {'watched'} in the panel
     Then I see a message {'Cannot reach http://jellyfin.test:8096. Check the address and that the server is running.'}
+
+  Scenario: In Prime, a started movie's panel shows how much is watched
+    Given the theme is {'Prime'}
+    And {'Test Movie'} is {40} percent watched
+    When I open the {'Movies'} library
+    And I rest the mouse on {'Test Movie'}
+    And after a moment the panel opens
+    Then the panel shows how much is watched
+
+  Scenario: In Prime, a book's panel reads it
+    Given the theme is {'Prime'}
+    When I open the {'Books'} library
+    And I rest the mouse on {'Test Comic'}
+    And after a moment the panel opens
+    Then the panel shows {'Read'}
+    When I tap {'play'} in the panel
+    Then the reader is open
+
+  Scenario: In Prime, a started book's panel goes on reading
+    Given the theme is {'Prime'}
+    And {'Test Comic'} was left on page {3}
+    When I open the {'Books'} library
+    And I rest the mouse on {'Test Comic'}
+    And after a moment the panel opens
+    Then the panel shows {'Continue reading'}

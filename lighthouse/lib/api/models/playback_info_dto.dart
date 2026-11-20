@@ -7,7 +7,7 @@ part 'playback_info_dto.freezed.dart';
 part 'playback_info_dto.g.dart';
 
 /// Body of `POST /Items/{id}/PlaybackInfo`.
-@freezed
+@Freezed(toJson: true)
 abstract class PlaybackInfoDto with _$PlaybackInfoDto {
   const factory PlaybackInfoDto({
     required String userId,
@@ -19,9 +19,6 @@ abstract class PlaybackInfoDto with _$PlaybackInfoDto {
     int? maxStreamingBitrate,
     @Default(true) bool autoOpenLiveStream,
   }) = _PlaybackInfoDto;
-
-  factory PlaybackInfoDto.fromJson(Map<String, dynamic> json) =>
-      _$PlaybackInfoDtoFromJson(json);
 
   static const jsonShape = JsonShape(
     _$PlaybackInfoDtoFieldMap,

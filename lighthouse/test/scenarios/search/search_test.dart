@@ -14,6 +14,7 @@ import './step/i_am_on_the_search_screen.dart';
 import './step/i_search_for.dart';
 import './step/i_see_among_the.dart';
 import './step/there_is_no_row.dart';
+import './step/i_type_and_press_enter.dart';
 import './step/i_see.dart';
 import './step/i_open.dart';
 import './step/i_see_the_page_of.dart';
@@ -96,6 +97,25 @@ void main() {
       } finally {
         await afterEach(
           '''Results come in rows by kind''',
+          success,
+        );
+      }
+    });
+    testWidgets('''Enter searches at once, without the pause''',
+        (tester) async {
+      var success = true;
+      try {
+        await beforeEach('''Enter searches at once, without the pause''');
+        await bddSetUp(tester);
+        await iAmOnTheSearchScreen(tester);
+        await iTypeAndPressEnter(tester, 'movie');
+        await iSeeAmongThe(tester, 'Test Movie', 'Movies');
+      } catch (_) {
+        success = false;
+        rethrow;
+      } finally {
+        await afterEach(
+          '''Enter searches at once, without the pause''',
           success,
         );
       }

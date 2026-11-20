@@ -16,51 +16,48 @@ import 'dart:typed_data';
     return true;
   }
 
-  try {
-    // PNG: the IHDR chunk comes first.
-    if (at(0, [0x89, 0x50, 0x4E, 0x47]) && b.length >= 24) {
-      return (width: be32(16), height: be32(20));
+  // Each format reads only within the length it checked first.
+  // PNG: the IHDR chunk comes first.
+  if (at(0, [0x89, 0x50, 0x4E, 0x47]) && b.length >= 24) {
+    return (width: be32(16), height: be32(20));
+  }
+  // GIF: logical screen size.
+  if (at(0, 'GIF8'.codeUnits) && b.length >= 10) {
+    return (width: le16(6), height: le16(8));
+  }
+  // WebP: lossy (VP8), lossless (VP8L) or extended (VP8X).
+  if (at(0, 'RIFF'.codeUnits) && at(8, 'WEBP'.codeUnits) && b.length >= 30) {
+    if (at(12, 'VP8 '.codeUnits)) {
+      return (width: le16(26) & 0x3FFF, height: le16(28) & 0x3FFF);
     }
-    // GIF: logical screen size.
-    if (at(0, 'GIF8'.codeUnits) && b.length >= 10) {
-      return (width: le16(6), height: le16(8));
+    if (at(12, 'VP8L'.codeUnits)) {
+      final bits = b[21] | b[22] << 8 | b[23] << 16 | b[24] << 24;
+      return (width: (bits & 0x3FFF) + 1, height: (bits >> 14 & 0x3FFF) + 1);
     }
-    // WebP: lossy (VP8), lossless (VP8L) or extended (VP8X).
-    if (at(0, 'RIFF'.codeUnits) && at(8, 'WEBP'.codeUnits) && b.length >= 30) {
-      if (at(12, 'VP8 '.codeUnits)) {
-        return (width: le16(26) & 0x3FFF, height: le16(28) & 0x3FFF);
-      }
-      if (at(12, 'VP8L'.codeUnits)) {
-        final bits = b[21] | b[22] << 8 | b[23] << 16 | b[24] << 24;
-        return (width: (bits & 0x3FFF) + 1, height: (bits >> 14 & 0x3FFF) + 1);
-      }
-      if (at(12, 'VP8X'.codeUnits)) {
-        return (width: le24(24) + 1, height: le24(27) + 1);
-      }
+    if (at(12, 'VP8X'.codeUnits)) {
+      return (width: le24(24) + 1, height: le24(27) + 1);
     }
-    // JPEG: the first start-of-frame marker.
-    if (at(0, [0xFF, 0xD8])) {
-      var i = 2;
-      while (i + 9 < b.length) {
-        if (b[i] != 0xFF) return null;
-        final marker = b[i + 1];
-        if (marker == 0xD8 || (marker >= 0xD0 && marker <= 0xD7)) {
-          i += 2;
-          continue;
-        }
-        final length = be16(i + 2);
-        final isFrame =
-            marker >= 0xC0 &&
-            marker <= 0xCF &&
-            marker != 0xC4 &&
-            marker != 0xC8 &&
-            marker != 0xCC;
-        if (isFrame) return (width: be16(i + 7), height: be16(i + 5));
-        i += 2 + length;
+  }
+  // JPEG: the first start-of-frame marker.
+  if (at(0, [0xFF, 0xD8])) {
+    var i = 2;
+    while (i + 9 < b.length) {
+      if (b[i] != 0xFF) return null;
+      final marker = b[i + 1];
+      if (marker == 0xD8 || (marker >= 0xD0 && marker <= 0xD7)) {
+        i += 2;
+        continue;
       }
+      final length = be16(i + 2);
+      final isFrame =
+          marker >= 0xC0 &&
+          marker <= 0xCF &&
+          marker != 0xC4 &&
+          marker != 0xC8 &&
+          marker != 0xCC;
+      if (isFrame) return (width: be16(i + 7), height: be16(i + 5));
+      i += 2 + length;
     }
-  } on RangeError {
-    return null;
   }
   return null;
 }

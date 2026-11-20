@@ -34,6 +34,9 @@ import './step/it_plays_to_its_end.dart';
 import './step/the_player_is_closed.dart';
 import './step/cannot_be_played.dart';
 import './step/no_stream_is_opened.dart';
+import './step/the_server_stops_answering.dart';
+import './step/the_server_answers_again.dart';
+import './step/i_tap_retry.dart';
 import './step/the_server_is_told_was_watched.dart';
 import './step/there_is_no_button.dart';
 
@@ -251,6 +254,29 @@ void main() {
       } finally {
         await afterEach(
           '''What cannot be played says why''',
+          success,
+        );
+      }
+    });
+    testWidgets('''A stream the server cannot give can be asked for again''',
+        (tester) async {
+      var success = true;
+      try {
+        await beforeEach(
+            '''A stream the server cannot give can be asked for again''');
+        await bddSetUp(tester);
+        await theServerStopsAnswering(tester);
+        await iPlay(tester, 'movie-1');
+        await iSee(tester, 'The server answered with error 503.');
+        await theServerAnswersAgain(tester);
+        await iTapRetry(tester);
+        await isPlaying(tester, 'movie-1');
+      } catch (_) {
+        success = false;
+        rethrow;
+      } finally {
+        await afterEach(
+          '''A stream the server cannot give can be asked for again''',
           success,
         );
       }

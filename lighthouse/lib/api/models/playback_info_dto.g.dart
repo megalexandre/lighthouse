@@ -6,20 +6,6 @@ part of 'playback_info_dto.dart';
 // JsonSerializableGenerator
 // **************************************************************************
 
-_PlaybackInfoDto _$PlaybackInfoDtoFromJson(Map<String, dynamic> json) =>
-    _PlaybackInfoDto(
-      userId: json['UserId'] as String,
-      deviceProfile: DeviceProfile.fromJson(
-        json['DeviceProfile'] as Map<String, dynamic>,
-      ),
-      startTimeTicks: (json['StartTimeTicks'] as num?)?.toInt(),
-      audioStreamIndex: (json['AudioStreamIndex'] as num?)?.toInt(),
-      subtitleStreamIndex: (json['SubtitleStreamIndex'] as num?)?.toInt(),
-      mediaSourceId: json['MediaSourceId'] as String?,
-      maxStreamingBitrate: (json['MaxStreamingBitrate'] as num?)?.toInt(),
-      autoOpenLiveStream: json['AutoOpenLiveStream'] as bool? ?? true,
-    );
-
 const _$PlaybackInfoDtoFieldMap = <String, String>{
   'userId': 'UserId',
   'deviceProfile': 'DeviceProfile',

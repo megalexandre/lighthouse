@@ -6,31 +6,6 @@ part of 'device_profile.dart';
 // JsonSerializableGenerator
 // **************************************************************************
 
-_DeviceProfile _$DeviceProfileFromJson(
-  Map<String, dynamic> json,
-) => _DeviceProfile(
-  name: json['Name'] as String,
-  maxStaticBitrate: (json['MaxStaticBitrate'] as num?)?.toInt(),
-  maxStreamingBitrate: (json['MaxStreamingBitrate'] as num?)?.toInt(),
-  musicStreamingTranscodingBitrate:
-      (json['MusicStreamingTranscodingBitrate'] as num?)?.toInt(),
-  directPlayProfiles:
-      (json['DirectPlayProfiles'] as List<dynamic>?)
-          ?.map((e) => DirectPlayProfile.fromJson(e as Map<String, dynamic>))
-          .toList() ??
-      const [],
-  transcodingProfiles:
-      (json['TranscodingProfiles'] as List<dynamic>?)
-          ?.map((e) => TranscodingProfile.fromJson(e as Map<String, dynamic>))
-          .toList() ??
-      const [],
-  subtitleProfiles:
-      (json['SubtitleProfiles'] as List<dynamic>?)
-          ?.map((e) => SubtitleProfile.fromJson(e as Map<String, dynamic>))
-          .toList() ??
-      const [],
-);
-
 const _$DeviceProfileFieldMap = <String, String>{
   'name': 'Name',
   'maxStaticBitrate': 'MaxStaticBitrate',
@@ -58,14 +33,6 @@ Map<String, dynamic> _$DeviceProfileToJson(
   'SubtitleProfiles': instance.subtitleProfiles.map((e) => e.toJson()).toList(),
 };
 
-_DirectPlayProfile _$DirectPlayProfileFromJson(Map<String, dynamic> json) =>
-    _DirectPlayProfile(
-      type: json['Type'] as String,
-      container: json['Container'] as String?,
-      videoCodec: json['VideoCodec'] as String?,
-      audioCodec: json['AudioCodec'] as String?,
-    );
-
 const _$DirectPlayProfileFieldMap = <String, String>{
   'type': 'Type',
   'container': 'Container',
@@ -80,16 +47,6 @@ Map<String, dynamic> _$DirectPlayProfileToJson(_DirectPlayProfile instance) =>
       'VideoCodec': ?instance.videoCodec,
       'AudioCodec': ?instance.audioCodec,
     };
-
-_TranscodingProfile _$TranscodingProfileFromJson(Map<String, dynamic> json) =>
-    _TranscodingProfile(
-      type: json['Type'] as String,
-      container: json['Container'] as String?,
-      protocol: json['Protocol'] as String?,
-      videoCodec: json['VideoCodec'] as String?,
-      audioCodec: json['AudioCodec'] as String?,
-      maxAudioChannels: json['MaxAudioChannels'] as String?,
-    );
 
 const _$TranscodingProfileFieldMap = <String, String>{
   'type': 'Type',
@@ -109,12 +66,6 @@ Map<String, dynamic> _$TranscodingProfileToJson(_TranscodingProfile instance) =>
       'AudioCodec': ?instance.audioCodec,
       'MaxAudioChannels': ?instance.maxAudioChannels,
     };
-
-_SubtitleProfile _$SubtitleProfileFromJson(Map<String, dynamic> json) =>
-    _SubtitleProfile(
-      format: json['Format'] as String,
-      method: json['Method'] as String,
-    );
 
 const _$SubtitleProfileFieldMap = <String, String>{
   'format': 'Format',

@@ -22,6 +22,7 @@ import './step/the_list_of_libraries_cannot_be_loaded.dart';
 import './step/i_see.dart';
 import './step/i_tap_retry.dart';
 import './step/i_see_the_libraries.dart';
+import './step/there_are_no_libraries.dart';
 import './step/i_pull_home_down.dart';
 import './step/i_open.dart';
 import './step/i_see_the_library.dart';
@@ -271,6 +272,48 @@ void main() {
       } finally {
         await afterEach(
           '''In <theme>, libraries that fail to load can be tried again ('Prime')''',
+          success,
+        );
+      }
+    });
+    testWidgets('''In <theme>, no libraries says so ('Lanterna')''',
+        (tester) async {
+      var success = true;
+      try {
+        await beforeEach('''In <theme>, no libraries says so ('Lanterna')''');
+        await bddSetUp(tester);
+        await theThemeIs(tester, 'Lanterna');
+        await thereAreNoLibraries(tester);
+        await iGoHome(tester);
+        await iSee(tester,
+            'No libraries yet. Add one on the server, or ask its administrator for access.');
+      } catch (_) {
+        success = false;
+        rethrow;
+      } finally {
+        await afterEach(
+          '''In <theme>, no libraries says so ('Lanterna')''',
+          success,
+        );
+      }
+    });
+    testWidgets('''In <theme>, no libraries says so ('Prime')''',
+        (tester) async {
+      var success = true;
+      try {
+        await beforeEach('''In <theme>, no libraries says so ('Prime')''');
+        await bddSetUp(tester);
+        await theThemeIs(tester, 'Prime');
+        await thereAreNoLibraries(tester);
+        await iGoHome(tester);
+        await iSee(tester,
+            'No libraries yet. Add one on the server, or ask its administrator for access.');
+      } catch (_) {
+        success = false;
+        rethrow;
+      } finally {
+        await afterEach(
+          '''In <theme>, no libraries says so ('Prime')''',
           success,
         );
       }

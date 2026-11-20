@@ -19,6 +19,7 @@ import './step/i_turn_the_page_with_the_right_arrow_key.dart';
 import './step/the_server_has_not_been_told_the_place.dart';
 import './step/i_press.dart';
 import './step/i_tap_the_edge.dart';
+import './step/i_drag_the_page_bar_to_the_end.dart';
 import './step/the_bars_are_shown.dart';
 import './step/i_tap_the_middle.dart';
 import './step/the_bars_are_hidden.dart';
@@ -26,6 +27,7 @@ import './step/i_go_to_the_last_page.dart';
 import './step/the_server_keeps_page_of.dart';
 import './step/the_server_has_as_read.dart';
 import './step/i_close_the_book.dart';
+import './step/i_am_back_on_the_books_page.dart';
 import './step/the_book_cannot_be_downloaded.dart';
 import './step/i_tap.dart';
 import './step/the_server_is_back.dart';
@@ -173,6 +175,24 @@ void main() {
         );
       }
     });
+    testWidgets('''The page bar goes to a page''', (tester) async {
+      var success = true;
+      try {
+        await beforeEach('''The page bar goes to a page''');
+        await bddSetUp(tester);
+        await iRead(tester, 'book-comic');
+        await iDragThePageBarToTheEnd(tester);
+        await theReaderShows(tester, 'Page 5 of 5');
+      } catch (_) {
+        success = false;
+        rethrow;
+      } finally {
+        await afterEach(
+          '''The page bar goes to a page''',
+          success,
+        );
+      }
+    });
     testWidgets('''A tap in the middle hides and shows the bars''',
         (tester) async {
       var success = true;
@@ -232,6 +252,49 @@ void main() {
       } finally {
         await afterEach(
           '''Leaving saves at once, and returns to the book's page''',
+          success,
+        );
+      }
+    });
+    testWidgets('''<key> leaves too, and saves at once ('Esc')''',
+        (tester) async {
+      var success = true;
+      try {
+        await beforeEach('''<key> leaves too, and saves at once ('Esc')''');
+        await bddSetUp(tester);
+        await iRead(tester, 'book-comic');
+        await iTurnThePageWithTheRightArrowKey(tester);
+        await iPress(tester, 'Esc');
+        await iAmBackOnTheBooksPage(tester);
+        await theServerIsToldOnlyPageOf(tester, 2, 'book-comic');
+      } catch (_) {
+        success = false;
+        rethrow;
+      } finally {
+        await afterEach(
+          '''<key> leaves too, and saves at once ('Esc')''',
+          success,
+        );
+      }
+    });
+    testWidgets('''<key> leaves too, and saves at once ('Backspace')''',
+        (tester) async {
+      var success = true;
+      try {
+        await beforeEach(
+            '''<key> leaves too, and saves at once ('Backspace')''');
+        await bddSetUp(tester);
+        await iRead(tester, 'book-comic');
+        await iTurnThePageWithTheRightArrowKey(tester);
+        await iPress(tester, 'Backspace');
+        await iAmBackOnTheBooksPage(tester);
+        await theServerIsToldOnlyPageOf(tester, 2, 'book-comic');
+      } catch (_) {
+        success = false;
+        rethrow;
+      } finally {
+        await afterEach(
+          '''<key> leaves too, and saves at once ('Backspace')''',
           success,
         );
       }

@@ -11,7 +11,6 @@ part of 'playback_info_dto.dart';
 
 // dart format off
 T _$identity<T>(T value) => value;
-
 /// @nodoc
 mixin _$PlaybackInfoDto {
 
@@ -222,11 +221,11 @@ return $default(_that.userId,_that.deviceProfile,_that.startTimeTicks,_that.audi
 }
 
 /// @nodoc
-@JsonSerializable()
+@JsonSerializable(createFactory: false)
 
 class _PlaybackInfoDto implements PlaybackInfoDto {
   const _PlaybackInfoDto({required this.userId, required this.deviceProfile, this.startTimeTicks, this.audioStreamIndex, this.subtitleStreamIndex, this.mediaSourceId, this.maxStreamingBitrate, this.autoOpenLiveStream = true});
-  factory _PlaybackInfoDto.fromJson(Map<String, dynamic> json) => _$PlaybackInfoDtoFromJson(json);
+  
 
 @override final  String userId;
 @override final  DeviceProfile deviceProfile;

@@ -44,10 +44,9 @@ class JellyfinApi {
     } on DioException catch (e) {
       throw _logged(_failureOf(e));
     } on TypeError catch (e) {
-      // A field missing or of the wrong type in the response.
+      // A field missing or of the wrong type in the response. (Broken JSON
+      // comes as a DioException; enums read an unknown value as such.)
       throw _logged(ServerError(e.toString()));
-    } on FormatException catch (e) {
-      throw _logged(ServerError(e.message));
     }
   }
 

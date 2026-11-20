@@ -61,6 +61,17 @@ Feature: Home
       | 'Lanterna' |
       | 'Prime'    |
 
+  Scenario Outline: In <theme>, no libraries says so
+    Given the theme is {<theme>}
+    And there are no libraries
+    When I go home
+    Then I see {'No libraries yet. Add one on the server, or ask its administrator for access.'}
+
+    Examples:
+      | theme      |
+      | 'Lanterna' |
+      | 'Prime'    |
+
   Scenario Outline: In <theme>, pulling home down loads it again
     Given the theme is {<theme>}
     When I go home

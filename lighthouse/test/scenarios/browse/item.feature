@@ -68,6 +68,12 @@ Feature: Item page
     And the episode {'Episode 2'} does not show it was watched
     And I see {'The second one.'}
 
+  Scenario: An episode without a number goes by its name alone
+    Given {'Episode 3'} has no number
+    When I open the page of {'Season 1'}
+    Then I see {'Episode 3'}
+    And I see {'1. Episode 1'}
+
   Scenario Outline: Marking a <kind> <what> when the server cannot save it says so
     Given the server cannot save what was watched or read
     When I open the page of {<page>}

@@ -104,4 +104,40 @@ void main() {
       expect(repo.tilesAsked, hasLength(1));
     },
   );
+
+  test('none wide enough: the widest; none for this source: another '
+      "source's", () async {
+    final repo = FakePlaybackRepository()..tile = await tilePng();
+    final thumbs = TrickplayThumbnails.of(
+      withTrickplay({'120': info.copyWith(width: 120, height: 68)}),
+      'source-2',
+      repo,
+    )!;
+    addTearDown(thumbs.dispose);
+    expect(thumbs.info.width, 120);
+    await thumbs.load(Duration.zero);
+    expect(repo.tilesAsked, ['movie-1/120/0']);
+    expect(repo.tileSources, ['source-1']);
+  });
+
+  test(
+    'only the last few tiles are kept; an older one is fetched again',
+    () async {
+      final repo = FakePlaybackRepository()..tile = await tilePng();
+      // A picture a second, 9 to a tile: tile n starts at 9n seconds.
+      final thumbs = TrickplayThumbnails.of(
+        withTrickplay({'160': info.copyWith(thumbnailCount: 60)}),
+        'source-1',
+        repo,
+      )!;
+      addTearDown(thumbs.dispose);
+      for (var tile = 0; tile < 5; tile++) {
+        await thumbs.load(Duration(seconds: 9 * tile));
+      }
+      expect(thumbs.at(Duration.zero), isNull, reason: 'let go');
+      expect(thumbs.at(const Duration(seconds: 36)), isNotNull);
+      await thumbs.load(Duration.zero);
+      expect(repo.tilesAsked.where((t) => t == 'movie-1/160/0'), hasLength(2));
+    },
+  );
 }

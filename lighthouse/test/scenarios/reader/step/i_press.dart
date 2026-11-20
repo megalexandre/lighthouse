@@ -6,6 +6,8 @@ const _keys = {
   'Right': LogicalKeyboardKey.arrowRight,
   'Home': LogicalKeyboardKey.home,
   'End': LogicalKeyboardKey.end,
+  'Esc': LogicalKeyboardKey.escape,
+  'Backspace': LogicalKeyboardKey.backspace,
 };
 
 /// Usage: When I press {'End'}

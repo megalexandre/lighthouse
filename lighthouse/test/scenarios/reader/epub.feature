@@ -120,6 +120,12 @@ Feature: EPUB
     And the type of {'book-epub'} is {22} px
     And the reader shows {'Page 2 of 3'}
 
+  Scenario: Sans serif type is laid out at once
+    When I read {'book-epub'}
+    And I open the display settings
+    And I pick sans serif
+    Then the type of {'book-epub'} is sans serif
+
   Scenario: A comic has the themes, but no type settings
     When I read {'book-comic'}
     And I open the display settings

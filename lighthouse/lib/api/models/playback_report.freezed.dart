@@ -11,7 +11,6 @@ part of 'playback_report.dart';
 
 // dart format off
 T _$identity<T>(T value) => value;
-
 /// @nodoc
 mixin _$PlaybackProgressInfo {
 
@@ -217,11 +216,11 @@ return $default(_that.itemId,_that.mediaSourceId,_that.playSessionId,_that.posit
 }
 
 /// @nodoc
-@JsonSerializable()
+@JsonSerializable(createFactory: false)
 
 class _PlaybackProgressInfo implements PlaybackProgressInfo {
   const _PlaybackProgressInfo({required this.itemId, required this.mediaSourceId, this.playSessionId, required this.positionTicks, this.isPaused = false, this.isMuted = false, this.canSeek = true, required this.playMethod, this.audioStreamIndex, this.subtitleStreamIndex, this.volumeLevel});
-  factory _PlaybackProgressInfo.fromJson(Map<String, dynamic> json) => _$PlaybackProgressInfoFromJson(json);
+  
 
 @override final  String itemId;
 @override final  String mediaSourceId;
@@ -305,7 +304,6 @@ as int?,
 
 
 }
-
 
 /// @nodoc
 mixin _$PlaybackStopInfo {
@@ -505,11 +503,11 @@ return $default(_that.itemId,_that.mediaSourceId,_that.playSessionId,_that.posit
 }
 
 /// @nodoc
-@JsonSerializable()
+@JsonSerializable(createFactory: false)
 
 class _PlaybackStopInfo implements PlaybackStopInfo {
   const _PlaybackStopInfo({required this.itemId, required this.mediaSourceId, this.playSessionId, required this.positionTicks, this.failed = false});
-  factory _PlaybackStopInfo.fromJson(Map<String, dynamic> json) => _$PlaybackStopInfoFromJson(json);
+  
 
 @override final  String itemId;
 @override final  String mediaSourceId;

@@ -51,6 +51,11 @@ Feature: Reading
     When I tap the {'left'} edge
     Then the reader shows {'Page 1 of 5'}
 
+  Scenario: The page bar goes to a page
+    When I read {'book-comic'}
+    And I drag the page bar to the end
+    Then the reader shows {'Page 5 of 5'}
+
   Scenario: A tap in the middle hides and shows the bars
     When I read {'book-comic'}
     Then the bars are shown
@@ -71,6 +76,18 @@ Feature: Reading
     And I turn the page with the right arrow key
     And I close the book
     Then the server is told only page {2} of {'book-comic'}
+
+  Scenario Outline: <key> leaves too, and saves at once
+    When I read {'book-comic'}
+    And I turn the page with the right arrow key
+    And I press {<key>}
+    Then I am back on the book's page
+    And the server is told only page {2} of {'book-comic'}
+
+    Examples:
+      | key         |
+      | 'Esc'       |
+      | 'Backspace' |
 
   Scenario: A download that fails can be tried again
     Given the book cannot be downloaded

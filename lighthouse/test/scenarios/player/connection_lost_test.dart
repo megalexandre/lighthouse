@@ -15,6 +15,7 @@ import './step/the_server_is_told_stopped_at_seconds.dart';
 import './step/i_tap_the_button.dart';
 import './step/it_started_at_seconds.dart';
 import './step/i_do_not_see.dart';
+import './step/the_server_stops_answering.dart';
 import './step/the_server_cannot_be_told_playback_stopped.dart';
 import './step/i_press.dart';
 import './step/the_server_has_not_been_told_where_it_stopped.dart';
@@ -64,6 +65,30 @@ void main() {
       } finally {
         await afterEach(
           '''Playback that breaks off offers to resume where it was''',
+          success,
+        );
+      }
+    });
+    testWidgets('''Resuming while the server is still away says why''',
+        (tester) async {
+      var success = true;
+      try {
+        await beforeEach(
+            '''Resuming while the server is still away says why''');
+        await bddSetUp(tester);
+        await iPlay(tester, 'movie-1');
+        await secondsHavePlayed(tester, 30);
+        await thePlaybackBreaksOff(tester);
+        await theServerStopsAnswering(tester);
+        await iTapTheButton(tester, 'resume after break');
+        await iSee(tester, 'The server answered with error 503.');
+        await thePlayerIsStillOpen(tester);
+      } catch (_) {
+        success = false;
+        rethrow;
+      } finally {
+        await afterEach(
+          '''Resuming while the server is still away says why''',
           success,
         );
       }
