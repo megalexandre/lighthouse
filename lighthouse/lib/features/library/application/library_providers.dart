@@ -42,6 +42,22 @@ final nextUpProvider = FutureProvider.autoDispose<List<BaseItemDto>>(
   (ref) => ref.watch(libraryRepositoryProvider).nextUp(),
 );
 
+/// The episode a started series goes on with: the next one up, once some
+/// episode was watched or one is in progress. Null for a series not
+/// started (12.4 offers its first episode as next up all the same) or
+/// watched to the end.
+final continueSeriesProvider = FutureProvider.autoDispose
+    .family<BaseItemDto?, String>((ref, seriesId) async {
+      final (series, next) = await (
+        ref.watch(itemProvider(seriesId).future),
+        ref.watch(libraryRepositoryProvider).nextUpOf(seriesId),
+      ).wait;
+      if (next == null) return null;
+      final watchedSome = (series.userData?.playedPercentage ?? 0) > 0;
+      final inProgress = (next.userData?.playbackPositionTicks ?? 0) > 0;
+      return watchedSome || inProgress ? next : null;
+    });
+
 /// Recently added, by library id.
 final latestProvider = FutureProvider.autoDispose
     .family<List<BaseItemDto>, String>(
@@ -87,6 +103,7 @@ class WatchState extends Notifier<int> {
       ..invalidate(resumeProvider)
       ..invalidate(resumeBooksProvider)
       ..invalidate(nextUpProvider)
+      ..invalidate(continueSeriesProvider)
       ..invalidate(latestProvider)
       ..invalidate(seasonsProvider)
       ..invalidate(episodesProvider)

@@ -199,6 +199,11 @@ class AppLocalizationsPt extends AppLocalizations {
   String get play => 'Reproduzir';
 
   @override
+  String playEpisode(String episode) {
+    return 'Reproduzir $episode';
+  }
+
+  @override
   String get episodes => 'Episódios';
 
   @override

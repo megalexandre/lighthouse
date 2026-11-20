@@ -411,6 +411,12 @@ abstract class AppLocalizations {
   /// **'Play'**
   String get play;
 
+  /// The home carousel's button on a series already started: plays its next episode.
+  ///
+  /// In en, this message translates to:
+  /// **'Play {episode}'**
+  String playEpisode(String episode);
+
   /// Episodes: a series' button, a section, a search group.
   ///
   /// In en, this message translates to:

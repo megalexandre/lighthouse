@@ -44,6 +44,10 @@ abstract interface class LibraryRepository {
   /// Next episode of each series in progress.
   Future<List<BaseItemDto>> nextUp();
 
+  /// The episode of [seriesId] to watch next: the one in progress, else the
+  /// first one not watched. Null when every episode was watched.
+  Future<BaseItemDto?> nextUpOf(String seriesId);
+
   Future<List<BaseItemDto>> seasons(String seriesId);
   Future<List<BaseItemDto>> episodes(String seriesId, String seasonId);
 
@@ -203,6 +207,15 @@ class JellyfinLibraryRepository implements LibraryRepository {
   );
 
   @override
+  Future<BaseItemDto?> nextUpOf(String seriesId) => _call(
+    (api) async => (await api.nextUp(
+      _user,
+      limit: 1,
+      seriesId: seriesId,
+    )).items.firstOrNull,
+  );
+
+  @override
   Future<List<BaseItemDto>> seasons(String seriesId) =>
       _call((api) async => (await api.seasons(_user, seriesId)).items);
 
@@ -313,6 +326,9 @@ class SignedOutLibraryRepository implements LibraryRepository {
 
   @override
   Future<List<BaseItemDto>> nextUp() => _fail();
+
+  @override
+  Future<BaseItemDto?> nextUpOf(String seriesId) => _fail();
 
   @override
   Future<List<BaseItemDto>> seasons(String seriesId) => _fail();

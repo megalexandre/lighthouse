@@ -16,6 +16,7 @@ void reloadAfterOutage(Ref ref) {
     ..invalidate(resumeProvider)
     ..invalidate(resumeBooksProvider)
     ..invalidate(nextUpProvider)
+    ..invalidate(continueSeriesProvider)
     ..invalidate(latestProvider)
     ..invalidate(itemProvider)
     ..invalidate(libraryControllerProvider)

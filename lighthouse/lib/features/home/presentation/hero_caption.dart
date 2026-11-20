@@ -1,3 +1,4 @@
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -7,11 +8,13 @@ import '../../../core/ticks.dart';
 import '../../../l10n/l10n.dart';
 import '../../../router.dart';
 import '../../../widgets/focus_ring.dart';
+import '../../library/application/library_providers.dart';
+import '../../library/presentation/item_card.dart';
 import 'hero_carousel.dart';
 
 /// The slide's text and buttons: MOVIE or SERIES, the title in capitals
-/// (sized to the window), the facts, the start of the overview, Play (or
-/// Episodes) and More info.
+/// (sized to the window), the facts, the start of the overview, Play (for
+/// a series: its next episode once started, else Episodes) and More info.
 class HeroCaption extends StatelessWidget {
   const HeroCaption({super.key, required this.item, required this.narrow});
 
@@ -113,8 +116,10 @@ class _Title extends StatelessWidget {
   }
 }
 
-/// Play (Episodes for a series) and More info.
-class _Actions extends StatelessWidget {
+/// Play and More info. A series plays on from its next episode once
+/// started (where that one was left, when it is in progress); until then,
+/// or while the server is asked, the button opens its episodes.
+class _Actions extends ConsumerWidget {
   const _Actions({
     required this.item,
     required this.movie,
@@ -126,26 +131,47 @@ class _Actions extends StatelessWidget {
   final bool narrow;
 
   @override
-  Widget build(BuildContext context) => Row(
-    children: [
-      _WhiteButton(
-        key: HeroCarousel.playButton,
-        label: movie ? context.l10n.play : context.l10n.episodes,
-        icon: movie ? Icons.play_arrow : Icons.list,
-        big: !narrow,
-        onPressed: () =>
-            context.push(movie ? Routes.play(item.id) : Routes.item(item.id)),
-      ),
-      SizedBox(width: context.tokens.space(4)),
-      _RoundButton(
-        key: HeroCarousel.infoButton,
-        tooltip: context.l10n.moreInfo,
-        icon: Icons.info_outline,
-        big: !narrow,
-        onPressed: () => context.push(Routes.item(item.id)),
-      ),
-    ],
-  );
+  Widget build(BuildContext context, WidgetRef ref) {
+    final next = movie
+        ? null
+        : ref.watch(continueSeriesProvider(item.id)).value;
+    final l10n = context.l10n;
+    final number = next == null ? null : episodeNumber(next, l10n);
+    return Row(
+      children: [
+        if (movie || next != null)
+          _WhiteButton(
+            key: HeroCarousel.playButton,
+            label: number == null ? l10n.play : l10n.playEpisode(number),
+            icon: Icons.play_arrow,
+            big: !narrow,
+            onPressed: () => context.push(switch (next) {
+              final BaseItemDto e => Routes.play(
+                e.id,
+                start: ticksToDuration(e.userData?.playbackPositionTicks ?? 0),
+              ),
+              null => Routes.play(item.id),
+            }),
+          )
+        else
+          _WhiteButton(
+            key: HeroCarousel.playButton,
+            label: l10n.episodes,
+            icon: Icons.list,
+            big: !narrow,
+            onPressed: () => context.push(Routes.item(item.id)),
+          ),
+        SizedBox(width: context.tokens.space(4)),
+        _RoundButton(
+          key: HeroCarousel.infoButton,
+          tooltip: context.l10n.moreInfo,
+          icon: Icons.info_outline,
+          big: !narrow,
+          onPressed: () => context.push(Routes.item(item.id)),
+        ),
+      ],
+    );
+  }
 }
 
 /// The hero's main button: white, dark text (the variation's "Assistir").

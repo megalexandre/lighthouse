@@ -1,0 +1,16 @@
+# i18n Ally: how lighthouse/ uses its texts. Its built-in "flutter"
+# framework is for the flutter_i18n package, not for gen-l10n's ARB files,
+# so it would find no usage here. Every text is read as `l10n.<key>`
+# (`context.l10n.<key>`, or a local `l10n` taken from it).
+languageIds:
+  - dart
+
+usageMatchRegex:
+  - "[^\\w\\d]l10n\\.([a-zA-Z]\\w*)"
+
+# "Extract text" turns a literal into this.
+refactorTemplates:
+  - "context.l10n.$1"
+
+# Only this framework: the others would guess other usage patterns.
+monopoly: true

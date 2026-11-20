@@ -198,6 +198,11 @@ class AppLocalizationsEn extends AppLocalizations {
   String get play => 'Play';
 
   @override
+  String playEpisode(String episode) {
+    return 'Play $episode';
+  }
+
+  @override
   String get episodes => 'Episodes';
 
   @override

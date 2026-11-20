@@ -229,6 +229,9 @@ abstract final class TestItems {
 /// page). A method listed in [failures] throws that failure instead.
 class FakeLibraryRepository implements LibraryRepository {
   List<BaseItemDto> movies = [TestItems.testMovie, TestItems.hevcMovie];
+
+  /// The one series (replace it to give it the user's progress).
+  BaseItemDto show = TestItems.testShow;
   List<BaseItemDto> resumeItems = [];
 
   /// The books (replace one to give it a reading position).
@@ -253,7 +256,7 @@ class FakeLibraryRepository implements LibraryRepository {
 
   List<BaseItemDto> _childrenOf(String id) => switch (id) {
     'view-movies' => movies,
-    'view-shows' => [TestItems.testShow],
+    'view-shows' => [show],
     'view-music' => [TestItems.testAlbum],
     'view-books' => books,
     _ => const [],
@@ -264,7 +267,7 @@ class FakeLibraryRepository implements LibraryRepository {
     TestItems.booksView,
     ...books,
     ...movies,
-    TestItems.testShow,
+    show,
     TestItems.season1,
     ...TestItems.episodes,
     TestItems.testAlbum,
@@ -302,14 +305,12 @@ class FakeLibraryRepository implements LibraryRepository {
   Future<List<BaseItemDto>> latest(String viewId) =>
       _answer('latest', () => _childrenOf(viewId).take(homeRowLimit).toList());
 
-  /// The carousel: [featuredItems], else the movies and the show.
+  /// The carousel: [featuredItems], else the movies and [show].
   List<BaseItemDto>? featuredItems;
 
   @override
-  Future<List<BaseItemDto>> featured() => _answer(
-    'featured',
-    () => featuredItems ?? [...movies, TestItems.testShow],
-  );
+  Future<List<BaseItemDto>> featured() =>
+      _answer('featured', () => featuredItems ?? [...movies, show]);
 
   @override
   Future<List<BaseItemDto>> resume() => _answer('resume', () => resumeItems);
@@ -322,6 +323,16 @@ class FakeLibraryRepository implements LibraryRepository {
 
   @override
   Future<List<BaseItemDto>> nextUp() => _answer('nextUp', () => nextUpItems);
+
+  /// As 12.4 answers: the series' entry in [nextUpItems], else its first
+  /// episode, watched or not.
+  @override
+  Future<BaseItemDto?> nextUpOf(String seriesId) => _answer(
+    'nextUpOf',
+    () =>
+        nextUpItems.where((e) => e.seriesId == seriesId).firstOrNull ??
+        TestItems.episodes.where((e) => e.seriesId == seriesId).firstOrNull,
+  );
 
   @override
   Future<List<BaseItemDto>> seasons(String seriesId) =>

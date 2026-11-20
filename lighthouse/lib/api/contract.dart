@@ -130,7 +130,7 @@ const apiContract = [
   ApiEndpoint(
     'GET',
     '/Shows/NextUp',
-    query: ['userId', 'limit'],
+    query: ['userId', 'limit', 'seriesId'],
     response: BaseItemDtoQueryResult.jsonShape,
   ),
   ApiEndpoint(

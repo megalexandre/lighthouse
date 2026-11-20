@@ -5,5 +5,25 @@
   "explorer.fileNesting.expand": false,
   "explorer.fileNesting.patterns": {
     "*.feature": "${capture}_test.dart"
-  }
+  },
+
+  // i18n Ally: shows each `l10n.<key>` text inline and lists the keys
+  // app_pt.arb lacks. The usage pattern is in i18n-ally-custom-framework.yml.
+  // ARB is JSON, so the JSON parser reads it; its "@key" metadata entries
+  // show up as keys too (app_pt.arb has none), and tool/check.sh stays the
+  // judge of what is untranslated.
+  "i18n-ally.localesPaths": ["lighthouse/lib/l10n"],
+  "i18n-ally.pathMatcher": "app_{locale}.arb",
+  "i18n-ally.parsers.extendFileExtensions": { "arb": "json" },
+  "i18n-ally.enabledParsers": ["json"],
+  "i18n-ally.keystyle": "flat",
+  "i18n-ally.sourceLanguage": "en",
+  "i18n-ally.displayLanguage": "pt",
+  // app_pt_BR.arb only names the locale; its texts come from app_pt.arb.
+  "i18n-ally.ignoredLocales": ["pt_BR", "pt-BR"],
+  "i18n-ally.usage.scanningIgnore": ["lighthouse/lib/l10n/generated/**"],
+  // Keeps the ARB key order (gen-l10n does not sort).
+  "i18n-ally.sortKeys": false,
+  // Translation services would send the app's texts out; off.
+  "i18n-ally.translate.engines": []
 }

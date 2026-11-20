@@ -137,6 +137,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     ..invalidate(resumeProvider)
     ..invalidate(resumeBooksProvider)
     ..invalidate(nextUpProvider)
+    ..invalidate(continueSeriesProvider)
     ..invalidate(latestProvider);
 
   Widget get _noLibraries => Padding(

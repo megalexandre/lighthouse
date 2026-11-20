@@ -17,7 +17,10 @@ import './step/i_tap_the_arrow_of_the_carousel.dart';
 import './step/i_tap_the_dot_of_the_carousel.dart';
 import './step/the_carousel_offers.dart';
 import './step/i_wait_for_the_carousel_to_move_on.dart';
+import './step/was_started_with_next.dart';
 import './step/i_tap_the_button_of_the_carousel.dart';
+import './step/is_playing_from_seconds.dart';
+import './step/was_left_at_seconds.dart';
 import './step/i_see_the_page_of.dart';
 import './step/i_go_back.dart';
 import './step/the_player_is_open.dart';
@@ -109,6 +112,52 @@ void main() {
       } finally {
         await afterEach(
           '''The carousel moves by its arrows, its dots, and by itself''',
+          success,
+        );
+      }
+    });
+    testWidgets('''A series already started plays on from its next episode''',
+        (tester) async {
+      var success = true;
+      try {
+        await beforeEach(
+            '''A series already started plays on from its next episode''');
+        await bddSetUp(tester);
+        await wasStartedWithNext(tester, 'Test Show', 'Episode 2');
+        await iGoHome(tester);
+        await iTapTheDotOfTheCarousel(tester, 3);
+        await theCarouselOffers(tester, 'Play S1:E2');
+        await iTapTheButtonOfTheCarousel(tester, 'play');
+        await isPlayingFromSeconds(tester, 'Episode 2', 0);
+      } catch (_) {
+        success = false;
+        rethrow;
+      } finally {
+        await afterEach(
+          '''A series already started plays on from its next episode''',
+          success,
+        );
+      }
+    });
+    testWidgets('''An episode left partway plays on from where it was left''',
+        (tester) async {
+      var success = true;
+      try {
+        await beforeEach(
+            '''An episode left partway plays on from where it was left''');
+        await bddSetUp(tester);
+        await wasLeftAtSeconds(tester, 'Episode 1', 30);
+        await iGoHome(tester);
+        await iTapTheDotOfTheCarousel(tester, 3);
+        await theCarouselOffers(tester, 'Play S1:E1');
+        await iTapTheButtonOfTheCarousel(tester, 'play');
+        await isPlayingFromSeconds(tester, 'Episode 1', 30);
+      } catch (_) {
+        success = false;
+        rethrow;
+      } finally {
+        await afterEach(
+          '''An episode left partway plays on from where it was left''',
           success,
         );
       }

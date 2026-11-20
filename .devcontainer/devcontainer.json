@@ -33,6 +33,13 @@
         // Gherkin syntax, formatting and outline for the bdd_widget_test
         // .feature files. Step navigation does not reach Dart steps.
         "CucumberOpen.cucumber-official",
+        // ARB files (lib/l10n): checks the JSON, the "@key" metadata and the
+        // ICU placeholders.
+        "Google.arb-editor",
+        // The text of each `l10n.<key>` inline, and the keys app_pt.arb
+        // lacks. Set up in .vscode/settings.json and
+        // .vscode/i18n-ally-custom-framework.yml.
+        "lokalise.i18n-ally",
         // Claude Code. Its login and sessions live in the claude-config
         // volume (see docker-compose.yml), so they survive rebuilds.
         "anthropic.claude-code"

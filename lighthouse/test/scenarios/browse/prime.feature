@@ -1,8 +1,9 @@
 Feature: Prime layout
 
   The Prime theme floats a bar over the screens, with a tab per library, a
-  search field and a profile menu, and opens home with a carousel. Long
-  rows page with arrows. Lanterna keeps its plain layout (home.feature).
+  search field and a profile menu, and opens home with a carousel: a movie
+  plays from it, a series not started opens its episodes, and one already
+  started plays on from its next episode. Long rows page with arrows. Lanterna keeps its plain layout (home.feature).
 
   Background:
     Given the app is signed in
@@ -27,6 +28,22 @@ Feature: Prime layout
     And the carousel offers {'Episodes'}
     When I wait for the carousel to move on
     Then the carousel shows {'Test Movie'}
+
+  Scenario: A series already started plays on from its next episode
+    Given {'Test Show'} was started, with {'Episode 2'} next
+    When I go home
+    And I tap the dot {3} of the carousel
+    Then the carousel offers {'Play S1:E2'}
+    When I tap the {'play'} button of the carousel
+    Then {'Episode 2'} is playing from {0} seconds
+
+  Scenario: An episode left partway plays on from where it was left
+    Given {'Episode 1'} was left at {30} seconds
+    When I go home
+    And I tap the dot {3} of the carousel
+    Then the carousel offers {'Play S1:E1'}
+    When I tap the {'play'} button of the carousel
+    Then {'Episode 1'} is playing from {30} seconds
 
   Scenario: The carousel plays a movie, or opens it
     When I go home

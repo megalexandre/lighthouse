@@ -25,10 +25,16 @@ extension ShowsApi on JellyfinApi {
     },
   );
 
-  /// The next unwatched episode of each series the user is watching.
-  Future<BaseItemDtoQueryResult> nextUp(String userId, {int? limit}) => getJson(
+  /// The next unwatched episode of each series the user is watching; of
+  /// [seriesId] only, when given (12.4 then answers its first episode even
+  /// when nothing of it was watched).
+  Future<BaseItemDtoQueryResult> nextUp(
+    String userId, {
+    int? limit,
+    String? seriesId,
+  }) => getJson(
     '/Shows/NextUp',
     BaseItemDtoQueryResult.fromJson,
-    query: {'userId': userId, 'limit': ?limit},
+    query: {'userId': userId, 'limit': ?limit, 'seriesId': ?seriesId},
   );
 }

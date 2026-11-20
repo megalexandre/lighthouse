@@ -52,6 +52,7 @@
   "heroMovie": "FILME",
   "heroSeries": "SÉRIE",
   "play": "Reproduzir",
+  "playEpisode": "Reproduzir {episode}",
   "episodes": "Episódios",
   "moreInfo": "Mais informações",
   "next": "Próximo",
