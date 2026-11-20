@@ -168,6 +168,13 @@ Pronto: smoke `integration_test` abre o app sob Xvfb; teste `server` faz o boots
 `JellyfinApi`, `AuthInterceptor` (Client/Device/DeviceId/Version/Token), DeviceId estável salvo localmente;
 telas Conectar servidor e Login; sessão em secure storage; redirect do router; logout.
 Pronto: testes de contrato + login (certo/senha errada/servidor fora); integração "conectar, logar, reabrir o app já logado".
+- Endereço alternativo: a tela Conectar aceita um segundo endereço (opcional) do mesmo servidor, por exemplo
+  `fedora.local` e um domínio que funciona de fora. `ServerInfo.addresses` guarda os dois como digitados, o
+  preferido primeiro; `url` é o que está em uso. Ao conectar, todos são testados ao mesmo tempo, e um que leve a
+  outro servidor (outro Id) é recusado. Um que não responde é aceito sem checagem, porque de casa o domínio
+  externo muitas vezes não responde (sem hairpin NAT). Ao abrir o app e quando a conexão cai, `locateServer`
+  testa todos e fica com o primeiro, na ordem, que responder com o mesmo Id: em casa volta para o local. O
+  token vale em qualquer endereço, porque é o mesmo servidor.
 
 **F2 — Navegação**
 `/UserViews`, `/Items` paginado (rolagem infinita), `/Items/{id}`, séries → temporadas → episódios,

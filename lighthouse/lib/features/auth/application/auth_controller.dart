@@ -53,8 +53,12 @@ class AuthController extends AsyncNotifier<AuthState> {
   @override
   Future<AuthState> build() async {
     final store = ref.watch(sessionStoreProvider);
-    final session = await store.readSession();
-    final server = session?.server ?? await store.readServer();
+    var session = await store.readSession();
+    var server = session?.server ?? await store.readServer();
+    if (server != null && server.addresses.isNotEmpty) {
+      server = await _locate(store, server, session);
+      session = session?.copyWith(server: server);
+    }
     if (session == null) return AuthState(server: server);
 
     try {
@@ -71,12 +75,70 @@ class AuthController extends AsyncNotifier<AuthState> {
     return AuthState(server: server, session: session);
   }
 
-  /// Connect screen: checks [address] and makes it the current server.
-  Future<void> connect(String address) async {
+  /// The address [server] answers on now, the preferred one whenever it
+  /// works; the stored one when none answers (the screens then show the
+  /// server as down and retry, which looks again).
+  Future<ServerInfo> _locate(
+    SessionStore store,
+    ServerInfo server,
+    Session? session,
+  ) async {
+    final ServerInfo found;
+    try {
+      found = await locateServer(
+        server,
+        ref.read(serverRepositoryProvider).probe,
+      );
+    } on Failure catch (e) {
+      log.warning('auth', 'no address of the server answers', e);
+      return server;
+    }
+    if (found.url != server.url) {
+      log.info('auth', 'server reached at ${found.url}');
+      await _save(store, found, session);
+    }
+    return found;
+  }
+
+  /// Connect screen: checks [address], and [fallback] when given, and makes
+  /// the server they reach the current one.
+  Future<void> connect(String address, {String? fallback}) async {
     final store = _store;
-    final server = await ref.read(serverRepositoryProvider).probe(address);
+    final server = await connectServer([
+      address.trim(),
+      if (fallback != null && fallback.trim().isNotEmpty) fallback.trim(),
+    ], ref.read(serverRepositoryProvider).probe);
     await store.writeServer(server);
     if (ref.mounted) state = AsyncData(AuthState(server: server));
+  }
+
+  /// The server came back at another of its addresses ([server] says
+  /// which): calls go there from now on, and the next run starts there.
+  Future<void> moved(ServerInfo server) async {
+    final current = state.value;
+    if (!ref.mounted || current == null) return;
+    final session = current.session?.copyWith(server: server);
+    final store = _store;
+    log.info('auth', 'server reached at ${server.url}');
+    state = AsyncData(AuthState(server: server, session: session));
+    await _save(store, server, session);
+  }
+
+  /// Not being able to keep the address only costs a slower next start.
+  static Future<void> _save(
+    SessionStore store,
+    ServerInfo server,
+    Session? session,
+  ) async {
+    try {
+      if (session == null) {
+        await store.writeServer(server);
+      } else {
+        await store.writeSession(session.copyWith(server: server));
+      }
+    } on Failure catch (e) {
+      log.warning('auth', 'could not store the server address', e);
+    }
   }
 
   /// Back to the connect screen to pick another server.

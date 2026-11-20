@@ -24,6 +24,17 @@ Feature: Connect
     Then I see the error {'Cannot reach http://nowhere:8096. Check the address and that the server is running.'}
     And I am still on the connect screen
 
+  Scenario: A fallback address reaches the server when the first does not answer
+    Given nothing answers at {'fedora.local'}
+    When I connect to {'fedora.local'} with the fallback {'jellyfin.example.com'}
+    Then I see the login screen of {'Test Server'}
+
+  Scenario: A fallback address on another server is refused
+    Given another Jellyfin server answers at {'jellyfin.example.com'}
+    When I connect to {'fedora.local'} with the fallback {'jellyfin.example.com'}
+    Then I see the error {'jellyfin.example.com reaches a different Jellyfin server than the first address.'}
+    And I am still on the connect screen
+
   Scenario: An empty address is not sent
     When I connect to {'  '}
     Then I see the error {'Enter the server address.'}

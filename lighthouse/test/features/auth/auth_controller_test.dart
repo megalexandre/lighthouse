@@ -50,6 +50,39 @@ void main() {
       expect((await start()).session, testSession);
     });
 
+    group('a server with a fallback address', () {
+      const away = 'https://jellyfin.example.com';
+      final stored = testSession.copyWith(
+        server: testServer.copyWith(
+          url: away,
+          addresses: ['fedora.local', away],
+        ),
+      );
+      final atHome = stored.server.copyWith(url: 'http://fedora.local:8096');
+
+      setUp(() {
+        app.store.values[SessionStore.sessionKey] = jsonEncode(stored.toJson());
+      });
+
+      test('starts at the preferred address when it answers', () async {
+        app.servers.answers['fedora.local'] = atHome;
+        final state = await start();
+        expect(state.session!.server.url, atHome.url);
+        expect(state.server!.url, atHome.url);
+        expect(
+          app.store.values[SessionStore.sessionKey],
+          contains(atHome.url),
+          reason: 'the next start begins there',
+        );
+      });
+
+      test('nothing answers: stays where it was', () async {
+        app.servers.probeFailure = const ServerUnreachable('x');
+        final state = await start();
+        expect(state.session, stored);
+      });
+    });
+
     test('unreadable stored data counts as signed out', () async {
       app.store.values[SessionStore.sessionKey] = '{not json';
       expect((await start()).signedIn, isFalse);
@@ -82,6 +115,24 @@ void main() {
       container.read(authControllerProvider).value!.signedOut,
       isNull,
       reason: 'the notice is gone once signed in again',
+    );
+  });
+
+  test('connect with a fallback keeps both addresses', () async {
+    final container = app.container();
+    final auth = container.read(authControllerProvider.notifier);
+    await container.read(authControllerProvider.future);
+
+    await auth.connect(' fedora.local ', fallback: 'jellyfin.example.com');
+    final server = container.read(authControllerProvider).value!.server!;
+    expect(server.addresses, ['fedora.local', 'jellyfin.example.com']);
+    expect(app.servers.probed, ['fedora.local', 'jellyfin.example.com']);
+
+    await auth.connect('fedora.local', fallback: '  ');
+    expect(
+      container.read(authControllerProvider).value!.server!.addresses,
+      isEmpty,
+      reason: 'a blank fallback is none',
     );
   });
 

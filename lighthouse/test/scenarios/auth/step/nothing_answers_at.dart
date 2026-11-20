@@ -4,6 +4,8 @@ import 'package:lighthouse/core/failure.dart';
 import 'world.dart';
 
 /// Usage: Given nothing answers at {'http://nowhere:8096'}
+///
+/// Only there: other addresses still reach the test server.
 Future<void> nothingAnswersAt(WidgetTester tester, String address) async {
-  app.servers.probeFailure = ServerUnreachable(address);
+  app.servers.answers[address] = ServerUnreachable(address);
 }

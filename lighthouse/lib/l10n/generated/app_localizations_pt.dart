@@ -30,6 +30,11 @@ class AppLocalizationsPt extends AppLocalizations {
   }
 
   @override
+  String failureDifferentServer(String url) {
+    return '$url leva a outro servidor Jellyfin, diferente do primeiro endereço.';
+  }
+
+  @override
   String failureNotSetUp(String url) {
     return 'O servidor em $url ainda não foi configurado. Abra-o no navegador e conclua o assistente de configuração.';
   }
@@ -147,6 +152,13 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get serverAddress => 'Endereço do servidor';
+
+  @override
+  String get fallbackAddress => 'Endereço alternativo (opcional)';
+
+  @override
+  String get fallbackAddressHint =>
+      'Usado quando o primeiro não responde, por exemplo fora de casa.';
 
   @override
   String get serverAddressMissing => 'Digite o endereço do servidor.';

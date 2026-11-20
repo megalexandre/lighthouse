@@ -30,6 +30,15 @@
       }
     }
   },
+  "failureDifferentServer": "{url} reaches a different Jellyfin server than the first address.",
+  "@failureDifferentServer": {
+    "description": "The fallback address reaches another server than the main one.",
+    "placeholders": {
+      "url": {
+        "type": "String"
+      }
+    }
+  },
   "failureNotSetUp": "The server at {url} is not set up yet. Open it in a browser and finish the setup wizard first.",
   "@failureNotSetUp": {
     "description": "The server's setup wizard was never finished.",
@@ -217,6 +226,14 @@
   "serverAddress": "Server address",
   "@serverAddress": {
     "description": "Connect screen field."
+  },
+  "fallbackAddress": "Fallback address (optional)",
+  "@fallbackAddress": {
+    "description": "Connect screen field: a second address for the same server."
+  },
+  "fallbackAddressHint": "Used when the first one does not answer, e.g. away from home.",
+  "@fallbackAddressHint": {
+    "description": "Help under the fallback address field."
   },
   "serverAddressMissing": "Enter the server address.",
   "@serverAddressMissing": {

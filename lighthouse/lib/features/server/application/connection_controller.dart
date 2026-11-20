@@ -4,12 +4,11 @@ import 'dart:math' as math;
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../api/client_info.dart';
-import '../../../api/jellyfin_api.dart';
-import '../../../api/system.dart';
 import '../../../core/failure.dart';
 import '../../../core/log.dart';
 import '../../auth/application/auth_controller.dart';
+import '../data/server_info.dart';
+import '../data/server_repository.dart';
 import 'reload.dart';
 
 /// Whether the server answers. Offline, the app tries again on its own
@@ -30,19 +29,19 @@ class ConnectionStatus {
 Duration retryDelay(int attempt) =>
     Duration(seconds: math.min(30, math.pow(2, math.min(attempt, 5)).toInt()));
 
-/// Asks [url] whether it is up. False only when nothing answers.
-typedef ServerPing = Future<bool> Function(String url);
+/// Where [server] answers now (see [locateServer]); null when nothing
+/// does.
+typedef ServerLocator = Future<ServerInfo?> Function(ServerInfo server);
 
-final serverPingProvider = Provider<ServerPing>(
-  (ref) => (url) async {
+final serverLocatorProvider = Provider<ServerLocator>(
+  (ref) => (server) async {
     try {
-      final client = await ref.read(clientInfoProvider.future);
-      await JellyfinApi(baseUrl: url, client: client).publicSystemInfo();
-      return true;
-    } on ServerUnreachable {
-      return false;
+      return await locateServer(
+        server,
+        ref.read(serverRepositoryProvider).probe,
+      );
     } on Failure {
-      return true; // it answered, if oddly
+      return null;
     }
   },
 );
@@ -87,11 +86,17 @@ class ConnectionController extends Notifier<ConnectionStatus> {
   }
 
   Future<void> _probe() async {
-    final url = ref.read(authControllerProvider).value?.server?.url;
-    if (url == null) return;
-    final up = await ref.read(serverPingProvider)(url);
+    final server = ref.read(authControllerProvider).value?.server;
+    if (server == null) return;
+    // Every address, not only the one in use: the home one may have gone
+    // with the network it was on, and the fallback is there for that.
+    final found = await ref.read(serverLocatorProvider)(server);
     if (!ref.mounted || state.reachable) return;
-    if (up) {
+    if (found != null) {
+      if (found.url != server.url) {
+        await ref.read(authControllerProvider.notifier).moved(found);
+        if (!ref.mounted) return;
+      }
       _recovered();
     } else {
       state = ConnectionStatus.offline(attempts: state.attempts + 1);

@@ -16,6 +16,7 @@ class ConnectScreen extends ConsumerStatefulWidget {
   const ConnectScreen({super.key});
 
   static const urlField = Key('connect.url');
+  static const fallbackField = Key('connect.fallback');
   static const submitButton = Key('connect.submit');
 
   @override
@@ -26,12 +27,14 @@ class _ConnectScreenState extends ConsumerState<ConnectScreen> {
   late final _url = TextEditingController(
     text: ref.read(defaultServerAddressProvider),
   );
+  final _fallback = TextEditingController();
   bool _busy = false;
   String? _error;
 
   @override
   void dispose() {
     _url.dispose();
+    _fallback.dispose();
     super.dispose();
   }
 
@@ -47,7 +50,9 @@ class _ConnectScreenState extends ConsumerState<ConnectScreen> {
     });
     try {
       // On success the router moves on to the login screen.
-      await ref.read(authControllerProvider.notifier).connect(_url.text);
+      await ref
+          .read(authControllerProvider.notifier)
+          .connect(_url.text, fallback: _fallback.text);
     } on Failure catch (e) {
       if (mounted) setState(() => _error = e.describe(context.l10n));
     } finally {
@@ -70,6 +75,21 @@ class _ConnectScreenState extends ConsumerState<ConnectScreen> {
           decoration: InputDecoration(
             labelText: context.l10n.serverAddress,
             hintText: 'https://192.168.1.10:8096',
+            border: OutlineInputBorder(),
+          ),
+          onSubmitted: (_) => _submit(),
+        ),
+        const SizedBox(height: 16),
+        TextField(
+          key: ConnectScreen.fallbackField,
+          controller: _fallback,
+          keyboardType: TextInputType.url,
+          textInputAction: TextInputAction.go,
+          decoration: InputDecoration(
+            labelText: context.l10n.fallbackAddress,
+            helperText: context.l10n.fallbackAddressHint,
+            helperMaxLines: 2,
+            hintText: 'https://jellyfin.example.com',
             border: OutlineInputBorder(),
           ),
           onSubmitted: (_) => _submit(),

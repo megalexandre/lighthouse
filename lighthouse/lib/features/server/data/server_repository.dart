@@ -86,3 +86,70 @@ Future<ServerInfo> probeInOrder(
   }
   throw certificate ?? last!;
 }
+
+/// Connect screen: the server at [addresses] (as typed, preferred first),
+/// reached at the first one that answers.
+///
+/// Every address is probed at once, and all are waited for, so one that
+/// reaches a different server is caught now and not on the day the
+/// preferred one is down. One that does not answer is kept unchecked: a
+/// fallback is often unreachable from where it is set up (no hairpin NAT at
+/// home), and [locateServer] only ever moves to the same server.
+///
+/// When none answers, the preferred address's failure is reported, unless
+/// another one's certificate was refused (the user can fix that).
+Future<ServerInfo> connectServer(
+  List<String> addresses,
+  Future<ServerInfo> Function(String address) probe,
+) async {
+  final results = await Future.wait([
+    for (final address in addresses)
+      probe(address).then<Object>((s) => s, onError: (Object e) => e),
+  ]);
+  ServerInfo? found;
+  for (final (i, result) in results.indexed) {
+    if (result is! ServerInfo) continue;
+    if (found == null) {
+      found = result;
+    } else if (result.id != found.id) {
+      throw DifferentServer(addresses[i]);
+    }
+  }
+  if (found != null) {
+    return found.copyWith(addresses: addresses.length > 1 ? addresses : []);
+  }
+  throw results
+          .whereType<ServerError>()
+          .where((e) => e.badCertificate)
+          .firstOrNull ??
+      results.first;
+}
+
+/// Where [server] answers now: the first of its addresses, in order, that
+/// reaches the same server (same id), with what that answer says of it.
+/// Throws [ServerUnreachable] (for the address in use) when none does.
+///
+/// At startup and after an outage, so the home address wins whenever it
+/// works and the fallback takes over when it does not. Probed at once, like
+/// [probeInOrder]: a preferred address that never answers costs one
+/// timeout.
+Future<ServerInfo> locateServer(
+  ServerInfo server,
+  Future<ServerInfo> Function(String address) probe,
+) async {
+  final attempts = [for (final address in server.candidates) probe(address)];
+  for (final attempt in attempts) {
+    attempt.ignore();
+  }
+  for (final attempt in attempts) {
+    try {
+      final found = await attempt;
+      if (found.id == server.id) {
+        return found.copyWith(addresses: server.addresses);
+      }
+    } on Failure {
+      // Try the next one.
+    }
+  }
+  throw ServerUnreachable(server.url);
+}

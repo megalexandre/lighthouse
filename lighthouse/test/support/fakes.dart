@@ -59,16 +59,23 @@ const testSession = Session(
   token: 'token-1',
 );
 
-/// Accepts [testServer] at any address unless [probeFailure] is set.
+/// Accepts [testServer] at any address unless [probeFailure] is set, or
+/// [answers] says otherwise for that address (a [ServerInfo] or a
+/// [Failure]).
 class FakeServerRepository implements ServerRepository {
   Failure? probeFailure;
+  final answers = <String, Object>{};
   final probed = <String>[];
 
   @override
   Future<ServerInfo> probe(String input) async {
     probed.add(input);
     if (probeFailure != null) throw probeFailure!;
-    return testServer;
+    return switch (answers[input.trim()]) {
+      final ServerInfo server => server,
+      final Failure failure => throw failure,
+      _ => testServer,
+    };
   }
 }
 
@@ -933,7 +940,11 @@ class TestApp {
   /// is down.
   bool serverUp = true;
 
-  /// Every connection check, by server URL.
+  /// Where the connection check finds the server when it is up: another of
+  /// its addresses. Null: the one in use.
+  ServerInfo? serverMovedTo;
+
+  /// Every connection check, by the URL in use.
   final pings = <String>[];
 
   /// The app's provider container, once pumped.
@@ -973,9 +984,9 @@ class TestApp {
     settingsRepositoryProvider.overrideWithValue(settings),
     bookRepositoryProvider.overrideWithValue(books),
     bookOpenerProvider.overrideWithValue(openBookForTests),
-    serverPingProvider.overrideWithValue((url) async {
-      pings.add(url);
-      return serverUp;
+    serverLocatorProvider.overrideWithValue((server) async {
+      pings.add(server.url);
+      return serverUp ? serverMovedTo ?? server : null;
     }),
     playerEngineFactoryProvider.overrideWithValue(() {
       final engine = FakePlayerEngine()..openError = engineOpenError;

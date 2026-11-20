@@ -7,6 +7,7 @@ extension FailureText on Failure {
   String describe(AppLocalizations l10n) => switch (this) {
     ServerUnreachable(:final url) => l10n.failureUnreachable(url),
     NotJellyfinServer(:final url) => l10n.failureNotJellyfin(url),
+    DifferentServer(:final url) => l10n.failureDifferentServer(url),
     ServerNotSetUp(:final url) => l10n.failureNotSetUp(url),
     Unauthorized() => l10n.failureUnauthorized,
     ServerError(badCertificate: true) => l10n.failureServerBadCertificate,
