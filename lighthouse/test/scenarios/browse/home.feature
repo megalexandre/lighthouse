@@ -54,3 +54,10 @@ Feature: Home
     And I see {'HEVC Movie'}
     When I go back
     Then I see home
+
+  Scenario: Lanterna keeps the plain layout
+    When I go home
+    Then there is no bar of tabs
+    And there is no carousel
+    And I see {'Movies'} in the {'My media'} row
+    And no row has arrows

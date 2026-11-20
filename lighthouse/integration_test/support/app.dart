@@ -50,7 +50,7 @@ Future<void> launch(
         // The app's own files (the appearance) and themes folder: kept
         // off the desktop's.
         // Lanterna's plain layout for the flows (Prime's is tested in
-        // test/features/home/prime_layout_test.dart); [theme] to change.
+        // test/scenarios/browse/prime.feature); [theme] to change.
         appFilesStoreProvider.overrideWithValue(
           MemoryKeyValueStore()
             ..values['appearance'] = '{"chosenTheme":"$theme"}',

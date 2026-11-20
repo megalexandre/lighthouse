@@ -856,7 +856,7 @@ class TestApp {
   /// [theme]: the built-in theme the app opens with. Lanterna by default:
   /// the screens' tests use its plain layout (an app bar, the libraries
   /// row); Prime, the app's default, has the floating top bar and the
-  /// carousel, tested on their own (test/features/home/prime_layout_test).
+  /// carousel, in scenarios of their own (test/scenarios/browse/prime.feature).
   ///
   /// [asInstalled]: the app's own default language (Brazilian Portuguese)
   /// instead of the English the tests are written in.

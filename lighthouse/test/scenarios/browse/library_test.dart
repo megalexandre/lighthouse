@@ -36,11 +36,8 @@ void main() {
       await Hooks.beforeEach(title, tags);
     }
 
-    Future<void> afterEach(
-      String title,
-      bool success, [
-      List<String>? tags,
-    ]) async {
+    Future<void> afterEach(String title, bool success,
+        [List<String>? tags]) async {
       await Hooks.afterEach(title, success, tags);
     }
 
@@ -58,7 +55,10 @@ void main() {
         success = false;
         rethrow;
       } finally {
-        await afterEach('''The library's name and its items''', success);
+        await afterEach(
+          '''The library's name and its items''',
+          success,
+        );
       }
     });
     testWidgets('''Scrolling to the end brings every item''', (tester) async {
@@ -76,12 +76,14 @@ void main() {
         success = false;
         rethrow;
       } finally {
-        await afterEach('''Scrolling to the end brings every item''', success);
+        await afterEach(
+          '''Scrolling to the end brings every item''',
+          success,
+        );
       }
     });
-    testWidgets('''A page that fails to load can be tried again''', (
-      tester,
-    ) async {
+    testWidgets('''A page that fails to load can be tried again''',
+        (tester) async {
       var success = true;
       try {
         await beforeEach('''A page that fails to load can be tried again''');
@@ -117,22 +119,22 @@ void main() {
         success = false;
         rethrow;
       } finally {
-        await afterEach('''An empty library says so''', success);
+        await afterEach(
+          '''An empty library says so''',
+          success,
+        );
       }
     });
-    testWidgets('''A library that fails to open can be tried again''', (
-      tester,
-    ) async {
+    testWidgets('''A library that fails to open can be tried again''',
+        (tester) async {
       var success = true;
       try {
         await beforeEach('''A library that fails to open can be tried again''');
         await bddSetUp(tester);
         await theLibraryCannotBeLoaded(tester);
         await iOpenTheLibrary(tester, 'Movies');
-        await iSee(
-          tester,
-          'Cannot reach http://jellyfin.test:8096. Check the address and that the server is running.',
-        );
+        await iSee(tester,
+            'Cannot reach http://jellyfin.test:8096. Check the address and that the server is running.');
         await theServerAnswersAgain(tester);
         await iTapRetry(tester);
         await iSee(tester, 'Test Movie');
@@ -158,7 +160,10 @@ void main() {
         success = false;
         rethrow;
       } finally {
-        await afterEach('''A movie opens its page''', success);
+        await afterEach(
+          '''A movie opens its page''',
+          success,
+        );
       }
     });
   });

@@ -92,19 +92,30 @@ passos compartilham fica em `step/world.dart`; o que roda em volta de cada cená
 no `build.yaml`; um por pasta). O `After:` não é usado: outras ferramentas o leem como descrição.
 
 Dois lugares:
-- **`test/scenarios/<área>/`**, com fakes (`TestApp`): rápido, sem rede. Hoje: `auth/` (`login`, `connect`), `search/`,
-  `browse/` (`home`, `library`, `item`: uma pasta só, porque as três navegam pelas mesmas telas e dividem os passos),
-  `player/` (`up_next`, `keyboard_tracks`), `reader/reading_offline` e `settings/language`. Os testes Dart ficam em
-  `test/features/<área>/`; nessas áreas, só o que nenhum usuário vê (quantas vezes e com que páginas o servidor é
-  chamado, funções puras).
+- **`test/scenarios/<área>/`**, com fakes (`TestApp`): rápido, sem rede. Os fluxos de usuário de todas as telas:
+  - `auth/`: `connect`, `login` (sair, trocar de servidor, reabrir já logado).
+  - `browse/`: `home`, `library`, `item`, `cards` (assistido, progresso, hover, painel do Prime) e `prime` (barra de
+    abas, carrossel, busca, menu de perfil, setas das fileiras). Uma pasta só, porque navegam pelas mesmas telas e
+    dividem os passos.
+  - `player/`: `playing` (play, retomar, pausa, setas, OSD, fim, erro), `playing_on` (próximo episódio, Next e
+    Previous, álbum, tela cheia e volume entre episódios, autoplay desligado), `controls` (menus e teclas de áudio e
+    legenda, volume, tela cheia, transcode), `on_screen_controls` (capítulos, ±10 s, velocidade, Esc), `up_next`,
+    `keyboard_tracks` e `connection_lost` (playback interrompido, reporte enviado na volta do servidor).
+  - `reader/`: `reading` (quadrinho: virar página, salvar o lugar, lido, biblioteca e home), `epub` (diagramação,
+    sumário, marcadores, temas, fonte, links) e `reading_offline`.
+  - `search/`, `server/connection` (o banner) e `settings/` (`settings`, `language`).
+
+  Os testes Dart ficam em `test/features/<área>/`: só o que nenhum usuário vê (quantas vezes e com que páginas o
+  servidor é chamado, o formato de um arquivo guardado, funções puras, a mecânica e os goldens da virada de página).
 - **`integration_test/features/`**, com o app real sob Xvfb contra o servidor de teste. Uma pasta só, para os passos
   ("I am signed in as a new user", "I play {..} from {..}"...) servirem a todas as features. O `Hooks.beforeAll` carrega
   o libmpv e prepara o servidor; cada cenário cria o seu usuário no primeiro passo; o `Hooks.afterEach` sai do player ou
   do leitor como o usuário sairia (para o último reporte chegar ao servidor) e desmonta o app. Features: `login`
-  (senha certa, errada, sair, sessão encerrada fora do app), `watching` (retomar, assistido no fim), `play_on`
-  (próximo episódio, próxima faixa), `audio_and_subtitles` (idioma em Settings, troca de faixa e legenda no player) e
-  `reading` (página do quadrinho, fração do EPUB). Elas substituíram os testes Dart desses fluxos; ficaram em Dart os
-  que não viraram cenário (navegação, busca, PDF, reconexão, keyring).
+  (senha certa, errada, sair, sessão encerrada fora do app), `browse` (home → biblioteca → item; série → temporada →
+  episódio), `search`, `connection` (o servidor some atrás de um proxy e volta), `watching` (retomar, assistido no
+  fim), `play_on` (próximo episódio, próxima faixa), `audio_and_subtitles` (idioma em Settings, troca de faixa e
+  legenda no player), `portuguese` e `reading` (página do quadrinho, fração do EPUB). Ficaram em Dart só o PDF
+  desenhado pelo PDFium (`books_flow_test`, confere os pixels) e o keyring.
 
 Para rodar: `tool/scenarios.sh` (todas), `tool/scenarios.sh <arquivo> ["parte do nome"]` (uma feature; de um arquivo
 de `step/` ou `hook/`, as features da pasta), ou as tasks do VS Code "scenarios (all features)", "scenarios (this

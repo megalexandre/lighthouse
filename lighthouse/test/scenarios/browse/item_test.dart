@@ -37,11 +37,8 @@ void main() {
       await Hooks.beforeEach(title, tags);
     }
 
-    Future<void> afterEach(
-      String title,
-      bool success, [
-      List<String>? tags,
-    ]) async {
+    Future<void> afterEach(String title, bool success,
+        [List<String>? tags]) async {
       await Hooks.afterEach(title, success, tags);
     }
 
@@ -59,12 +56,14 @@ void main() {
         success = false;
         rethrow;
       } finally {
-        await afterEach('''A movie: title, facts and overview''', success);
+        await afterEach(
+          '''A movie: title, facts and overview''',
+          success,
+        );
       }
     });
-    testWidgets('''From a series down to an episode, and back up''', (
-      tester,
-    ) async {
+    testWidgets('''From a series down to an episode, and back up''',
+        (tester) async {
       var success = true;
       try {
         await beforeEach('''From a series down to an episode, and back up''');
@@ -106,7 +105,10 @@ void main() {
         success = false;
         rethrow;
       } finally {
-        await afterEach('''An album lists its tracks''', success);
+        await afterEach(
+          '''An album lists its tracks''',
+          success,
+        );
       }
     });
     testWidgets('''The picture and the sound show as badges''', (tester) async {
@@ -127,14 +129,12 @@ void main() {
         );
       }
     });
-    testWidgets('''Seasons that fail to load do not hide the series''', (
-      tester,
-    ) async {
+    testWidgets('''Seasons that fail to load do not hide the series''',
+        (tester) async {
       var success = true;
       try {
         await beforeEach(
-          '''Seasons that fail to load do not hide the series''',
-        );
+            '''Seasons that fail to load do not hide the series''');
         await bddSetUp(tester);
         await theSeasonsCannotBeLoaded(tester);
         await iOpenThePageOf(tester, 'Test Show');
@@ -152,19 +152,16 @@ void main() {
         );
       }
     });
-    testWidgets('''A page that fails to load can be tried again''', (
-      tester,
-    ) async {
+    testWidgets('''A page that fails to load can be tried again''',
+        (tester) async {
       var success = true;
       try {
         await beforeEach('''A page that fails to load can be tried again''');
         await bddSetUp(tester);
         await theItemCannotBeLoaded(tester);
         await iOpenThePageOf(tester, 'Test Movie');
-        await iSee(
-          tester,
-          'Cannot reach http://jellyfin.test:8096. Check the address and that the server is running.',
-        );
+        await iSee(tester,
+            'Cannot reach http://jellyfin.test:8096. Check the address and that the server is running.');
         await theServerAnswersAgain(tester);
         await iTapRetry(tester);
         await iSeeThePageOf(tester, 'Test Movie');

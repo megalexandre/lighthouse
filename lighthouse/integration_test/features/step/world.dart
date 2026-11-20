@@ -4,6 +4,8 @@ import 'package:lighthouse/api/client_info.dart';
 import 'package:lighthouse/core/storage.dart';
 import 'package:lighthouse/features/auth/data/session.dart';
 
+import '../../support/proxy.dart';
+
 /// What the steps of a scenario share. The server is set up once
 /// (hook/hooks.dart); the rest is made again by each scenario's first step,
 /// so scenarios never see each other's user or stored session.
@@ -45,3 +47,7 @@ Future<Map<String, dynamic>> userDataOf(String name) async {
   final found = await server.findItem(user, name, type: itemType(name));
   return found['UserData'] as Map<String, dynamic>;
 }
+
+/// Stands between the app and the server, when a scenario takes the
+/// server away.
+late FlakyProxy proxy;

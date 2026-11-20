@@ -19,15 +19,17 @@ Future<void> iAmSignedInAsANewUser(WidgetTester tester) =>
     signInAsANewUser(tester);
 
 /// [iAmSignedInAsANewUser], the app in its default language when
-/// [asInstalled] (see `launch`).
+/// [asInstalled] (see `launch`), and knowing the server at [url] (the test
+/// server's own by default).
 Future<void> signInAsANewUser(
   WidgetTester tester, {
   bool asInstalled = false,
+  String? url,
 }) async {
   world.tester = tester;
   final user = world.user = await world.server.createUser();
   final info = await JellyfinServerRepository(() async => world.probe)
-      .probe(world.server.url);
+      .probe(url ?? world.server.url);
   final session = await JellyfinAuthRepository(() async => world.probe)
       .login(info, user.name, user.password);
   world.store = MemoryKeyValueStore()

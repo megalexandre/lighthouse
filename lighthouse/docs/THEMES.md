@@ -99,7 +99,7 @@ Uma chave ou um valor desconhecido vira aviso em Settings, e vale o padrão. O P
 seção, então fica com os padrões.
 
 Os testes das telas usam o layout do Lanterna (`TestApp` e o `launch` da integração abrem nele). O layout do Prime tem
-testes próprios em `test/features/home/prime_layout_test.dart`.
+cenários próprios em `test/scenarios/browse/prime.feature` (e o painel do card em `cards.feature`).
 
 ## Que token pinta o quê
 

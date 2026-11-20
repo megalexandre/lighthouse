@@ -23,6 +23,9 @@ import './step/i_open.dart';
 import './step/i_see_the_library.dart';
 import './step/i_go_back.dart';
 import './step/i_see_home.dart';
+import './step/there_is_no_bar_of_tabs.dart';
+import './step/there_is_no_carousel.dart';
+import './step/no_row_has_arrows.dart';
 
 void main() {
   setUpAll(() async {
@@ -176,6 +179,26 @@ void main() {
       } finally {
         await afterEach(
           '''A library opens as a grid, and Back returns home''',
+          success,
+        );
+      }
+    });
+    testWidgets('''Lanterna keeps the plain layout''', (tester) async {
+      var success = true;
+      try {
+        await beforeEach('''Lanterna keeps the plain layout''');
+        await bddSetUp(tester);
+        await iGoHome(tester);
+        await thereIsNoBarOfTabs(tester);
+        await thereIsNoCarousel(tester);
+        await iSeeInTheRow(tester, 'Movies', 'My media');
+        await noRowHasArrows(tester);
+      } catch (_) {
+        success = false;
+        rethrow;
+      } finally {
+        await afterEach(
+          '''Lanterna keeps the plain layout''',
           success,
         );
       }

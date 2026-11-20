@@ -2,6 +2,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:lighthouse/api/models/base_item_dto.dart';
 import 'package:lighthouse/core/failure.dart';
 import 'package:lighthouse/features/home/presentation/home_screen.dart';
+import 'package:lighthouse/features/library/presentation/item_card.dart';
+import 'package:material_ui/material_ui.dart';
 
 import '../../../support/fakes.dart';
 
@@ -31,3 +33,23 @@ BaseItemDto itemNamed(String name) => [
 /// The row of cards with that title.
 Finder row(String title) =>
     find.byWidgetPredicate((w) => w is ItemRow && w.title == title);
+
+/// Replaces the movie of that name in the fake library.
+void changeMovie(String name, BaseItemDto Function(BaseItemDto) change) {
+  app.library.movies = [
+    for (final m in app.library.movies) m.name == name ? change(m) : m,
+  ];
+}
+
+/// The card of the item with that name.
+Finder cardOf(String name) => find.byKey(ItemCard.keyFor(itemNamed(name).id));
+
+/// The mouse, once a step has put it on the screen.
+TestGesture? mouse;
+
+/// How much the card of that name is scaled (1: not lifted).
+double cardScale(WidgetTester tester, String name) => tester
+    .widget<AnimatedScale>(
+      find.descendant(of: cardOf(name), matching: find.byType(AnimatedScale)),
+    )
+    .scale;
