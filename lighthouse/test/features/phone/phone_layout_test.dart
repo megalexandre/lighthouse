@@ -10,6 +10,7 @@ import '../../support/fakes.dart';
 void main() {
   final screens = {
     'home': Routes.home,
+    'libraries': Routes.libraries,
     'library': Routes.library(TestItems.moviesView.id),
     'movie': Routes.item(TestItems.testMovie.id),
     'series': Routes.item(TestItems.testShow.id),

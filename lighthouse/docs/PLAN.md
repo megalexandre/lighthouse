@@ -343,21 +343,28 @@ Dois eixos, decididos em lugares diferentes:
     - A barra de progresso do player tem 48 px de altura para pegar, com a mesma aparência.
     - A marca, a busca e o perfil da barra do topo têm 48 px.
     - O carrossel se desliza; os pontos viram só indicadores e o leitor de tela o rola como lista.
-  - No celular (compact), a busca da barra abre a página de busca: o campo inline não cabia e transbordava.
+  - No celular, o campo de busca inline não cabia e transbordava; a A1b tirou a busca da barra do topo abaixo do
+    desktop.
   - Voltar do sistema (`test/features/phone/system_back_test.dart`) faz o que o Esc faz:
     - no player, sobe um nível no menu, fecha o menu e só então sai, salvando o ponto de retomada;
     - no leitor, fecha o sumário antes de sair;
-    - num tablet, fecha o campo de busca aberto antes de sair da home.
+    - com o campo de busca da barra do topo aberto (tablet deitado), fecha o campo antes de sair da home.
     - Antes, o `PopScope(canPop: false)` da tela passava na frente da gaveta e do menu e fechava a tela inteira.
   - Pendente para a A1d: no toque, a prévia da barra de progresso continua na tela depois de soltar o dedo (no mouse
     ela some quando o ponteiro sai).
-- **A1b, navegação:**
-  - compact: barra de navegação inferior (`NavigationBar`) com Início, Bibliotecas (lista das bibliotecas), Busca e
-    Perfil (tema, Configurações, Sair).
-  - medium: `NavigationRail` à esquerda, como o comentário de `WindowSize.medium` já prevê.
-  - expanded ou mais: as barras de hoje.
-  - O tema decide o estilo, o tamanho decide o lugar: Prime e Lanterna usam a mesma estrutura no celular. O visual
-    sai dos tokens e, se faltar token, ele entra no Lanterna (THEMES.md).
+- **A1b, navegação (feita):** `BrowseFrame` (`home/presentation/browse_navigation.dart`) envolve a home e as
+  páginas de biblioteca do Prime.
+  - Celular (compact): `NavigationBar` embaixo com Início, Bibliotecas, Buscar e Perfil.
+  - Tablet e celular deitado (medium): `NavigationRail` à esquerda, com os mesmos destinos. O trilho fica fora do
+    recorte da câmera.
+  - Desktop (expanded ou mais): nada muda, as abas continuam na barra do topo.
+  - Abaixo do desktop, a barra do topo mostra só a marca e o título da página (o nome da biblioteca, ou
+    "Bibliotecas"); as abas, a busca e o perfil saíram dela.
+  - Bibliotecas: página nova (`/libraries`, `LibrariesScreen`) com as bibliotecas em grade. Abrir uma deixa
+    Bibliotecas marcado na navegação.
+  - Buscar abre a página de busca. Perfil abre uma folha (`ProfileSheet`) com quem está conectado, o modo do tema,
+    Configurações e Sair, os mesmos itens (e chaves) do menu do desktop.
+  - Testes em `test/features/phone/navigation_test.dart`.
 - **A1c, telas de navegação:**
   - Home: no celular, cards das linhas menores (cerca de 3 pôsteres visíveis por linha) e sem `hoverRoom` no modo
     toque. Carrossel com altura máxima quando a janela é baixa (`isShort`), para a primeira linha aparecer.

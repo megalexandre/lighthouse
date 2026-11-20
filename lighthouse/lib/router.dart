@@ -6,6 +6,7 @@ import 'features/auth/application/auth_controller.dart';
 import 'features/auth/presentation/login_screen.dart';
 import 'features/home/presentation/home_screen.dart';
 import 'features/item/presentation/item_screen.dart';
+import 'features/library/presentation/libraries_screen.dart';
 import 'features/library/presentation/library_screen.dart';
 import 'features/player/presentation/player_screen.dart';
 import 'features/reader/presentation/reader_screen.dart';
@@ -26,6 +27,10 @@ abstract final class Routes {
   static String item(String id) => '/item/$id';
 
   static const search = '/search';
+
+  /// The user's libraries (a phone's navigation; wider windows have them
+  /// as the top bar's tabs).
+  static const libraries = '/libraries';
 
   /// The search screen, already searching for [term].
   static String searchFor(String term) =>
@@ -95,6 +100,10 @@ final routerProvider = Provider<GoRouter>((ref) {
             ),
           ),
           GoRoute(path: 'settings', builder: (_, _) => const SettingsScreen()),
+          GoRoute(
+            path: 'libraries',
+            builder: (_, _) => const LibrariesScreen(),
+          ),
           GoRoute(
             path: 'read/:id',
             builder: (_, state) =>

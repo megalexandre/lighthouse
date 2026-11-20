@@ -682,4 +682,10 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get trackForced => 'Forced';
+
+  @override
+  String get libraries => 'Libraries';
+
+  @override
+  String get navSearch => 'Search';
 }

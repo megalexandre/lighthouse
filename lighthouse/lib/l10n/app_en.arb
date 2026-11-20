@@ -970,5 +970,13 @@
   "trackForced": "Forced",
   "@trackForced": {
     "description": "Detail of a forced subtitle (one shown only for foreign speech or signs)."
+  },
+  "libraries": "Libraries",
+  "@libraries": {
+    "description": "The page listing the user's libraries, and its place in the phone's navigation bar."
+  },
+  "navSearch": "Search",
+  "@navSearch": {
+    "description": "Search in the phone's navigation bar (a short label under its icon)."
   }
 }

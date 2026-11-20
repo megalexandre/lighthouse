@@ -1208,6 +1208,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Forced'**
   String get trackForced;
+
+  /// The page listing the user's libraries, and its place in the phone's navigation bar.
+  ///
+  /// In en, this message translates to:
+  /// **'Libraries'**
+  String get libraries;
+
+  /// Search in the phone's navigation bar (a short label under its icon).
+  ///
+  /// In en, this message translates to:
+  /// **'Search'**
+  String get navSearch;
 }
 
 class _AppLocalizationsDelegate

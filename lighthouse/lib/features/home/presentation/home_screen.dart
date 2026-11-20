@@ -14,6 +14,7 @@ import '../../auth/application/auth_controller.dart';
 import '../../auth/data/session.dart';
 import '../../library/application/library_providers.dart';
 import '../../library/presentation/item_card.dart';
+import 'browse_navigation.dart';
 import 'floating_top_bar.dart';
 import 'hero_carousel.dart';
 
@@ -92,43 +93,47 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         : null;
     final withHero = hero != null && hero.isNotEmpty;
     final barExtent = FloatingTopBar.extentOf(context);
-    return Scaffold(
-      body: Stack(
-        children: [
-          switch (views) {
-            AsyncData(value: final views) => RefreshIndicator(
-              edgeOffset: barExtent,
-              onRefresh: () async => _refresh(),
-              child: ListView(
-                controller: _scroll,
-                padding: EdgeInsets.only(
-                  top: withHero ? 0 : barExtent + 16,
-                  // Scrolls past the gesture bar.
-                  bottom: 16 + MediaQuery.paddingOf(context).bottom,
+    return BrowseFrame(
+      tab: BrowseTab.home,
+      child: Scaffold(
+        body: Stack(
+          children: [
+            switch (views) {
+              AsyncData(value: final views) => RefreshIndicator(
+                edgeOffset: barExtent,
+                onRefresh: () async => _refresh(),
+                child: ListView(
+                  controller: _scroll,
+                  padding: EdgeInsets.only(
+                    top: withHero ? 0 : barExtent + 16,
+                    // Scrolls past the gesture bar.
+                    bottom: 16 + MediaQuery.paddingOf(context).bottom,
+                  ),
+                  children: [
+                    if (withHero)
+                      HeroCarousel(key: HomeScreen.hero, items: hero),
+                    // The libraries are the bar's tabs: no row for them.
+                    if (views.isEmpty) _noLibraries,
+                    ..._rows(views),
+                  ],
                 ),
-                children: [
-                  if (withHero) HeroCarousel(key: HomeScreen.hero, items: hero),
-                  // The libraries are the bar's tabs: no row for them.
-                  if (views.isEmpty) _noLibraries,
-                  ..._rows(views),
-                ],
               ),
-            ),
-            AsyncError(:final error) => Center(
-              child: ErrorRetry(
-                error: error,
-                onRetry: () => ref.invalidate(userViewsProvider),
+              AsyncError(:final error) => Center(
+                child: ErrorRetry(
+                  error: error,
+                  onRetry: () => ref.invalidate(userViewsProvider),
+                ),
               ),
+              _ => const Center(child: CircularProgressIndicator()),
+            },
+            Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
+              child: FloatingTopBar(solid: _scrolled || !withHero),
             ),
-            _ => const Center(child: CircularProgressIndicator()),
-          },
-          Positioned(
-            top: 0,
-            left: 0,
-            right: 0,
-            child: FloatingTopBar(solid: _scrolled || !withHero),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

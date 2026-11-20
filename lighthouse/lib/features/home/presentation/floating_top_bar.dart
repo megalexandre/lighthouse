@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 
+import '../../../api/models/base_item_dto.dart';
 import '../../../core/theme/app_tokens.dart';
 import '../../../core/theme/appearance.dart';
 import '../../../core/touch.dart';
@@ -23,15 +24,28 @@ import '../../library/application/library_providers.dart';
 /// Over the home carousel it is see-through; once the page scrolls
 /// ([solid]) it floats: inset from the sides, rounded below, blurred, with
 /// a shadow.
+///
+/// Below [WindowSize.expanded] the navigation is a [BrowseFrame]'s (a bar
+/// below, a rail), and this bar keeps only the mark and the page's title.
 class FloatingTopBar extends ConsumerStatefulWidget
     implements PreferredSizeWidget {
-  const FloatingTopBar({super.key, required this.solid, this.activeView});
+  const FloatingTopBar({
+    super.key,
+    required this.solid,
+    this.activeView,
+    this.title,
+  });
 
   /// The page has scrolled (or has no carousel under the bar).
   final bool solid;
 
-  /// The library whose tab is on; null: Home.
+  /// The library whose tab is on; null: Home (unless [title] names
+  /// another page).
   final String? activeView;
+
+  /// The page's name, for a page that is no tab (Libraries). The tab's
+  /// name otherwise; Home has none.
+  final String? title;
 
   static const height = 72.0;
 
@@ -70,11 +84,6 @@ class _FloatingTopBarState extends ConsumerState<FloatingTopBar> {
   }
 
   void _openSearch() {
-    // A phone has no room for the field beside the tabs: the search page.
-    if (WindowSize.of(context) == WindowSize.compact) {
-      unawaited(context.push(Routes.search));
-      return;
-    }
     setState(() => _searching = true);
     _queryFocus.requestFocus();
   }
@@ -113,13 +122,8 @@ class _FloatingTopBarState extends ConsumerState<FloatingTopBar> {
     // Below expanded the library tabs do not fit.
     final narrow = !WindowSize.of(context).atLeast(WindowSize.expanded);
     final views = ref.watch(userViewsProvider).value ?? const [];
-    final solid = widget.solid;
-    // Over the carousel's pictures: the player's colours, dark whatever the
-    // mode (context.tokens.mediaShade).
-    final night = tokens.mediaShade;
-    final inset = solid && !narrow ? 52.0 : 0.0;
-    final side = narrow ? tokens.space(4) : (solid ? 20.0 : 72.0);
 
+    if (narrow) return _frame(context, _narrowContent(context, views));
     final content = Row(
       children: [
         _Mark(
@@ -136,7 +140,7 @@ class _FloatingTopBarState extends ConsumerState<FloatingTopBar> {
                 _Tab(
                   key: FloatingTopBar.homeTab,
                   label: context.l10n.home,
-                  on: widget.activeView == null,
+                  on: widget.activeView == null && widget.title == null,
                   onTap: () => context.go(Routes.home),
                 ),
                 for (final view in views)
@@ -156,6 +160,44 @@ class _FloatingTopBarState extends ConsumerState<FloatingTopBar> {
       ],
     );
 
+    return _frame(context, content);
+  }
+
+  /// The mark and the page's title: the navigation is the BrowseFrame's.
+  Widget _narrowContent(BuildContext context, List<BaseItemDto> views) {
+    final title =
+        widget.title ??
+        views.where((v) => v.id == widget.activeView).firstOrNull?.name;
+    return Row(
+      children: [
+        _Mark(onTap: () => context.go(Routes.home), showName: title == null),
+        if (title != null) ...[
+          SizedBox(width: context.tokens.space(3)),
+          Expanded(
+            child: Text(
+              title,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: Theme.of(context).textTheme.titleLarge
+                  ?.copyWith(color: context.tokens.osdInk),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  /// The bar's surface around [content]: see-through over the carousel,
+  /// floating once [FloatingTopBar.solid].
+  Widget _frame(BuildContext context, Widget content) {
+    final tokens = context.tokens;
+    final narrow = !WindowSize.of(context).atLeast(WindowSize.expanded);
+    final solid = widget.solid;
+    // Over the carousel's pictures: the player's colours, dark whatever the
+    // mode (context.tokens.mediaShade).
+    final night = tokens.mediaShade;
+    final inset = solid && !narrow ? 52.0 : 0.0;
+    final side = narrow ? tokens.space(4) : (solid ? 20.0 : 72.0);
     return SizedBox(
       height: FloatingTopBar.extentOf(context),
       child: AnimatedPadding(
@@ -394,13 +436,8 @@ class _Profile extends ConsumerWidget {
     final scheme = Theme.of(context).colorScheme;
     final appearance = ref.watch(appearanceProvider);
     final appTheme = ref.watch(appThemeProvider);
-    final light = switch (appearance.mode) {
-      ThemeMode.light => true,
-      ThemeMode.dark => false,
-      ThemeMode.system =>
-        MediaQuery.platformBrightnessOf(context) == Brightness.light,
-    };
-    final disc = _InitialDisc(name: name);
+    final light = showsLight(context, appearance.mode);
+    final disc = InitialDisc(name: name);
     return MenuAnchor(
       alignmentOffset: const Offset(-240, 8),
       style: MenuStyle(
@@ -408,20 +445,13 @@ class _Profile extends ConsumerWidget {
         minimumSize: const WidgetStatePropertyAll(Size(280, 0)),
       ),
       menuChildren: [
-        _ProfileHeader(name: name, server: session?.server.name),
+        ProfileHeader(name: name, server: session?.server.name),
         const Divider(height: 1),
         if (appTheme.entry.tokens?.hasLightAndDark ?? false)
           MenuItemButton(
             key: FloatingTopBar.themeItem,
             leadingIcon: Icon(light ? Icons.dark_mode : Icons.light_mode),
-            // The appearance at the tap, not at this build.
-            onPressed: () => ref
-                .read(appearanceProvider.notifier)
-                .set(
-                  ref
-                      .read(appearanceProvider)
-                      .copyWith(mode: light ? ThemeMode.dark : ThemeMode.light),
-                ),
+            onPressed: () => switchThemeMode(ref, toLight: !light),
             child: Text(
               light ? context.l10n.darkTheme : context.l10n.lightTheme,
             ),
@@ -449,9 +479,7 @@ class _Profile extends ConsumerWidget {
           // The disc is too small to tap: a ring of room around it.
           child: isTouch(context)
               ? Padding(
-                  padding: EdgeInsets.all(
-                    (touchTarget - _InitialDisc.size) / 2,
-                  ),
+                  padding: EdgeInsets.all((touchTarget - InitialDisc.size) / 2),
                   child: disc,
                 )
               : disc,
@@ -461,9 +489,30 @@ class _Profile extends ConsumerWidget {
   }
 }
 
+/// Whether the app shows its light side in [mode].
+bool showsLight(BuildContext context, ThemeMode mode) => switch (mode) {
+  ThemeMode.light => true,
+  ThemeMode.dark => false,
+  ThemeMode.system =>
+    MediaQuery.platformBrightnessOf(context) == Brightness.light,
+};
+
+/// The theme mode the profile menu switches to.
+void switchThemeMode(WidgetRef ref, {required bool toLight}) {
+  // The appearance at the tap, not at a build.
+  final appearance = ref.read(appearanceProvider);
+  unawaited(
+    ref
+        .read(appearanceProvider.notifier)
+        .set(
+          appearance.copyWith(mode: toLight ? ThemeMode.light : ThemeMode.dark),
+        ),
+  );
+}
+
 /// The user's initial in a disc of the theme's primary gradient.
-class _InitialDisc extends StatelessWidget {
-  const _InitialDisc({required this.name});
+class InitialDisc extends StatelessWidget {
+  const InitialDisc({super.key, required this.name});
 
   static const size = 36.0;
 
@@ -496,8 +545,8 @@ class _InitialDisc extends StatelessWidget {
 }
 
 /// The top of the profile menu: the disc, the user's name and the server.
-class _ProfileHeader extends StatelessWidget {
-  const _ProfileHeader({required this.name, required this.server});
+class ProfileHeader extends StatelessWidget {
+  const ProfileHeader({super.key, required this.name, required this.server});
 
   final String name;
   final String? server;
@@ -509,7 +558,7 @@ class _ProfileHeader extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
       child: Row(
         children: [
-          _InitialDisc(name: name),
+          InitialDisc(name: name),
           const SizedBox(width: 12),
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,

@@ -6,6 +6,7 @@ import '../../../core/theme/app_tokens.dart';
 import '../../../core/theme/design_tokens.dart';
 import '../../../l10n/l10n.dart';
 import '../../../widgets/error_retry.dart';
+import '../../home/presentation/browse_navigation.dart';
 import '../../home/presentation/floating_top_bar.dart';
 import '../application/library_providers.dart';
 import 'item_card.dart';
@@ -61,20 +62,23 @@ class LibraryScreen extends ConsumerWidget {
         body: body,
       );
     }
-    return Scaffold(
-      body: Stack(
-        children: [
-          Padding(
-            padding: EdgeInsets.only(top: FloatingTopBar.extentOf(context)),
-            child: body,
-          ),
-          Positioned(
-            top: 0,
-            left: 0,
-            right: 0,
-            child: FloatingTopBar(solid: true, activeView: parentId),
-          ),
-        ],
+    return BrowseFrame(
+      tab: BrowseTab.libraries,
+      child: Scaffold(
+        body: Stack(
+          children: [
+            Padding(
+              padding: EdgeInsets.only(top: FloatingTopBar.extentOf(context)),
+              child: body,
+            ),
+            Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
+              child: FloatingTopBar(solid: true, activeView: parentId),
+            ),
+          ],
+        ),
       ),
     );
   }

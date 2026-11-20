@@ -683,6 +683,12 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get trackForced => 'Forçada';
+
+  @override
+  String get libraries => 'Bibliotecas';
+
+  @override
+  String get navSearch => 'Buscar';
 }
 
 /// The translations for Portuguese, as used in Brazil (`pt_BR`).

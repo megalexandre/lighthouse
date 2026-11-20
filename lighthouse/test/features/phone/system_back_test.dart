@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:lighthouse/features/home/presentation/browse_navigation.dart';
 import 'package:lighthouse/features/home/presentation/floating_top_bar.dart';
 import 'package:lighthouse/features/home/presentation/home_screen.dart';
 import 'package:lighthouse/features/item/presentation/item_screen.dart';
@@ -7,6 +8,7 @@ import 'package:lighthouse/features/player/presentation/player_screen.dart';
 import 'package:lighthouse/features/reader/presentation/reader_screen.dart';
 import 'package:lighthouse/features/search/presentation/search_screen.dart';
 import 'package:lighthouse/router.dart';
+import 'package:material_ui/material_ui.dart';
 
 import '../../support/fakes.dart';
 
@@ -23,9 +25,11 @@ void main() {
     expect(find.byType(HomeScreen), findsOneWidget);
   });
 
-  testWidgets('on a phone, Search opens the search page', (tester) async {
+  testWidgets('leaves the search page opened from the bar below', (
+    tester,
+  ) async {
     await TestApp(theme: TestApp.prime).openOnPhone(tester, Routes.home);
-    await tester.tap(find.byKey(FloatingTopBar.searchButton));
+    await tester.tap(find.byKey(BrowseFrame.searchItem));
     await tester.pumpAndSettle();
     expect(find.byType(SearchScreen), findsOneWidget);
 
@@ -34,12 +38,11 @@ void main() {
     expect(find.byType(HomeScreen), findsOneWidget);
   });
 
-  testWidgets('on a tablet, closes the search field before leaving Home', (
-    tester,
-  ) async {
+  testWidgets('on a tablet on its side, closes the search field before '
+      'leaving Home', (tester) async {
     usePhone(tester);
     await TestApp(theme: TestApp.prime)
-        .open(tester, Routes.home, window: TestWindows.tablet);
+        .open(tester, Routes.home, window: const Size(1280, 800));
     await tester.tap(find.byKey(FloatingTopBar.searchButton));
     await tester.pumpAndSettle();
     expect(find.byKey(FloatingTopBar.searchField), findsOneWidget);
