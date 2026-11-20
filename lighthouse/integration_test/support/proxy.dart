@@ -22,7 +22,14 @@ class FlakyProxy {
   static Future<FlakyProxy> start(String target) async {
     final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
     final proxy = FlakyProxy._(server, Uri.parse(target));
-    server.listen((request) => unawaited(proxy._handle(request)));
+    // Each connection in a zone of its own, its errors dropped: closing
+    // the proxy cancels connections still on their way to the server, and
+    // HttpClient reports that ("Connection attempt cancelled") outside any
+    // future the handler awaits, after the test is over.
+    server.listen(
+      (request) =>
+          runZonedGuarded(() => unawaited(proxy._handle(request)), (_, _) {}),
+    );
     return proxy;
   }
 
