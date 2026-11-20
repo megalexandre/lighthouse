@@ -40,6 +40,9 @@
         // lacks. Set up in .vscode/settings.json and
         // .vscode/i18n-ally-custom-framework.yml.
         "lokalise.i18n-ally",
+        // Test coverage line by line in the editor, from the lcov.info that
+        // `flutter test --coverage` writes (lighthouse/coverage/).
+        "ryanluker.vscode-coverage-gutters",
         // Claude Code. Its login and sessions live in the claude-config
         // volume (see docker-compose.yml), so they survive rebuilds.
         "anthropic.claude-code"
