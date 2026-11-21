@@ -293,7 +293,7 @@ gen-l10n exige o idioma base). O código usa `context.l10n.<chave>`; a classe ge
     app entra em `APP_LANGUAGES` do script.
 Títulos, sinopses e gêneros vêm do servidor, no idioma dos metadados do Jellyfin: não são do app.
 
-**A — Android (planejada)**
+**A — Android (A1 feita; A2 planejada)**
 Primeiro o layout de celular (A1), só depois a infraestrutura (A2). Por enquanto o celular só tem o tema **Prime**
 (o padrão): o Lanterna continua como está no desktop, sem layout de celular, e os testes de celular usam o Prime.
 Toda a A1 roda e se testa no Linux: as telas
@@ -406,23 +406,80 @@ Dois eixos, decididos em lugares diferentes:
   - Nada mudou no desktop: os cenários e os testes de integração seguem verdes. A única mudança neles é o passo
     `i_press`, que envia as teclas como Android.
 
-**A2, infraestrutura (planejar em detalhe ao chegar):**
-- Projeto e dependências:
-  - `flutter create --platforms=android`.
-  - `media_kit_libs_android_video`.
-  - Conferir no Android: pdfrx/PDFium, `flutter_secure_storage` (Keystore), `path_provider` e o `FileKeyValueStore`
-    do leitor.
-  - `window_manager` e `xdg-open` só no desktop (`AppWindow` já é interface).
-- Rede, tela e reprodução:
-  - HTTP sem TLS para servidores na rede local (`network_security_config`).
-  - Orientação e modo imersivo no player.
-  - Áudio em segundo plano e notificação de mídia (análogo ao MPRIS).
-  - DeviceProfile do Android (decodificação por hardware via mediacodec).
-- Build e testes:
-  - Android SDK no dev container.
-  - Testes de integração em emulador (ou só os de widget e Linux, a decidir).
-  - Assinatura e APK/AAB de release.
-  - CI.
+**A2, infraestrutura (planejada):** o app de verdade no Android. Quatro etapas, como na A1; cada uma termina num
+aparelho, não só nos testes.
+
+Decisões:
+- Distribuição: APK assinado no GitHub Releases, ao lado do AppImage. Sem Play Store por enquanto: nada de AAB,
+  conta de desenvolvedor ou declaração de serviço em primeiro plano.
+- `applicationId`: `io.github.megalexandre.lighthouse`. Não muda depois da primeira instalação publicada.
+- minSdk 24 (o padrão do Flutter 3.50). ABIs: arm64-v8a para os aparelhos e x86_64 para o emulador. Um APK por ABI,
+  porque o libmpv pesa dezenas de MB em cada uma.
+- Teste à mão: emulador no host (Android Studio), porque o dev container não tem `/dev/kvm`.
+  - O adb do container fala com o servidor adb do host: `adb -a nodaemon server start` no host e
+    `ADB_SERVER_SOCKET=tcp:host.docker.internal:5037` no container.
+  - O emulador alcança o servidor de dev em `http://10.0.2.2:8096`, que é a porta publicada no host.
+- Áudio em segundo plano entra na A2 (A2c): sem ele, a música para quando a tela apaga.
+
+Achados no código, que no Android quebram sem erro visível:
+- `ClientInfo.device` usa `Platform.localHostname`, que no Android é `localhost`. Esse é o nome na lista de
+  dispositivos do servidor; tem que vir do modelo do aparelho.
+- `defaultLogDirectory` lê `XDG_DATA_HOME`/`HOME`, que não existem no Android, e o app abriria sem arquivo de log.
+- `NativeAppWindow` usa o `window_manager` 0.7, que é FFI sem implementação Android.
+- O Android 9+ bloqueia HTTP sem TLS, e o `dart:io` (dio) respeita esse bloqueio: um servidor `http://` na rede
+  local não conectaria.
+- O backup automático do Android restauraria o `device_id` em outro aparelho, e dois aparelhos com o mesmo
+  DeviceId fazem o Jellyfin revogar tokens.
+- O mpv roda com `tls-verify=yes`, e no Android o ffmpeg pode não achar as CAs do sistema: o vídeo por HTTPS
+  falharia com a API funcionando.
+- "Abrir pasta" dos temas (`xdg-open`) já é só do Linux, mas no Android a pasta é privada do app.
+
+- **A2a, o app abre no Android:**
+  - Prova primeiro, antes do resto: `flutter create --platforms=android`, `media_kit_libs_android_video` e um vídeo
+    tocando no emulador. Ela mede o media_kit com o Flutter 3.50 e o Impeller, e o tamanho do APK. Se o media_kit
+    não funcionar, o resto do plano muda.
+  - Android SDK no dev container: cmdline-tools, platform, build-tools e o NDK que o Flutter pedir, fixados no
+    Dockerfile como o Flutter.
+  - `AndroidManifest`/recursos:
+    - `network_security_config` que permite HTTP sem TLS, para servidores na rede local;
+    - `dataExtractionRules`/`fullBackupContent` que deixam o armazenamento seguro fora do backup;
+    - nome, ícone e `applicationId`.
+  - Código:
+    - `AppWindow` do Android: tela cheia = modo imersivo (`SystemChrome`); o `window_manager` só no desktop.
+    - Log em `getApplicationSupportDirectory()/logs` fora do Linux.
+    - Nome do aparelho pelo modelo (`Build.MODEL`).
+    - Settings: sem "Abrir pasta" dos temas no Android; importar um tema fica para depois.
+  - Conferir no aparelho: `flutter_secure_storage` (Keystore; sessão e DeviceId sobrevivem a reabrir),
+    `path_provider`, o `FileKeyValueStore` do leitor, o pdfrx/PDFium e o shader da virada de página.
+  - Pronto quando: o APK de debug instala no emulador, entra no servidor de dev por `http://`, navega e abre PDF,
+    CBZ e EPUB. Reabrir o app mantém a sessão.
+- **A2b, reprodução:**
+  - mpv: `hwdec=mediacodec` (com `-copy` como alternativa, se faltar interop), `vo` do media_kit no Android e as CAs
+    para `tls-verify`. Conferir HTTPS de verdade, não só HTTP.
+  - DeviceProfile: hoje é direct play de tudo, mas um celular pode não decodificar HEVC 4K ou 10 bits. Começar
+    igual e restringir só o que falhar no aparelho (os codecs do `MediaCodecList`, se for preciso).
+  - Player: vídeo em paisagem enquanto toca, modo imersivo, tela acesa (`FLAG_KEEP_SCREEN_ON`), e a orientação
+    volta ao sair. O leitor também mantém a tela acesa.
+  - Pronto quando: um HEVC 1080p toca com decodificação por hardware (`hwdec-current` no log), com troca de áudio e
+    legenda, e o ponto de retomada chega ao servidor.
+- **A2c, áudio em segundo plano:**
+  - Serviço em primeiro plano de mídia com `MediaSession`: notificação e tela de bloqueio com play/pausa, próxima e
+    anterior.
+  - Foco de áudio (pausar numa ligação ou com outro app tocando) e pausa ao desconectar o fone
+    (`ACTION_AUDIO_BECOMING_NOISY`).
+  - Vídeo pausa ao ir para segundo plano; a música continua. Os reportes de playback seguem com a tela apagada.
+  - Escolher o pacote (audio_service ou um canal próprio sobre o media_kit) no começo da etapa; a mesma interface
+    serve ao MPRIS na F5+.
+  - Pronto quando: um álbum toca até o fim com a tela apagada, a notificação troca de faixa, e uma ligação pausa.
+- **A2d, build, testes e release:**
+  - `tool/build_apk.sh`: release, um APK por ABI, assinado com uma chave fora do repo (secrets na CI). Smoke test
+    do APK no emulador, como o AppImage.
+  - CI: um job com emulador x86_64 (os runners Ubuntu têm KVM) e o servidor de teste em `10.0.2.2:8096`.
+  - Testes de integração no Android: os que não dependem do Linux. O keyring e os pixels do PDFium ficam no Linux;
+    o mpv sem áudio (`ao=null`) vale nos dois. À mão, o servidor de teste precisa de uma porta publicada no host
+    (por exemplo 8097), porque o emulador não resolve `jellyfin-test`.
+  - O `tool/check.sh` continua só Linux: o build Android vai para a CI e para um `tool/check_android.sh`.
+  - Release: APKs e AppImage na mesma tag.
 
 **F5+ — Pós-MVP (planejar em detalhe ao chegar)**
 MPRIS (D-Bus), gamepads/remotes (demais inputmaps), WebSocket de sessão (controle remoto a partir de outro cliente),
