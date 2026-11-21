@@ -5,7 +5,8 @@ set -euo pipefail
 # Versioned git hooks (.githooks/pre-commit runs flutter analyze).
 git config core.hooksPath .githooks
 
-# Show what Flutter sees. The "Linux toolchain" line should be green.
+# Show what Flutter sees. The "Linux toolchain" and "Android toolchain"
+# lines should be green.
 flutter doctor -v || true
 
 # The Flutter project lives in lighthouse/.

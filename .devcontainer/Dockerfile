@@ -1,10 +1,11 @@
 # Image for the "app" container: everything needed to build and run
-# the Flutter rewrite of Jellyfin Desktop on Linux.
+# the Flutter rewrite of Jellyfin Desktop on Linux, and to build it for
+# Android (the emulator runs on the host: there is no /dev/kvm in here).
 #
-# Two stages. "flutter" downloads the SDK and its Linux artifacts on its own,
-# with only the few packages it needs, so it never depends on the apt list
-# below: adding a system package later reuses the cached SDK (a local copy)
-# instead of downloading ~3 GB again.
+# Three stages. "flutter" and "android" download the two SDKs on their own,
+# with only the few packages they need, so they never depend on the apt list
+# below: adding a system package later reuses the cached SDKs (local copies)
+# instead of downloading ~3 GB and ~4 GB again.
 
 # --- Stage 1: Flutter SDK ---------------------------------------------------
 FROM ubuntu:24.04 AS flutter
@@ -24,17 +25,52 @@ RUN apt-get update \
 RUN curl -fsSL "https://storage.googleapis.com/flutter_infra_release/releases/stable/linux/flutter_linux_${FLUTTER_VERSION}-stable.tar.xz" \
         | tar -xJ -C /opt
 
-# Pre-download the Linux desktop artifacts so the first `flutter run` does not
-# have to. They land in /opt/flutter/bin/cache and travel with the COPY below.
-# (Run as root here, hence its super-user warning; harmless.)
+# Pre-download the Linux and Android artifacts so the first `flutter run` does
+# not have to. They land in /opt/flutter/bin/cache and travel with the COPY
+# below. (Run as root here, hence its super-user warning; harmless.)
 RUN git config --global --add safe.directory /opt/flutter \
-    && flutter precache --linux
+    && flutter precache --linux --android
 
-# --- Stage 2: the dev image -------------------------------------------------
+# --- Stage 2: Android SDK ---------------------------------------------------
+FROM ubuntu:24.04 AS android
+
+# The command-line tools (sdkmanager), pinned and checked like the Flutter SDK.
+# Google's repository (repository2-3.xml) lists each version's SHA-1; this is
+# the SHA-256 of that same zip. 15859902 is version 22.0.
+ARG ANDROID_CMDLINE_TOOLS=15859902
+ARG ANDROID_CMDLINE_TOOLS_SHA256=4e4c464f145a7512b57d088ac6c278c03c9eea610886b35a5e0804e74eedf583
+
+# sdkmanager is Java. 17: what the Android Gradle Plugin runs on.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends ca-certificates curl unzip openjdk-17-jdk-headless \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN curl -fsSL -o /tmp/tools.zip \
+        "https://dl.google.com/android/repository/commandlinetools-linux-${ANDROID_CMDLINE_TOOLS}_latest.zip" \
+    && echo "${ANDROID_CMDLINE_TOOLS_SHA256}  /tmp/tools.zip" | sha256sum --check --quiet \
+    && unzip -q /tmp/tools.zip -d /tmp/tools \
+    && mkdir -p /opt/android-sdk/cmdline-tools \
+    && mv /tmp/tools/cmdline-tools /opt/android-sdk/cmdline-tools/latest \
+    && rm -rf /tmp/tools /tmp/tools.zip
+
+# What Flutter 3.50 builds with (FlutterExtension.kt): compileSdk and
+# targetSdk 36, that exact NDK (native plugins: media_kit, pdfrx). CMake 3.22.1
+# is the Android Gradle Plugin's default, for pdfrx's native part. Bump these
+# with Flutter. platform-tools (adb) has no pinned versions: the latest.
+RUN yes | /opt/android-sdk/cmdline-tools/latest/bin/sdkmanager --sdk_root=/opt/android-sdk --licenses > /dev/null \
+    && /opt/android-sdk/cmdline-tools/latest/bin/sdkmanager --sdk_root=/opt/android-sdk \
+        "platform-tools" \
+        "platforms;android-36" \
+        "build-tools;36.0.0" \
+        "ndk;28.2.13676358" \
+        "cmake;3.22.1"
+
+# --- Stage 3: the dev image -------------------------------------------------
 FROM ubuntu:24.04
 
 ENV DEBIAN_FRONTEND=noninteractive
-ENV PATH=/opt/flutter/bin:${PATH}
+ENV ANDROID_HOME=/opt/android-sdk
+ENV PATH=/opt/flutter/bin:${ANDROID_HOME}/cmdline-tools/latest/bin:${ANDROID_HOME}/platform-tools:${PATH}
 
 # --- System packages --------------------------------------------------------
 # Layers are ordered from "changes least" to "changes most":
@@ -54,6 +90,8 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     apt-get update && apt-get install -y --no-install-recommends \
         # Basic tools (Flutter itself is managed by git)
         bash ca-certificates curl git unzip xz-utils zip sudo \
+        # Android builds: Gradle and the Android Gradle Plugin run on Java 17
+        openjdk-17-jdk-headless \
         # ssh client for git over ssh. No keys in the image: VS Code forwards
         # the host's ssh-agent (SSH_AUTH_SOCK).
         openssh-client \
@@ -113,7 +151,7 @@ RUN userdel --remove ubuntu \
     # Mount points for the named volumes in docker-compose.yml. A new volume
     # copies the owner of the folder it mounts over; without these folders
     # it would be owned by root and dev could not write to it.
-    && install -d -o dev -g dev /home/dev/.pub-cache /home/dev/.claude
+    && install -d -o dev -g dev /home/dev/.pub-cache /home/dev/.gradle /home/dev/.claude
 
 # --- Flutter SDK ------------------------------------------------------------
 # Copied from stage 1, owned by dev in the same step. Why it matters: each
@@ -121,10 +159,16 @@ RUN userdel --remove ubuntu \
 # would store a second full copy of the SDK (~3 GB).
 COPY --from=flutter --chown=dev:dev /opt/flutter /opt/flutter
 
+# --- Android SDK ------------------------------------------------------------
+# Owned by dev for the same reason, and so Gradle can add what a plugin asks
+# for (another build-tools or CMake) without root.
+COPY --from=android --chown=dev:dev /opt/android-sdk /opt/android-sdk
+
 USER dev
 WORKDIR /workspace
 
 # Per-user settings (in ~/.config/flutter), so they are made as dev.
-RUN flutter config --no-analytics --enable-linux-desktop --no-enable-web
+RUN flutter config --no-analytics --enable-linux-desktop --no-enable-web \
+        --android-sdk /opt/android-sdk
 
 CMD ["sleep", "infinity"]

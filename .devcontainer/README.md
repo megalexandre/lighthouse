@@ -56,7 +56,7 @@ Everything else (Flutter, libmpv, a Jellyfin server) lives in containers.
 | `initialize.sh` | on the host, before build | Writes `.env` with your user/group ids and the GPU group id. |
 | `.env` | read by Compose | Generated, git-ignored. Fills the `${...}` values in the compose file. |
 | `docker-compose.yml` | on `up` | Defines the two containers, their mounts and the network between them. |
-| `Dockerfile` | on image build | Builds the app image: system packages, Flutter SDK, user `dev`. |
+| `Dockerfile` | on image build | Builds the app image: system packages, Flutter SDK, Android SDK, user `dev`. |
 | `postCreate.sh` | in the container, once | `flutter doctor`, `flutter pub get` in `lighthouse/`, first-run hints. |
 | `keyring.sh` | in the container, every start | D-Bus session and keyring for the app's secure storage. |
 | `related_repos.sh` | in the container, every start | Clones `related-repos/jellyfin` and `related-repos/jellyfin-desktop` over HTTPS, or fetches and fast-forwards them (a clean branch with an upstream only; local work is left alone). Offline, it warns and goes on. |
@@ -130,6 +130,38 @@ volume, under `~/.claude/skills/`:
   Fixes are applied only when asked ("review and fix"). Commits are in
   each skill's `SOURCE.txt`.
 
+## Android
+
+The image has what `flutter build apk` needs: Java 17, the Android SDK in
+`/opt/android-sdk` (`ANDROID_HOME`) with the platform, build-tools, NDK and
+CMake that Flutter 3.50 asks for, and `adb`. The versions are pinned in the
+`Dockerfile`, in the `android` stage. Gradle's cache lives in the
+`gradle-cache` volume, so the ~1 GB of the first build is downloaded once.
+
+The emulator does not run in here: it needs `/dev/kvm` and a screen. Run it
+on the host (Android Studio's Device Manager), and let the container's `adb`
+use the host's adb server, which sees it:
+
+```sh
+# on the host, once per session (after starting the emulator)
+adb kill-server && adb -a nodaemon server start
+```
+
+In the container `ADB_SERVER_SOCKET` points at it
+(`tcp:host.docker.internal:5037`), so `adb devices` and `flutter devices`
+list the emulator, and `flutter run -d emulator-5554` installs the app with
+hot reload. Keep the host's adb close to the container's version (the latest
+platform-tools): very different versions refuse to talk.
+
+- **`-a` listens on every interface**, so anyone on your network could use
+  adb on your emulator. Block port 5037 from outside on the host's firewall,
+  or stop the server (`adb kill-server`) when you are done.
+- **From the emulator**, the host is `10.0.2.2`: the dev server is
+  `http://10.0.2.2:8096`. The test server has no port on the host, so the
+  emulator cannot reach it.
+- **To use adb on its own** (a phone over Wi-Fi, say), unset the variable
+  in that terminal: `unset ADB_SERVER_SOCKET`.
+
 ## Limits and common problems
 
 - **Hardware decoding, audio passthrough and refresh rate switching** depend
@@ -145,6 +177,10 @@ volume, under `~/.claude/skills/`:
   it, or change the left side of `"8096:8096"` (e.g. `"8097:8096"`).
 - **Files owned by the wrong user**: delete `.env`, then
   **Rebuild Container** so `initialize.sh` writes your ids again.
+- **`adb devices` says "cannot connect to daemon"**: the host's adb server
+  is not running with `-a` (see [Android](#android)). With Podman, if
+  `host.docker.internal` does not resolve, use `host.containers.internal`
+  in `ADB_SERVER_SOCKET`, which Podman always defines.
 
 ## Keyring (app login storage)
 

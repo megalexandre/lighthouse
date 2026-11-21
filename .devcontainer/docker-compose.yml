@@ -34,6 +34,8 @@ services:
       - ..:/workspace
       # Dart package cache survives container rebuilds.
       - pub-cache:/home/dev/.pub-cache
+      # Gradle's cache too (~1 GB on the first Android build).
+      - gradle-cache:/home/dev/.gradle
       # Claude Code: login, settings and session history survive rebuilds.
       - claude-config:/home/dev/.claude
       # Display and audio sockets from the host, so the app window opens
@@ -56,6 +58,14 @@ services:
       # The container's own session bus, started by keyring.sh. The host's
       # bus (in XDG_RUNTIME_DIR) is denied to containers by AppArmor.
       DBUS_SESSION_BUS_ADDRESS: unix:path=/tmp/jellyfin-dev-dbus/bus
+      # adb talks to the host's adb server, which sees the emulator running on
+      # the host (no /dev/kvm in here). On the host:
+      #   adb kill-server && adb -a nodaemon server start
+      # See README.md, "Android".
+      ADB_SERVER_SOCKET: tcp:host.docker.internal:5037
+    # host.docker.internal is not defined on Linux unless asked for.
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     # GPU, for hardware video decoding (VAAPI).
     # On a machine without /dev/dri, delete these two blocks.
     devices:
@@ -101,6 +111,7 @@ services:
 
 volumes:
   pub-cache:
+  gradle-cache:
   claude-config:
   jellyfin-config:
   jellyfin-cache:
