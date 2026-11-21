@@ -473,6 +473,16 @@ Achados no código, que no Android quebram sem erro visível:
       `path_provider`, o `FileKeyValueStore` do leitor, o pdfrx/PDFium e o shader da virada de página.
     - Pronto quando: o APK de debug instala no emulador, entra no servidor de dev por `http://`, navega e abre PDF,
       CBZ e EPUB. Reabrir o app mantém a sessão.
+- **Leitor no celular (feito, entre a A2a e a A2b):** pedido depois de usar o APK da A2a.
+  - Duas páginas nunca numa tela pequena (`WindowSize.compact` ou baixa, o celular em pé ou deitado), nem com
+    "Duas páginas" escolhido: ficariam pequenas demais para ler. A escolha fica salva e volta a valer num tablet ou
+    no desktop.
+  - Tela cheia no toque: a página ocupa a tela inteira (dentro das barras do sistema, mais 8 px), e as barras do
+    leitor vêm por cima dela. O toque no meio esconde as barras do leitor e as do Android juntas (`AppWindow`,
+    modo imersivo); sair do livro devolve as barras. As margens das barras do sistema guardam o maior valor visto
+    em cada orientação, então esconder as barras não move a página: num EPUB, mover a página repaginaria o livro.
+  - No desktop nada mudou: a margem fixa para as barras e a janela como está.
+  - Cenários em `test/scenarios/reader/phone.feature`.
 - **A2b, reprodução:**
   - mpv: `hwdec=mediacodec` (com `-copy` como alternativa, se faltar interop), `vo` do media_kit no Android e as CAs
     para `tls-verify`. Conferir HTTPS de verdade, não só HTTP.

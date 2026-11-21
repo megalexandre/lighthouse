@@ -18,6 +18,9 @@ late TestApp app;
 /// said.
 Size window = TestWindows.desktop;
 
+/// Where the page was at `I note where the page is`.
+Rect? pageNoted;
+
 /// The scenario's tester, for the hooks: `Hooks.afterEach` closes the app
 /// with it, and gets no tester of its own.
 late WidgetTester tester;

@@ -58,8 +58,16 @@ const minSpreadPageWidth = 420.0;
 /// Whether [layout] shows two pages in [room] (the space the pages get),
 /// for pages [aspect] wide (width ÷ height). [PageLayout.auto] does when
 /// the room is wider than tall and each of the two pages, as large as fits,
-/// is at least [minSpreadPageWidth] wide.
-bool showsTwoPages(PageLayout layout, Size room, double aspect) =>
+/// is at least [minSpreadPageWidth] wide. Never on a [small] screen (a
+/// phone, upright or on its side): there two pages are too small to read
+/// even when asked for, and the choice waits for a bigger screen.
+bool showsTwoPages(
+  PageLayout layout,
+  Size room,
+  double aspect, {
+  required bool small,
+}) =>
+    !small &&
     switch (layout) {
       PageLayout.single => false,
       PageLayout.double => true,

@@ -57,29 +57,63 @@ void main() {
 
     test('as asked, whatever the room', () {
       const phone = Size(340, 680);
-      expect(showsTwoPages(PageLayout.double, phone, epub), isTrue);
+      expect(
+        showsTwoPages(PageLayout.double, phone, epub, small: false),
+        isTrue,
+      );
       const desktop = Size(1576, 1088);
-      expect(showsTwoPages(PageLayout.single, desktop, epub), isFalse);
+      expect(
+        showsTwoPages(PageLayout.single, desktop, epub, small: false),
+        isFalse,
+      );
+    });
+
+    test('never on a small screen (a phone), even when asked', () {
+      // A phone on its side: wide, but short.
+      const sideways = Size(784, 344);
+      for (final layout in PageLayout.values) {
+        expect(showsTwoPages(layout, sideways, epub, small: true), isFalse);
+      }
     });
 
     test('automatic: on a wide room, when each page is big enough', () {
       // A desktop window, and a laptop one.
       expect(
-        showsTwoPages(PageLayout.auto, const Size(1576, 1088), epub),
+        showsTwoPages(
+          PageLayout.auto,
+          const Size(1576, 1088),
+          epub,
+          small: false,
+        ),
         isTrue,
       );
       expect(
-        showsTwoPages(PageLayout.auto, const Size(1342, 656), epub),
+        showsTwoPages(
+          PageLayout.auto,
+          const Size(1342, 656),
+          epub,
+          small: false,
+        ),
         isTrue,
       );
       // 800×600: wide, but two pages would be too small.
       expect(
-        showsTwoPages(PageLayout.auto, const Size(776, 488), epub),
+        showsTwoPages(
+          PageLayout.auto,
+          const Size(776, 488),
+          epub,
+          small: false,
+        ),
         isFalse,
       );
       // Tall: one page, however big.
       expect(
-        showsTwoPages(PageLayout.auto, const Size(876, 1288), epub),
+        showsTwoPages(
+          PageLayout.auto,
+          const Size(876, 1288),
+          epub,
+          small: false,
+        ),
         isFalse,
       );
     });

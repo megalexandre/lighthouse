@@ -60,7 +60,7 @@ token=$(api POST /Users/AuthenticateByName \
   json 'd["AccessToken"]')
 
 # Folders under /media decide the libraries: the fixtures layout
-# (movies/, shows/, music/) gets one library each, like the test server;
+# (movies/, shows/, music/, books/) gets one library each, like the test server;
 # anything else gets a single library over /media.
 dirs=$(api GET '/Environment/DirectoryContents?path=%2Fmedia&includeDirectories=true&includeFiles=false' |
   json '" ".join(sorted(i["Name"] for i in d))')
@@ -73,7 +73,7 @@ add_library() { # NAME TYPE PATH
 }
 
 found=0
-for spec in "movies Movies movies" "shows Shows tvshows" "music Music music"; do
+for spec in "movies Movies movies" "shows Shows tvshows" "music Music music" "books Books books"; do
   read -r dir name type <<<"$spec"
   if [[ " $dirs " == *" $dir "* ]]; then
     add_library "$name" "$type" "/media/$dir"

@@ -4,10 +4,11 @@ import 'package:material_ui/material_ui.dart';
 
 /// Usage: And I close the display settings
 ///
-/// A tap above the panel, on the dimmed book.
+/// A tap on the book outside the panel: above it, near the left edge (on a
+/// phone on its side the panel reaches the top, but is at most 480 wide).
 Future<void> iCloseTheDisplaySettings(WidgetTester tester) async {
   final screen = tester.getRect(find.byType(ReaderScreen));
-  await tester.tapAt(Offset(screen.center.dx, screen.top + 100));
+  await tester.tapAt(Offset(screen.left + 8, screen.top + 100));
   await tester.pumpAndSettle();
   expect(find.byType(BottomSheet), findsNothing);
 }

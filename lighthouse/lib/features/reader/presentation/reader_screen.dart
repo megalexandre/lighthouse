@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 import 'dart:ui' as ui;
 
 import 'package:flutter/services.dart';
@@ -7,6 +8,9 @@ import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../../../core/theme/app_tokens.dart';
+import '../../../core/touch.dart';
+import '../../../core/window.dart';
+import '../../../core/window_size.dart';
 import '../../../l10n/l10n.dart';
 import '../../../widgets/error_retry.dart';
 import '../application/reader_controller.dart';
@@ -27,6 +31,10 @@ import 'spreads.dart';
 /// at the bottom jumps anywhere. The top bar opens the contents and
 /// bookmarks, bookmarks the page, and sets the theme (and an EPUB's type);
 /// a tap on a link in an EPUB follows it, with a button to come back.
+///
+/// On touch (a phone, a tablet) the page is laid out for the whole screen
+/// and the bars come over it; hiding them hides the system's bars too (full
+/// screen). On a phone it is always one page at a time ([showsTwoPages]).
 ///
 /// Keys: ← → PgUp PgDn turn pages, Space the next one, Home / End the
 /// first / last, Esc or Backspace back.
@@ -67,9 +75,13 @@ class ReaderScreen extends ConsumerStatefulWidget {
   /// Part of the width, at each side, where a tap turns the page.
   static const edge = 0.25;
 
-  /// The room left around the page for the bars. (The paper and the desk
-  /// around it are the theme's: [ReaderTheme].)
+  /// The room left around the page for the bars, with a mouse. (The paper
+  /// and the desk around it are the theme's: [ReaderTheme].)
   static const margin = EdgeInsets.fromLTRB(12, 52, 12, 60);
+
+  /// The room around the page on touch, inside the system's bars: the
+  /// reader's bars come over the page instead.
+  static const touchMargin = EdgeInsets.all(8);
 
   final String itemId;
 
@@ -82,6 +94,45 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
   final _scaffold = GlobalKey<ScaffoldState>();
   bool _chromeVisible = true;
 
+  /// The window, read once: dispose gives the system's bars back, and a
+  /// provider cannot be read there.
+  late final AppWindow _window = ref.read(appWindowProvider);
+
+  /// Whether this screen hid the system's bars.
+  bool _fullScreen = false;
+
+  /// Shows or hides the bars; on touch the system's too (full screen).
+  void _showChrome(bool visible) {
+    setState(() => _chromeVisible = visible);
+    if (isTouch(context)) {
+      _fullScreen = !visible;
+      _window.isFullScreen = _fullScreen;
+    }
+  }
+
+  /// The system's bars and notch, as large as they have been in this
+  /// orientation: hiding the bars must not move the page, which for an EPUB
+  /// would lay the whole book out again.
+  EdgeInsets _insets = EdgeInsets.zero;
+  Orientation? _insetsFor;
+
+  EdgeInsets _systemInsets(BuildContext context) {
+    final now = MediaQuery.viewPaddingOf(context);
+    final orientation = MediaQuery.orientationOf(context);
+    if (orientation != _insetsFor) {
+      _insetsFor = orientation;
+      _insets = now;
+    } else {
+      _insets = EdgeInsets.fromLTRB(
+        math.max(_insets.left, now.left),
+        math.max(_insets.top, now.top),
+        math.max(_insets.right, now.right),
+        math.max(_insets.bottom, now.bottom),
+      );
+    }
+    return _insets;
+  }
+
   /// The keys go to the book. Asked for when it appears (autofocus alone
   /// loses to whatever held focus while the route was coming in) and
   /// again on any click or touch on the page.
@@ -90,6 +141,7 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
 
   @override
   void dispose() {
+    if (_fullScreen) _window.isFullScreen = false;
     _focus.dispose();
     super.dispose();
   }
@@ -280,7 +332,10 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
       child: LayoutBuilder(
         builder: (context, constraints) {
           final document = session.document;
-          final room = ReaderScreen.margin.deflateSize(constraints.biggest);
+          final margin = isTouch(context)
+              ? _systemInsets(context) + ReaderScreen.touchMargin
+              : ReaderScreen.margin;
+          final room = margin.deflateSize(constraints.biggest);
           final twoPages =
               session.pageCount > 0 &&
               showsTwoPages(
@@ -289,6 +344,9 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
                 document.reflowable
                     ? 0.72
                     : document.pageAspectRatio(session.page),
+                small:
+                    WindowSize.of(context) == WindowSize.compact ||
+                    WindowSize.isShort(context),
               );
           final spreads = Spreads(session.pageCount, twoPages: twoPages);
           final spread = spreads.of(session.page);
@@ -368,13 +426,13 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
                     } else if (x > 1 - ReaderScreen.edge) {
                       _next();
                     } else {
-                      setState(() => _chromeVisible = !_chromeVisible);
+                      _showChrome(!_chromeVisible);
                     }
                   },
                   // The page itself: its shape, as large as fits, on the
                   // desk; with two, side by side as an open book.
                   child: Padding(
-                    padding: ReaderScreen.margin,
+                    padding: margin,
                     child: Center(
                       child: AspectRatio(
                         aspectRatio: twoPages ? pageAspect * 2 : pageAspect,
@@ -427,7 +485,14 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
                 Positioned(
                   left: 0,
                   right: 0,
-                  bottom: ReaderScreen.margin.bottom + 8,
+                  // Above the bottom bar, shown or not (on touch it comes
+                  // over the page: above the system's bars too).
+                  bottom:
+                      math.max(
+                        margin.bottom,
+                        _insets.bottom + ReaderScreen.margin.bottom,
+                      ) +
+                      8,
                   child: Center(
                     child: ActionChip(
                       key: ReaderScreen.linkBack,
