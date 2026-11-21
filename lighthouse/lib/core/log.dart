@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
+import 'package:path_provider/path_provider.dart';
 
 /// How bad a log line is.
 enum LogLevel { debug, info, warning, error }
@@ -100,7 +101,14 @@ class AppLog {
 /// The app's log.
 final log = AppLog();
 
-/// The log directory: `$XDG_DATA_HOME/lighthouse/logs`, by default
+/// Where main writes the log: [defaultLogDirectory] on Linux; elsewhere
+/// (Android, which has no XDG_DATA_HOME or HOME) `logs` in the app's own
+/// support folder.
+Future<Directory> appLogDirectory() async => Platform.isLinux
+    ? defaultLogDirectory()
+    : Directory('${(await getApplicationSupportDirectory()).path}/logs');
+
+/// The Linux log directory: `$XDG_DATA_HOME/lighthouse/logs`, by default
 /// `~/.local/share/lighthouse/logs`.
 Directory defaultLogDirectory([Map<String, String>? environment]) {
   final env = environment ?? Platform.environment;

@@ -293,7 +293,7 @@ gen-l10n exige o idioma base). O código usa `context.l10n.<chave>`; a classe ge
     app entra em `APP_LANGUAGES` do script.
 Títulos, sinopses e gêneros vêm do servidor, no idioma dos metadados do Jellyfin: não são do app.
 
-**A — Android (A1 feita; A2 planejada)**
+**A — Android (A1 e A2a feitas; A2b–A2d planejadas)**
 Primeiro o layout de celular (A1), só depois a infraestrutura (A2). Por enquanto o celular só tem o tema **Prime**
 (o padrão): o Lanterna continua como está no desktop, sem layout de celular, e os testes de celular usam o Prime.
 Toda a A1 roda e se testa no Linux: as telas
@@ -434,25 +434,45 @@ Achados no código, que no Android quebram sem erro visível:
   falharia com a API funcionando.
 - "Abrir pasta" dos temas (`xdg-open`) já é só do Linux, mas no Android a pasta é privada do app.
 
-- **A2a, o app abre no Android:**
-  - Prova primeiro, antes do resto: `flutter create --platforms=android`, `media_kit_libs_android_video` e um vídeo
-    tocando no emulador. Ela mede o media_kit com o Flutter 3.50 e o Impeller, e o tamanho do APK. Se o media_kit
-    não funcionar, o resto do plano muda.
-  - Android SDK no dev container: cmdline-tools, platform, build-tools e o NDK que o Flutter pedir, fixados no
-    Dockerfile como o Flutter.
-  - `AndroidManifest`/recursos:
-    - `network_security_config` que permite HTTP sem TLS, para servidores na rede local;
-    - `dataExtractionRules`/`fullBackupContent` que deixam o armazenamento seguro fora do backup;
-    - nome, ícone e `applicationId`.
-  - Código:
-    - `AppWindow` do Android: tela cheia = modo imersivo (`SystemChrome`); o `window_manager` só no desktop.
-    - Log em `getApplicationSupportDirectory()/logs` fora do Linux.
-    - Nome do aparelho pelo modelo (`Build.MODEL`).
-    - Settings: sem "Abrir pasta" dos temas no Android; importar um tema fica para depois.
-  - Conferir no aparelho: `flutter_secure_storage` (Keystore; sessão e DeviceId sobrevivem a reabrir),
-    `path_provider`, o `FileKeyValueStore` do leitor, o pdfrx/PDFium e o shader da virada de página.
-  - Pronto quando: o APK de debug instala no emulador, entra no servidor de dev por `http://`, navega e abre PDF,
-    CBZ e EPUB. Reabrir o app mantém a sessão.
+- **A2a, o app abre no Android (feita):** conferido num celular com o APK de release arm64: entra no servidor de
+  dev por `http://`, reabrir o app mantém a sessão, abre PDF, CBZ e EPUB (com a virada de página), e um vídeo toca
+  com troca de áudio e legenda (media_kit, `media_kit_libs_android_video` 1.3.8).
+  - O que saiu:
+    - `android/` com `applicationId` `io.github.megalexandre.lighthouse`; no manifest, `INTERNET` (o template só
+      pedia no debug e no profile, e o release não falaria com o servidor), HTTP sem TLS, o domínio `sharedpref`
+      inteiro fora do backup e da transferência entre aparelhos (só o `flutter_secure_storage` mora lá), o nome
+      "Lighthouse" e o ícone do Linux.
+    - `ImmersiveAppWindow` (`core/window.dart`); `appLogDirectory()` (`core/log.dart`); o nome do aparelho vem do
+      canal `lighthouse/device` (`MainActivity.kt`): o nome dado ao celular nas configurações, senão `Build.MODEL`.
+    - O "Abrir pasta" dos temas já era só do Linux; temas, leitor e aparência já usavam o `path_provider`.
+  - Achados:
+    - O lint do release (`lintVital`) quebra dentro do próprio lint (AGP 9.3.1) ao ler o Javadoc do
+      `url_launcher_android`. Desligado só nos plugins (`android/build.gradle.kts`); o do app continua.
+    - Um plugin compila contra a platform 35, que o Gradle instalaria no SDK da imagem e se perderia no rebuild:
+      está no Dockerfile.
+    - O primeiro build leva ~20 min (Gradle ~2,6 GB em `~/.gradle`, volume próprio). O media_kit baixa o libmpv
+      do GitHub durante o build.
+    - Tamanho: debug x86_64 147 MB; release arm64 75,6 MB, dos quais ~28 MB são as bibliotecas x86_64 e armv7 que
+      o media_kit embute mesmo com `--target-platform`. O APK por ABI da A2d resolve.
+  - O plano original, para referência:
+    - Prova primeiro, antes do resto: `flutter create --platforms=android`, `media_kit_libs_android_video` e um vídeo
+      tocando no emulador. Ela mede o media_kit com o Flutter 3.50 e o Impeller, e o tamanho do APK. Se o media_kit
+      não funcionar, o resto do plano muda.
+    - Android SDK no dev container: cmdline-tools, platform, build-tools e o NDK que o Flutter pedir, fixados no
+      Dockerfile como o Flutter.
+    - `AndroidManifest`/recursos:
+      - `network_security_config` que permite HTTP sem TLS, para servidores na rede local;
+      - `dataExtractionRules`/`fullBackupContent` que deixam o armazenamento seguro fora do backup;
+      - nome, ícone e `applicationId`.
+    - Código:
+      - `AppWindow` do Android: tela cheia = modo imersivo (`SystemChrome`); o `window_manager` só no desktop.
+      - Log em `getApplicationSupportDirectory()/logs` fora do Linux.
+      - Nome do aparelho pelo modelo (`Build.MODEL`).
+      - Settings: sem "Abrir pasta" dos temas no Android; importar um tema fica para depois.
+    - Conferir no aparelho: `flutter_secure_storage` (Keystore; sessão e DeviceId sobrevivem a reabrir),
+      `path_provider`, o `FileKeyValueStore` do leitor, o pdfrx/PDFium e o shader da virada de página.
+    - Pronto quando: o APK de debug instala no emulador, entra no servidor de dev por `http://`, navega e abre PDF,
+      CBZ e EPUB. Reabrir o app mantém a sessão.
 - **A2b, reprodução:**
   - mpv: `hwdec=mediacodec` (com `-copy` como alternativa, se faltar interop), `vo` do media_kit no Android e as CAs
     para `tls-verify`. Conferir HTTPS de verdade, não só HTTP.

@@ -13,6 +13,7 @@ analyzer:
     # the SDK's deprecated Material localizations; the app uses material_ui's
     # (lib/l10n/l10n.dart).
     - lib/l10n/generated/**
+    - android/**
   language:
     strict-casts: true
     strict-inference: true

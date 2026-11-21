@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Plain http:// allowed: Jellyfin servers on a home network usually have no
+     TLS, and the user types the address they have. https:// still checks
+     certificates against the system's CAs. -->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true">
+        <trust-anchors>
+            <certificates src="system"/>
+        </trust-anchors>
+    </base-config>
+</network-security-config>

@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Android 12+. Shared preferences hold only flutter_secure_storage (the
+     session and the DeviceId), encrypted with a Keystore key that never
+     leaves the phone: restored elsewhere they could not be read, and a shared
+     DeviceId makes Jellyfin revoke tokens. The whole domain, so a rename of
+     the plugin's files is covered too. Device transfer ignores allowBackup,
+     hence the rule there as well. -->
+<data-extraction-rules>
+    <cloud-backup>
+        <exclude domain="sharedpref" path="."/>
+    </cloud-backup>
+    <device-transfer>
+        <exclude domain="sharedpref" path="."/>
+    </device-transfer>
+</data-extraction-rules>

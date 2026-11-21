@@ -38,6 +38,11 @@ regained connections and uncaught errors. Tokens, `ApiKey` values in URLs
 and passwords are replaced by `***` before anything is written, so a log
 can be shared.
 
+On Android the log is in the app's private folder
+(`files/logs/app.log`); read it over adb:
+`adb shell run-as io.github.megalexandre.lighthouse cat files/logs/app.log`
+(debug builds only; `adb logcat` shows the console lines of any build).
+
 ## Release
 
 ```sh
@@ -61,6 +66,17 @@ tool/build_appimage.sh   # release build → build/Lighthouse-<version>-x86_64.A
 
 After the integration tests, `build/linux/x64/debug/bundle` holds the
 *test* app; `flutter build linux` before running the bundle by hand.
+
+### Android
+
+```sh
+flutter build apk --release --target-platform android-arm64   # → build/app/outputs/flutter-apk/app-release.apk
+```
+
+For phones (arm64). Signed with Flutter's debug key for now, so a later
+build signed with the release key won't install over it: uninstall first.
+The first build takes ~20 min (Gradle and the libmpv download). The
+emulator runs on the host: see `.devcontainer/README.md`, "Android".
 
 ## Code generation
 

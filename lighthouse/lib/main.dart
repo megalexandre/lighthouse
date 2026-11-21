@@ -15,7 +15,7 @@ import 'core/theme/theme_catalog.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   try {
-    await log.openFile(defaultLogDirectory());
+    await log.openFile(await appLogDirectory());
   } on FileSystemException catch (e) {
     // No log file (read-only home?): the console still gets every line.
     log.warning('app', 'cannot write the log file', e);
