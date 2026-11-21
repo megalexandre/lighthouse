@@ -55,12 +55,15 @@ RUN curl -fsSL -o /tmp/tools.zip \
 
 # What Flutter 3.50 builds with (FlutterExtension.kt): compileSdk and
 # targetSdk 36, that exact NDK (native plugins: media_kit, pdfrx). CMake 3.22.1
-# is the Android Gradle Plugin's default, for pdfrx's native part. Bump these
-# with Flutter. platform-tools (adb) has no pinned versions: the latest.
+# is the Android Gradle Plugin's default, for pdfrx's native part. Platform 35:
+# a plugin still compiles against it, and Gradle would otherwise install it
+# into the image's SDK, lost on the next rebuild. Bump these with Flutter.
+# platform-tools (adb) has no pinned versions: the latest.
 RUN yes | /opt/android-sdk/cmdline-tools/latest/bin/sdkmanager --sdk_root=/opt/android-sdk --licenses > /dev/null \
     && /opt/android-sdk/cmdline-tools/latest/bin/sdkmanager --sdk_root=/opt/android-sdk \
         "platform-tools" \
         "platforms;android-36" \
+        "platforms;android-35" \
         "build-tools;36.0.0" \
         "ndk;28.2.13676358" \
         "cmake;3.22.1"
