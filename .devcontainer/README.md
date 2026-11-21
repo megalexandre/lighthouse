@@ -147,11 +147,20 @@ use the host's adb server, which sees it:
 adb kill-server && adb -a nodaemon server start
 ```
 
-In the container `ADB_SERVER_SOCKET` points at it
-(`tcp:host.docker.internal:5037`), so `adb devices` and `flutter devices`
-list the emulator, and `flutter run -d emulator-5554` installs the app with
-hot reload. Keep the host's adb close to the container's version (the latest
-platform-tools): very different versions refuse to talk.
+Then, in the container terminal where you use the emulator:
+
+```sh
+export ADB_SERVER_SOCKET=tcp:host.docker.internal:5037
+```
+
+Now `adb devices` and `flutter devices` list the emulator, and
+`flutter run -d emulator-5554` installs the app with hot reload. Keep the
+host's adb close to the container's version (the latest platform-tools):
+very different versions refuse to talk.
+
+The variable is not set for the whole container on purpose: while the
+host's adb server is down, adb fails, and Flutter's device discovery fails
+with it, Linux included (`flutter run -d linux`, the integration tests).
 
 - **`-a` listens on every interface**, so anyone on your network could use
   adb on your emulator. Block port 5037 from outside on the host's firewall,
@@ -159,8 +168,8 @@ platform-tools): very different versions refuse to talk.
 - **From the emulator**, the host is `10.0.2.2`: the dev server is
   `http://10.0.2.2:8096`. The test server has no port on the host, so the
   emulator cannot reach it.
-- **To use adb on its own** (a phone over Wi-Fi, say), unset the variable
-  in that terminal: `unset ADB_SERVER_SOCKET`.
+- **To use adb on its own** (a phone over Wi-Fi, say), don't set the
+  variable: adb starts its own server in the container.
 
 ## Limits and common problems
 
@@ -177,6 +186,9 @@ platform-tools): very different versions refuse to talk.
   it, or change the left side of `"8096:8096"` (e.g. `"8097:8096"`).
 - **Files owned by the wrong user**: delete `.env`, then
   **Rebuild Container** so `initialize.sh` writes your ids again.
+- **`flutter devices` or `flutter run -d linux` fails with "Unable to run
+  adb"**: `ADB_SERVER_SOCKET` is set but the host's adb server is down.
+  `unset ADB_SERVER_SOCKET`, or start the server on the host.
 - **`adb devices` says "cannot connect to daemon"**: the host's adb server
   is not running with `-a` (see [Android](#android)). With Podman, if
   `host.docker.internal` does not resolve, use `host.containers.internal`

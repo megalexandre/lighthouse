@@ -58,11 +58,10 @@ services:
       # The container's own session bus, started by keyring.sh. The host's
       # bus (in XDG_RUNTIME_DIR) is denied to containers by AppArmor.
       DBUS_SESSION_BUS_ADDRESS: unix:path=/tmp/jellyfin-dev-dbus/bus
-      # adb talks to the host's adb server, which sees the emulator running on
-      # the host (no /dev/kvm in here). On the host:
-      #   adb kill-server && adb -a nodaemon server start
-      # See README.md, "Android".
-      ADB_SERVER_SOCKET: tcp:host.docker.internal:5037
+    # No ADB_SERVER_SOCKET here: while the host's adb server is down, adb
+    # fails and Flutter's device discovery fails with it, Linux included
+    # (flutter run -d linux, the integration tests). It is set per terminal,
+    # only to use the emulator on the host. See README.md, "Android".
     # host.docker.internal is not defined on Linux unless asked for.
     extra_hosts:
       - "host.docker.internal:host-gateway"

@@ -103,6 +103,9 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
         # mpv (the command-line player) lets you compare playback with the app;
         # the VAAPI libraries and vainfo are for hardware decoding
         libmpv-dev mpv libva-drm2 libva-x11-2 vainfo \
+        # eglinfo/glxinfo: which GPU driver the app renders with; `flutter
+        # doctor` reads eglinfo for its Linux toolchain line
+        mesa-utils-bin \
         # Desktop integration: secure token storage, D-Bus, MPRIS checks
         libsecret-1-dev libdbus-1-dev dbus-x11 playerctl pulseaudio-utils \
         # A keyring inside the container (keyring.sh); secret-tool to inspect it
