@@ -186,5 +186,6 @@
   "trackTitled": "{language} · {title}",
   "trackForced": "Forçada",
   "libraries": "Bibliotecas",
-  "navSearch": "Buscar"
+  "navSearch": "Buscar",
+  "mediaNotificationChannel": "Reprodução"
 }

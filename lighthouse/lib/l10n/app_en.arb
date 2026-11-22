@@ -978,5 +978,9 @@
   "navSearch": "Search",
   "@navSearch": {
     "description": "Search in the phone's navigation bar (a short label under its icon)."
+  },
+  "mediaNotificationChannel": "Playback",
+  "@mediaNotificationChannel": {
+    "description": "Android: the name of the music notification, in the system's notification settings."
   }
 }

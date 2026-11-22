@@ -21,7 +21,9 @@ import 'player_view.dart';
 /// shows on mouse movement and hides after a few seconds of playing.
 ///
 /// Episodes and tracks play on: at the end the next one starts, and
-/// Next / Previous step through the series or album. Music shows the
+/// Next / Previous step through the series or album. An episode gets a
+/// screen of its own; an album plays through in one (the controller goes
+/// from song to song by itself). Music shows the
 /// album cover, with the OSD always up.
 ///
 /// Keys: see player_keys.dart (Space play/pause, arrows seek and volume,
@@ -60,8 +62,16 @@ class PlayerScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final provider = playerControllerProvider(request);
     final session = ref.watch(provider);
+    final controller = ref.read(provider.notifier);
+    // An album's songs change in place.
+    final itemId = session.value?.item.id ?? request.itemId;
     final neighbors =
-        ref.watch(playNeighborsProvider(request.itemId)).value ?? noNeighbors;
+        ref.watch(playNeighborsProvider(itemId)).value ?? noNeighbors;
+    void goTo(BaseItemDto item) => unawaited(
+      item.type == BaseItemKind.audio
+          ? ref.read(provider.notifier).playInstead(item)
+          : _goTo(context, ref, item),
+    );
     // Watched now, so the autoplay preference is known when the item ends.
     final episodesPlayOn =
         ref.watch(userConfigurationProvider).value?.enableNextEpisodeAutoPlay ??
@@ -71,10 +81,10 @@ class PlayerScreen extends ConsumerWidget {
     ref.listen(provider, (_, now) {
       final session = now.value;
       if (session == null || !session.ended) return;
-      // Episodes play on only if the user wants it (a server setting);
-      // an album always does.
+      // Episodes play on only if the user wants it (a server setting). An
+      // album played through before it got here.
       final autoplay =
-          session.item.type != BaseItemKind.episode ||
+          session.item.type == BaseItemKind.episode &&
           (ref
                   .read(userConfigurationProvider)
                   .value
@@ -96,8 +106,10 @@ class PlayerScreen extends ConsumerWidget {
           backgroundColor: Colors.black,
           body: switch (session) {
             AsyncData(value: final session) => PlayerView(
+              // Each item its own controls, marks and thumbnails.
+              key: ValueKey(session.item.id),
               session: session,
-              controller: ref.read(provider.notifier),
+              controller: controller,
               upNext:
                   session.item.type == BaseItemKind.episode && episodesPlayOn
                   ? neighbors.next
@@ -105,16 +117,16 @@ class PlayerScreen extends ConsumerWidget {
               onBack: () => _close(context, ref),
               onNext: neighbors.next == null
                   ? null
-                  : () => _goTo(context, ref, neighbors.next!),
+                  : () => goTo(neighbors.next!),
               onPrevious: neighbors.previous == null
                   ? null
-                  : () => _goTo(context, ref, neighbors.previous!),
+                  : () => goTo(neighbors.previous!),
             ),
             AsyncError(:final error) => PlayerMessage(
               onBack: () => context.pop(),
               child: ErrorRetry(
                 error: error,
-                onRetry: () => ref.invalidate(provider),
+                onRetry: () => ref.read(provider.notifier).retry(),
               ),
             ),
             _ => PlayerMessage(

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
@@ -6,16 +7,19 @@ import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
 
 import '../../../core/log.dart';
+import '../../../core/system_certificates.dart';
 
 /// The video player itself, behind an interface so screens and the
 /// player controller can be tested with a fake. The real one is
 /// [MediaKitEngine] (libmpv).
 abstract interface class PlayerEngine {
-  /// Opens [url] and starts playing at [start].
+  /// Opens [url] and starts playing at [start]. Without [video], only its
+  /// sound: a song's embedded cover is a video track too.
   Future<void> open(
     Uri url, {
     Map<String, String> headers = const {},
     Duration start = Duration.zero,
+    bool video = true,
   });
 
   Future<void> play();
@@ -102,20 +106,17 @@ final playerOptionsProvider = Provider<PlayerOptions>(
 /// Makes a new engine for each playback.
 final playerEngineFactoryProvider = Provider<PlayerEngine Function()>((ref) {
   final options = ref.watch(playerOptionsProvider);
-  return () => MediaKitEngine(options);
+  return () => MediaKitEngine(
+    options,
+    certificates: () => ref.read(systemCertificatesProvider.future),
+  );
 });
 
 class MediaKitEngine implements PlayerEngine {
-  MediaKitEngine(this.options)
+  MediaKitEngine(this.options, {this.certificates})
     : _player = Player(
         configuration: const PlayerConfiguration(title: 'Lighthouse'),
       ) {
-    _video = VideoController(
-      _player,
-      configuration: VideoControllerConfiguration(
-        enableHardwareAcceleration: options.hardwareDecoding,
-      ),
-    );
     _completed = _player.stream.completed.where((done) => done);
     // mpv's own warnings and errors, for the log (hardware decoders it
     // probes and drops are expected noise at "error" level too).
@@ -129,8 +130,17 @@ class MediaKitEngine implements PlayerEngine {
   late final StreamSubscription<PlayerLog> _mpvLog;
 
   final PlayerOptions options;
+
+  /// The file of trusted certificates ([systemCertificatesProvider]).
+  final Future<String?> Function()? certificates;
+
   final Player _player;
-  late final VideoController _video;
+
+  /// Only once there is a picture to show: without one media_kit leaves
+  /// the video tracks off. With it, a song's cover would get a surface, and
+  /// Android takes surfaces back in the background, where media_kit then
+  /// seeks (an audible gap).
+  VideoController? _video;
   late final Stream<bool> _completed;
 
   NativePlayer get _mpv => _player.platform! as NativePlayer;
@@ -140,17 +150,27 @@ class MediaKitEngine implements PlayerEngine {
     Uri url, {
     Map<String, String> headers = const {},
     Duration start = Duration.zero,
+    bool video = true,
   }) async {
+    if (video) {
+      _video ??= VideoController(
+        _player,
+        configuration: VideoControllerConfiguration(
+          enableHardwareAcceleration: options.hardwareDecoding,
+        ),
+      );
+    }
     // Options from jellyfin-desktop's PlayerComponent.cpp that matter
     // for streaming from a server.
-    await _mpv.setProperty(
-      'hwdec',
-      options.hardwareDecoding ? 'auto-safe' : 'no',
-    );
+    await _mpv.setProperty('hwdec', await _hwdec());
     // mpv does not check HTTPS certificates by default, yet the request
     // carries the session token (header, and api_key in subtitle URLs):
     // check them, with the system's CAs, as the API client (dio) does.
     await _mpv.setProperty('tls-verify', 'yes');
+    final certificates = await this.certificates?.call();
+    if (certificates != null) {
+      await _mpv.setProperty('tls-ca-file', certificates);
+    }
     if (!options.audio) await _mpv.setProperty('ao', 'null');
     await _mpv.setProperty('audio-fallback-to-null', 'yes');
     await _mpv.setProperty('demuxer-max-bytes', '${150 * 1024 * 1024}');
@@ -171,6 +191,16 @@ class MediaKitEngine implements PlayerEngine {
     } on TimeoutException {
       // Slow server or a live stream: carry on, the screen shows buffering.
     }
+  }
+
+  /// How to decode. On Android by name: the decoder drawing straight to
+  /// the GPU, else copying its frames, which works without that interop.
+  Future<String> _hwdec() async {
+    if (!options.hardwareDecoding) return 'no';
+    if (!Platform.isAndroid) return 'auto-safe';
+    // media_kit's choice on an emulator, whose decoders break.
+    if (await _mpv.getProperty('hwdec') == 'no') return 'no';
+    return 'mediacodec,mediacodec-copy';
   }
 
   @override
@@ -324,15 +354,19 @@ class MediaKitEngine implements PlayerEngine {
       EdgeInsets.fromLTRB(16, 0, 16, 24 + lift);
 
   @override
-  Widget buildVideo() => Video(
-    key: _videoKey,
-    controller: _video,
-    controls: null,
-    fill: Colors.black,
-    subtitleViewConfiguration: SubtitleViewConfiguration(
-      padding: _subtitlePadding(0),
+  Widget buildVideo() => switch (_video) {
+    null => const SizedBox.shrink(),
+    // Also pauses when the app goes to the background.
+    final video => Video(
+      key: _videoKey,
+      controller: video,
+      controls: null,
+      fill: Colors.black,
+      subtitleViewConfiguration: SubtitleViewConfiguration(
+        padding: _subtitlePadding(0),
+      ),
     ),
-  );
+  };
 
   @override
   void setSubtitleLift(double pixels) =>

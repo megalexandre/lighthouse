@@ -140,7 +140,14 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
   bool _focusAsked = false;
 
   @override
+  void initState() {
+    super.initState();
+    _window.staysOn = true;
+  }
+
+  @override
   void dispose() {
+    _window.staysOn = false;
     if (_fullScreen) _window.isFullScreen = false;
     _focus.dispose();
     super.dispose();

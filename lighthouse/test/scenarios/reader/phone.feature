@@ -37,6 +37,13 @@ Feature: Reading on a phone
     Then I am back on the book's page
     And the phone's bars are shown
 
+  Scenario: The screen stays on while a book is open
+    When I read {'book-epub'}
+    Then the screen stays on
+    When I use the phone's Back
+    Then I am back on the book's page
+    And the screen may turn off
+
   Scenario: One page on its side, even when two are asked for
     Given the app runs on a {'phone on its side'}
     When I read {'book-comic'}

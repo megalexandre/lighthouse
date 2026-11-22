@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Looked up by name from Dart, so the release build's resource shrinker
+     sees no use of them: the notification's icon and audio_service's
+     buttons. -->
+<resources xmlns:tools="http://schemas.android.com/tools"
+    tools:keep="@drawable/ic_stat_playing,@drawable/audio_service_*"/>

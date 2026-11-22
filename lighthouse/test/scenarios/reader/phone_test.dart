@@ -20,6 +20,8 @@ import './step/the_phones_bars_are_hidden.dart';
 import './step/the_page_is_where_it_was.dart';
 import './step/the_bars_are_shown.dart';
 import './step/the_phones_bars_are_shown.dart';
+import './step/the_screen_stays_on.dart';
+import './step/the_screen_may_turn_off.dart';
 import './step/i_press.dart';
 import './step/i_pick_the_page_layout.dart';
 import './step/the_reader_shows.dart';
@@ -113,6 +115,26 @@ void main() {
       } finally {
         await afterEach(
           '''Leaving the book gives the phone's bars back''',
+          success,
+        );
+      }
+    });
+    testWidgets('''The screen stays on while a book is open''', (tester) async {
+      var success = true;
+      try {
+        await beforeEach('''The screen stays on while a book is open''');
+        await bddSetUp(tester);
+        await iRead(tester, 'book-epub');
+        await theScreenStaysOn(tester);
+        await iUseThePhonesBack(tester);
+        await iAmBackOnTheBooksPage(tester);
+        await theScreenMayTurnOff(tester);
+      } catch (_) {
+        success = false;
+        rethrow;
+      } finally {
+        await afterEach(
+          '''The screen stays on while a book is open''',
           success,
         );
       }

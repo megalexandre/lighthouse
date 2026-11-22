@@ -27,6 +27,8 @@ import 'package:lighthouse/features/auth/data/auth_repository.dart';
 import 'package:lighthouse/features/auth/data/session.dart';
 import 'package:lighthouse/features/auth/data/session_store.dart';
 import 'package:lighthouse/features/library/data/library_repository.dart';
+import 'package:lighthouse/features/player/data/audio_focus.dart';
+import 'package:lighthouse/features/player/data/media_controls.dart';
 import 'package:lighthouse/features/player/data/playback_plan.dart';
 import 'package:lighthouse/features/player/data/playback_repository.dart';
 import 'package:lighthouse/features/player/data/player_engine.dart';
@@ -564,9 +566,11 @@ class FakePlayerEngine implements PlayerEngine {
     Uri url, {
     Map<String, String> headers = const {},
     Duration start = Duration.zero,
+    bool video = true,
   }) async {
     if (openError case final Object e) throw e;
     openedUrl = url;
+    openedVideo = video;
     opened.add(url);
     openedHeaders = headers;
     openedStart = start;
@@ -713,6 +717,9 @@ class FakePlayerEngine implements PlayerEngine {
 
   @override
   Widget buildVideo() => const ColoredBox(color: Color(0xFF000000));
+
+  /// Whether what it opened last was opened with its picture.
+  bool openedVideo = true;
 
   /// What [setSubtitleLift] was last given.
   double subtitleLift = 0;
@@ -889,10 +896,64 @@ class _BlankDocument with FixedPages implements BookDocument {
   Future<void> dispose() async {}
 }
 
-/// A window that only remembers whether it is full screen.
+/// A window that only remembers what it was asked.
 class FakeAppWindow implements AppWindow {
   @override
   bool isFullScreen = false;
+  @override
+  bool isLandscape = false;
+  @override
+  bool staysOn = false;
+}
+
+/// The phone's sound, which tests take away and give back with [happen].
+class FakeAudioFocus implements AudioFocus {
+  final _events = StreamController<AudioFocusEvent>.broadcast();
+
+  /// Refuses, as during a call.
+  bool refuses = false;
+
+  /// Who has it.
+  Object? owner;
+
+  void happen(AudioFocusEvent event) => _events.add(event);
+
+  @override
+  Stream<AudioFocusEvent> get events => _events.stream;
+
+  @override
+  Future<bool> request(Object owner) async {
+    if (refuses) return false;
+    this.owner = owner;
+    return true;
+  }
+
+  @override
+  Future<void> release(Object owner) async {
+    if (identical(this.owner, owner)) this.owner = null;
+  }
+}
+
+/// The phone's media notification: what it shows, null while it is gone.
+class FakeMediaControls implements MediaControls {
+  MediaCommands? commands;
+  NowPlaying? item;
+  PlayingState? state;
+
+  @override
+  void show(MediaCommands commands, NowPlaying item, PlayingState state) {
+    this.commands = commands;
+    this.item = item;
+    this.state = state;
+  }
+
+  @override
+  void clear(MediaCommands commands) {
+    if (!identical(this.commands, commands)) return;
+    this.commands = null;
+    item = null;
+    state = null;
+  }
 }
 
 /// The app's texts in English, the language the tests run in: to find
@@ -935,6 +996,8 @@ class TestApp {
   final library = FakeLibraryRepository();
   final playback = FakePlaybackRepository();
   final window = FakeAppWindow();
+  final audioFocus = FakeAudioFocus();
+  final mediaControls = FakeMediaControls();
   final settings = FakeSettingsRepository();
   final books = FakeBookRepository();
 
@@ -983,6 +1046,8 @@ class TestApp {
     libraryRepositoryProvider.overrideWithValue(library),
     playbackRepositoryProvider.overrideWithValue(playback),
     appWindowProvider.overrideWithValue(window),
+    audioFocusProvider.overrideWithValue(audioFocus),
+    mediaControlsProvider.overrideWithValue(mediaControls),
     settingsRepositoryProvider.overrideWithValue(settings),
     bookRepositoryProvider.overrideWithValue(books),
     bookOpenerProvider.overrideWithValue(openBookForTests),

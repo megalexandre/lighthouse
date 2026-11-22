@@ -9,13 +9,17 @@ import '../../../core/log.dart';
 import '../../auth/application/auth_controller.dart';
 import '../../library/application/library_providers.dart';
 import '../../library/data/library_repository.dart';
+import '../data/audio_focus.dart';
+import '../data/media_controls.dart';
 import '../data/playback_plan.dart';
 import '../data/playback_repository.dart';
 import '../data/player_engine.dart';
 import '../data/tracks.dart';
 import 'pending_reports.dart';
+import 'play_queue.dart';
 import 'playback_reporter.dart';
 import 'player_carry_over.dart';
+import 'system_media.dart';
 
 /// What to play: an item, from a position (zero = from the start).
 typedef PlayRequest = ({String itemId, Duration start});
@@ -75,13 +79,29 @@ final playerControllerProvider = AsyncNotifierProvider.autoDispose
 /// Runs one playback: asks the server how to play, opens the stream,
 /// switches tracks, reports progress, and stops cleanly (resume point
 /// saved) on [stop], at the end of the media, or when the screen goes.
+///
+/// An album plays through here, one song after the other on the same
+/// engine: with the phone's screen off there are no frames, so nothing a
+/// widget or a route does can start the next song.
 class PlayerController extends AsyncNotifier<PlayerSession> {
   PlayerController(this.request);
 
   final PlayRequest request;
 
+  /// Previous restarts the current item when past this point, as music
+  /// players do; before it, it goes to the previous item.
+  static const restartThreshold = Duration(seconds: 3);
+
   PlaybackReporter? _reporter;
   PlayerEngine? _engine;
+  SystemMedia? _system;
+
+  /// The songs around the one playing; null for video.
+  ProviderSubscription<Future<Neighbors>>? _neighbors;
+
+  /// A song on its way ([playInstead]), and one that could not be started.
+  bool _changing = false;
+  BaseItemDto? _failed;
   final _subscriptions = <StreamSubscription<Object?>>[];
 
   /// The last position seen while playing: after the stream ends, the
@@ -122,6 +142,16 @@ class PlayerController extends AsyncNotifier<PlayerSession> {
       )
       ..add(engine.positionStream.listen((p) => _lastPosition = p))
       ..add(engine.completedStream.listen((_) => unawaited(_ended())));
+    _system = SystemMedia(
+      engine,
+      focus: ref.read(audioFocusProvider),
+      controls: ref.read(mediaControlsProvider),
+      onNext: _nextSong,
+      onPrevious: _previousSong,
+      onPlay: () => _session?.interruptedAt == null
+          ? engine.play()
+          : resumeAfterInterruption(),
+    );
 
     // The volume and mute the user left the last item at.
     final sound = ref.read(playerSoundProvider);
@@ -129,12 +159,91 @@ class PlayerController extends AsyncNotifier<PlayerSession> {
       await engine.setVolume(sound.volume);
       await engine.setMuted(sound.muted);
     }
+    return _play(engine, plan);
+  }
+
+  Future<PlayerSession> _play(PlayerEngine engine, PlaybackPlan plan) async {
+    final item = plan.item;
     await _open(engine, plan);
     var session = PlayerSession(item: item, plan: plan, engine: engine);
     session = _session = await _applyInitialTracks(session);
+    if (!ref.mounted) throw const PlayerError('closed while starting');
     _startReporting(session);
     _logDiagnostics(engine, item);
+    _followSong(item);
     return session;
+  }
+
+  /// Tells the system what plays, and looks up the songs around it.
+  void _followSong(BaseItemDto item) {
+    final library = ref.read(libraryRepositoryProvider);
+    _system?.follow(item, art: library.imageUrl(item, maxWidth: 512));
+    _neighbors?.close();
+    _neighbors = null;
+    if (item.type != BaseItemKind.audio) return;
+    final neighbors = _neighbors = ref.listen(
+      playNeighborsProvider(item.id).future,
+      (_, _) {},
+    );
+    unawaited(() async {
+      final around = await neighbors.read();
+      if (ref.mounted && identical(_neighbors, neighbors)) {
+        _system?.setHasNext(hasNext: around.next != null);
+      }
+    }());
+  }
+
+  /// Plays the song [item] in place of the current one, whose place is
+  /// saved.
+  Future<void> playInstead(BaseItemDto item) async {
+    final engine = _engine;
+    if (engine == null || _changing) return;
+    _changing = true;
+    _failed = null;
+    _system?.changing();
+    try {
+      await stop();
+      final plan = await _repository.prepare(item);
+      if (!ref.mounted) return;
+      _lastPosition = Duration.zero;
+      // As with a new engine: the speed is the last song's only.
+      if (engine.rate != 1) await engine.setRate(1);
+      _publish(await _play(engine, plan));
+    } on Object catch (e, stack) {
+      if (!ref.mounted) return;
+      log.warning('player', 'could not go on to "${item.name}"', e);
+      _failed = item;
+      _system?.end();
+      state = AsyncError(e, stack);
+    } finally {
+      _changing = false;
+    }
+  }
+
+  /// After an error: the song that could not be started, or the whole
+  /// playback again.
+  void retry() {
+    final failed = _failed;
+    if (failed == null) return ref.invalidateSelf();
+    state = const AsyncLoading();
+    unawaited(playInstead(failed));
+  }
+
+  Future<void> _nextSong() async {
+    final next = (await _neighbors?.read())?.next;
+    if (next != null && ref.mounted) await playInstead(next);
+  }
+
+  Future<void> _previousSong() async {
+    final engine = _engine;
+    if (engine == null) return;
+    final previous = engine.position > restartThreshold
+        ? null
+        : (await _neighbors?.read())?.previous;
+    if (!ref.mounted) return;
+    await (previous == null
+        ? engine.seek(Duration.zero)
+        : playInstead(previous));
   }
 
   Future<void> _open(PlayerEngine engine, PlaybackPlan plan) async {
@@ -145,7 +254,12 @@ class PlayerController extends AsyncNotifier<PlayerSession> {
           'subtitle ${plan.subtitleStreamIndex}, ${plan.url.path}',
     );
     try {
-      await engine.open(plan.url, headers: plan.headers, start: plan.start);
+      await engine.open(
+        plan.url,
+        headers: plan.headers,
+        start: plan.start,
+        video: plan.item.type != BaseItemKind.audio,
+      );
     } on Object catch (e) {
       log.error('player', 'could not open the stream', e);
       throw PlayerError('$e');
@@ -401,6 +515,13 @@ class PlayerController extends AsyncNotifier<PlayerSession> {
     // whatever position mpv shows after EOF.
     await _reporter?.stop(at: length > Duration.zero ? length : null);
     _invalidateWatchState();
+    if (!ref.mounted) return;
+    // An album always plays on (episodes do through the screen, which
+    // knows whether the user wants it).
+    final next = (await _neighbors?.read())?.next;
+    if (!ref.mounted) return;
+    if (next != null) return playInstead(next);
+    _system?.end();
     _update((s) => s.copyWith(ended: true));
   }
 
@@ -426,6 +547,7 @@ class PlayerController extends AsyncNotifier<PlayerSession> {
     for (final s in _subscriptions) {
       unawaited(s.cancel());
     }
+    _system?.dispose();
     final engine = _engine;
     final reporter = _reporter;
     // Closed without stop() (e.g. the window): still save the position,

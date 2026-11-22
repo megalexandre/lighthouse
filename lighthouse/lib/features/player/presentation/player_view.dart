@@ -76,10 +76,6 @@ class _PlayerViewState extends ConsumerState<PlayerView> {
   /// Music: a cover instead of a picture, and the OSD stays up.
   bool get _isAudio => widget.session.item.type == BaseItemKind.audio;
 
-  /// Previous restarts the current item when past this point, as music
-  /// players do; before it, it goes to the previous item.
-  static const restartThreshold = Duration(seconds: 3);
-
   bool _osdVisible = true;
   Timer? _hideTimer;
   StreamSubscription<bool>? _playing;
@@ -111,6 +107,12 @@ class _PlayerViewState extends ConsumerState<PlayerView> {
       playing ? _scheduleHide() : _show(hide: false);
     });
     _scheduleHide();
+    // Not now: providers cannot change while the tree builds.
+    scheduleMicrotask(() {
+      if (mounted && isTouch(context) && !_isAudio) {
+        ref.read(playerFullscreenProvider.notifier).enterVideo();
+      }
+    });
   }
 
   /// The window's size is known here (and changes land here): the lift
@@ -165,7 +167,8 @@ class _PlayerViewState extends ConsumerState<PlayerView> {
 
   Future<void> _previous() async {
     final previous = widget.onPrevious;
-    if (previous == null || engine.position > restartThreshold) {
+    if (previous == null ||
+        engine.position > PlayerController.restartThreshold) {
       await engine.seek(Duration.zero);
     } else {
       previous();

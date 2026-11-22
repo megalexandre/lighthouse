@@ -298,7 +298,7 @@ gen-l10n exige o idioma base). O código usa `context.l10n.<chave>`; a classe ge
     app entra em `APP_LANGUAGES` do script.
 Títulos, sinopses e gêneros vêm do servidor, no idioma dos metadados do Jellyfin: não são do app.
 
-**A — Android (A1 e A2a feitas; A2b–A2d planejadas)**
+**A — Android (A1 e A2a feitas; A2b e A2c com o código feito, falta o aparelho; A2d planejada)**
 Primeiro o layout de celular (A1), só depois a infraestrutura (A2). Por enquanto o celular só tem o tema **Prime**
 (o padrão): o Lanterna continua como está no desktop, sem layout de celular, e os testes de celular usam o Prime.
 Toda a A1 roda e se testa no Linux: as telas
@@ -488,24 +488,45 @@ Achados no código, que no Android quebram sem erro visível:
     em cada orientação, então esconder as barras não move a página: num EPUB, mover a página repaginaria o livro.
   - No desktop nada mudou: a margem fixa para as barras e a janela como está.
   - Cenários em `test/scenarios/reader/phone.feature`.
-- **A2b, reprodução:**
-  - mpv: `hwdec=mediacodec` (com `-copy` como alternativa, se faltar interop), `vo` do media_kit no Android e as CAs
-    para `tls-verify`. Conferir HTTPS de verdade, não só HTTP.
-  - DeviceProfile: hoje é direct play de tudo, mas um celular pode não decodificar HEVC 4K ou 10 bits. Começar
-    igual e restringir só o que falhar no aparelho (os codecs do `MediaCodecList`, se for preciso).
-  - Player: vídeo em paisagem enquanto toca, modo imersivo, tela acesa (`FLAG_KEEP_SCREEN_ON`), e a orientação
-    volta ao sair. O leitor também mantém a tela acesa.
-  - Pronto quando: um HEVC 1080p toca com decodificação por hardware (`hwdec-current` no log), com troca de áudio e
-    legenda, e o ponto de retomada chega ao servidor.
-- **A2c, áudio em segundo plano:**
-  - Serviço em primeiro plano de mídia com `MediaSession`: notificação e tela de bloqueio com play/pausa, próxima e
-    anterior.
-  - Foco de áudio (pausar numa ligação ou com outro app tocando) e pausa ao desconectar o fone
-    (`ACTION_AUDIO_BECOMING_NOISY`).
-  - Vídeo pausa ao ir para segundo plano; a música continua. Os reportes de playback seguem com a tela apagada.
-  - Escolher o pacote (audio_service ou um canal próprio sobre o media_kit) no começo da etapa; a mesma interface
-    serve ao MPRIS na F5+.
-  - Pronto quando: um álbum toca até o fim com a tela apagada, a notificação troca de faixa, e uma ligação pausa.
+- **A2b, reprodução (código feito; falta conferir no aparelho):**
+  - O que saiu:
+    - Decodificação: `hwdec=mediacodec,mediacodec-copy` no Android (o mpv do APK aceita lista). No emulador continua
+      `no`, a escolha do media_kit.
+    - HTTPS: o ffmpeg do libmpv do Android usa mbedTLS, que não conhece as CAs do sistema. A `MainActivity` escreve
+      as do `AndroidCAStore` num PEM no cache, uma vez por execução, e o mpv o recebe em `tls-ca-file`
+      (`core/system_certificates.dart`). Só as do sistema, como o `dart:io`. `tls-verify` segue ligado: sem o arquivo,
+      o vídeo por HTTPS não toca, mas o token não vaza.
+    - Vídeo no toque: em paisagem e tela cheia até a última tela do player fechar (`AppWindow.isLandscape`,
+      `PlayerFullscreenNotifier.enterVideo`); o próximo episódio continua como o usuário deixou. Música não mexe na
+      orientação. A tela acesa no vídeo já vinha do media_kit_video; no leitor é `AppWindow.staysOn` (wakelock_plus).
+    - DeviceProfile: igual, por enquanto.
+  - Conferir no aparelho:
+    - um HEVC 1080p com `hwdec-current=mediacodec` (ou `-copy`) no log, com troca de áudio e legenda;
+    - o ponto de retomada no servidor;
+    - um vídeo por HTTPS com certificado público. O ffmpeg desiste se um só certificado do PEM não puder ser lido
+      pelo mbedTLS; se for o caso, filtrar o que falhar;
+    - a superfície volta depois de o app ir para segundo plano.
+- **A2c, áudio em segundo plano (código feito; falta conferir no aparelho):** cenários em
+  `test/scenarios/player/background.feature`.
+  - Pacotes: `audio_service` (serviço, notificação, botões) e `audio_session` (foco), em vez de um canal próprio. A
+    `MainActivity` estende `AudioServiceActivity`, senão o plugin subiria um segundo motor do Flutter.
+  - O que saiu:
+    - Troca de faixa no `PlayerController` (`playInstead`), na mesma tela e no mesmo mpv. Antes a tela trocava de
+      rota, e com a tela do celular apagada o Flutter não desenha frames: o álbum pararia na primeira faixa. Vale
+      também no desktop. Episódios continuam trocando de rota.
+    - Música abre sem vídeo (`PlayerEngine.open(video: false)`): a capa embutida ganharia uma superfície, e o
+      media_kit faz um seek quando o Android a toma de volta.
+    - `MediaControls` (notificação e tela de bloqueio; a interface serve ao MPRIS na F5+) e `AudioFocus`, com
+      implementações vazias no Linux; `SystemMedia` liga os dois a uma reprodução.
+    - Foco: uma ligação pausa e, no fim, a música volta (o vídeo só se o app estiver na frente); outro app tocando
+      ou o fone desconectado pausam de vez; a pausa à mão durante a ligação vale.
+    - O serviço fica em primeiro plano também em pausa: do Android 12 em diante não dá para voltar a ele do segundo
+      plano, e é o que retomar depois de uma ligação faria.
+    - Dispensar a notificação, ou tirar o app dos recentes, pausa e guarda o ponto.
+    - Vídeo pausa em segundo plano (o `Video` do media_kit já fazia) e não tem notificação.
+  - Conferir no aparelho: um álbum até o fim com a tela apagada, a notificação troca de faixa (com a capa e o ícone
+    no build de release), uma ligação pausa e retoma, o fone desconectado pausa, e os reportes chegam ao servidor
+    com a tela apagada.
 - **A2d, build, testes e release:**
   - `tool/build_apk.sh`: release, um APK por ABI, assinado com uma chave fora do repo (secrets na CI). Smoke test
     do APK no emulador, como o AppImage.

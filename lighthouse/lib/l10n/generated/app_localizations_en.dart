@@ -688,4 +688,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get navSearch => 'Search';
+
+  @override
+  String get mediaNotificationChannel => 'Playback';
 }

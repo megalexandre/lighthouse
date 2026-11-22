@@ -16,6 +16,10 @@ import 'package:material_ui/material_ui.dart';
 class TestWindow implements AppWindow {
   @override
   bool isFullScreen = false;
+  @override
+  bool isLandscape = false;
+  @override
+  bool staysOn = false;
 }
 
 final window = TestWindow();

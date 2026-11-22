@@ -1220,6 +1220,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Search'**
   String get navSearch;
+
+  /// Android: the name of the music notification, in the system's notification settings.
+  ///
+  /// In en, this message translates to:
+  /// **'Playback'**
+  String get mediaNotificationChannel;
 }
 
 class _AppLocalizationsDelegate
