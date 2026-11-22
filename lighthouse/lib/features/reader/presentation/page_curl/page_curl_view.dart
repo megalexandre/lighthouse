@@ -15,6 +15,14 @@ typedef SheetImageBuilder = Future<ui.Image> Function(
   double pixelRatio,
 );
 
+/// Renders the left page of spread [index] like [SheetImageBuilder]; null
+/// when there is none (beside the cover).
+typedef LeftImageBuilder = Future<ui.Image?> Function(
+  int index,
+  Size size,
+  double pixelRatio,
+);
+
 /// A book's pages that turn like paper, following the finger (as Google
 /// Play Books does): drag on the right half to lift the page, on the left
 /// half to bring the previous one back. Let go past the middle (or flick)
@@ -24,6 +32,12 @@ typedef SheetImageBuilder = Future<ui.Image> Function(
 /// At rest the page is the widget [sheetBuilder] builds (crisp, live);
 /// while turning, images of the two sheets ([sheetImage]) are bent by a
 /// shader (shaders/page_curl.frag).
+///
+/// Two pages ([leftBuilder] and [leftImage] given): an open book. Each
+/// index is a spread; the sheet is its right page, bound at the spine in the
+/// middle, and it turns over onto the left one: its back is the next
+/// spread's left page. Dragging on the left page brings the previous one
+/// back over.
 class PageCurlView extends ConsumerStatefulWidget {
   const PageCurlView({
     super.key,
@@ -34,7 +48,12 @@ class PageCurlView extends ConsumerStatefulWidget {
     required this.onTurned,
     this.paper = const Color(0xFFFFFFFF),
     this.layoutVersion = 0,
-  });
+    this.leftBuilder,
+    this.leftImage,
+  }) : assert(
+         (leftBuilder == null) == (leftImage == null),
+         'two pages need both the left page and its image',
+       );
 
   final int pageCount;
 
@@ -50,6 +69,12 @@ class PageCurlView extends ConsumerStatefulWidget {
   /// Changes when the pages do (an EPUB laid out again): the pictures of
   /// the old ones are dropped, and a turn in progress ends where it is.
   final int layoutVersion;
+
+  /// Two pages: the left page of spread [index] at rest.
+  final Widget Function(int index)? leftBuilder;
+
+  /// Two pages: the left page of spread [index] as an image.
+  final LeftImageBuilder? leftImage;
 
   @override
   PageCurlViewState createState() => PageCurlViewState();
@@ -93,12 +118,29 @@ class PageCurlViewState extends ConsumerState<PageCurlView>
 
   _Turn? _turn;
   Offset? _dragStart;
+
+  /// The whole view: the page, or with two pages the spread.
   Size _size = Size.zero;
+
+  bool get _twoPages => widget.leftBuilder != null;
+
+  /// The sheet that turns: the page, or the spread's right half. Turns are
+  /// worked out in its coordinates (the spine at x = 0).
+  Size get _sheet => _twoPages ? Size(_size.width / 2, _size.height) : _size;
+
+  /// Where a sheet let go ends up turned: past the middle of the page, or
+  /// past the spine with two.
+  double? get _turnsAt => _twoPages ? 0 : null;
 
   /// Sheet images for the current size, by page.
   final _images = <int, ui.Image>{};
   final _loading = <int>{};
   Size? _imagesSize;
+
+  /// Two pages: the left pages' images, by spread; null where there is no
+  /// left page (known: not loading).
+  final _lefts = <int, ui.Image?>{};
+  final _loadingLefts = <int>{};
 
   bool get _reduceMotion => MediaQuery.disableAnimationsOf(context);
 
@@ -136,10 +178,11 @@ class PageCurlViewState extends ConsumerState<PageCurlView>
   }
 
   void _dropImages() {
-    for (final image in _images.values) {
-      image.dispose();
+    for (final image in [..._images.values, ..._lefts.values]) {
+      image?.dispose();
     }
     _images.clear();
+    _lefts.clear();
   }
 
   // --- Images --------------------------------------------------------------
@@ -159,7 +202,11 @@ class PageCurlViewState extends ConsumerState<PageCurlView>
     for (final index in _images.keys.toList()) {
       if (!wanted.contains(index)) _images.remove(index)?.dispose();
     }
+    for (final index in _lefts.keys.toList()) {
+      if (!wanted.contains(index)) _lefts.remove(index)?.dispose();
+    }
     wanted.forEach(_load);
+    if (_twoPages) wanted.forEach(_loadLeft);
   }
 
   void _load(int index) {
@@ -169,7 +216,7 @@ class PageCurlViewState extends ConsumerState<PageCurlView>
     final version = widget.layoutVersion;
     final ratio = MediaQuery.devicePixelRatioOf(context);
     unawaited(
-      widget.sheetImage(index, size, ratio).then((image) {
+      widget.sheetImage(index, _sheet, ratio).then((image) {
         _loading.remove(index);
         if (!mounted ||
             _imagesSize != size ||
@@ -185,6 +232,34 @@ class PageCurlViewState extends ConsumerState<PageCurlView>
     );
   }
 
+  void _loadLeft(int index) {
+    final leftImage = widget.leftImage;
+    if (leftImage == null ||
+        _lefts.containsKey(index) ||
+        _loadingLefts.contains(index)) {
+      return;
+    }
+    _loadingLefts.add(index);
+    final size = _size;
+    final version = widget.layoutVersion;
+    final ratio = MediaQuery.devicePixelRatioOf(context);
+    unawaited(
+      leftImage(index, _sheet, ratio).then((image) {
+        _loadingLefts.remove(index);
+        if (!mounted ||
+            _imagesSize != size ||
+            widget.layoutVersion != version) {
+          image?.dispose();
+          return;
+        }
+        setState(() {
+          _lefts.remove(index)?.dispose();
+          _lefts[index] = image;
+        });
+      }, onError: (Object _) => _loadingLefts.remove(index)),
+    );
+  }
+
   // --- Turns from a finger -------------------------------------------------
 
   void _onPanStart(DragStartDetails details) {
@@ -193,7 +268,7 @@ class PageCurlViewState extends ConsumerState<PageCurlView>
     final forward = start.dx >= _size.width / 2;
     final from = _page;
     if (forward ? from >= widget.pageCount - 1 : from <= 0) return;
-    final grab = Offset(_size.width, start.dy.clamp(0, _size.height));
+    final grab = Offset(_sheet.width, start.dy.clamp(0, _sheet.height));
     _dragStart = start;
     setState(() {
       _turn = _Turn(
@@ -217,7 +292,7 @@ class PageCurlViewState extends ConsumerState<PageCurlView>
           ? turn.grab + moved
           // Coming back from fully turned: one page width of finger travel
           // brings it all the way.
-          : Offset(-_size.width + 2 * moved.dx, turn.grab.dy + moved.dy);
+          : Offset(-_sheet.width + 2 * moved.dx, turn.grab.dy + moved.dy);
     });
   }
 
@@ -226,18 +301,18 @@ class PageCurlViewState extends ConsumerState<PageCurlView>
     _dragStart = null;
     if (turn == null) return;
     final v = details.velocity.pixelsPerSecond;
-    final finger = constrainToSpine(_size, turn.grab, turn.finger);
-    final turns = turn.forward
-        ? shouldTurn(_size, finger, v)
-        // Mirrored: a flick right, or past the middle, brings it back.
-        : !shouldTurn(_size, Offset(_size.width - finger.dx, 0), -v);
+    final finger = constrainToSpine(_sheet, turn.grab, turn.finger);
+    // Where the sheet ends: over on the far side, or back where it lies (a
+    // flick right, or let go short of the middle, brings a page back).
+    final over = shouldTurn(_sheet, finger, v, at: _turnsAt);
+    final turns = turn.forward ? over : !over;
     final target = turns
         ? turn.completion
         : (turn.forward ? turn.flat : turn.turned);
     _animateTo(
       target,
       completes: turns,
-      duration: settleDuration(_size, finger, target),
+      duration: settleDuration(_sheet, finger, target),
       curve: Curves.easeOutCubic,
     );
   }
@@ -258,7 +333,7 @@ class PageCurlViewState extends ConsumerState<PageCurlView>
       _turned(forward ? from + 1 : from - 1);
       return;
     }
-    final grab = autoGrab(_size);
+    final grab = autoGrab(_sheet);
     final turn = _Turn(
       forward: forward,
       from: from,
@@ -286,7 +361,7 @@ class PageCurlViewState extends ConsumerState<PageCurlView>
     final turn = _turn!;
     _settleCompletes = completes;
     _settleTo = Tween(
-      begin: constrainToSpine(_size, turn.grab, turn.finger),
+      begin: constrainToSpine(_sheet, turn.grab, turn.finger),
       end: target,
     ).animate(CurvedAnimation(parent: _settle, curve: curve));
     _settle
@@ -330,12 +405,12 @@ class PageCurlViewState extends ConsumerState<PageCurlView>
 
   /// 1 while the sheet is up, fading to 0 as it lands on either side.
   double _shadowFor(_Turn turn) {
-    final f = constrainToSpine(_size, turn.grab, turn.finger);
+    final f = constrainToSpine(_sheet, turn.grab, turn.finger);
     final rest = [
       (f - turn.flat).distance,
       (f - turn.turned).distance,
     ].reduce((a, b) => a < b ? a : b);
-    return (rest / (_size.width * 0.5)).clamp(0.0, 1.0);
+    return (rest / (_sheet.width * 0.5)).clamp(0.0, 1.0);
   }
 
   // --- Drawing -------------------------------------------------------------
@@ -368,17 +443,40 @@ class PageCurlViewState extends ConsumerState<PageCurlView>
     );
   }
 
+  /// Spread [index] at rest: its page, or its two side by side.
+  Widget _atRest(int index) {
+    final left = widget.leftBuilder;
+    if (left == null) return widget.sheetBuilder(index);
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Expanded(child: left(index)),
+        Expanded(child: widget.sheetBuilder(index)),
+      ],
+    );
+  }
+
   Widget _sheets(ui.FragmentProgram? program, Size size) {
     final turn = _turn;
     if (turn == null) {
       _schedulePrefetch();
-      return widget.sheetBuilder(_page);
+      return _atRest(_page);
     }
-    final curl = curlFor(size, turn.grab, turn.finger);
-    if (curl == null) return widget.sheetBuilder(turn.sheet);
+    final curl = curlFor(_sheet, turn.grab, turn.finger);
+    if (curl == null) return _atRest(turn.sheet);
     final front = _images[turn.sheet];
     final under = _images[turn.under];
-    if (program != null && front != null && under != null) {
+    // Two pages: the back is the next left page, and the sheet's own left
+    // page lies beside it (each loaded, though maybe none).
+    final lefts =
+        !_twoPages ||
+        (_lefts.containsKey(turn.sheet) && _lefts.containsKey(turn.under));
+    final back = _lefts[turn.under];
+    if (program != null &&
+        front != null &&
+        under != null &&
+        lefts &&
+        (!_twoPages || back != null)) {
       return CustomPaint(
         size: size,
         painter: PageCurlPainter(
@@ -388,12 +486,14 @@ class PageCurlViewState extends ConsumerState<PageCurlView>
           curl: curl,
           shadow: _shadowFor(turn),
           paper: widget.paper,
+          back: back,
+          underLeft: _lefts[turn.sheet],
         ),
       );
     }
     // No shader, or the images are not ready yet: a flat fold, the page
     // beneath showing past the fold line.
-    return Stack(
+    final fold = Stack(
       fit: StackFit.expand,
       children: [
         widget.sheetBuilder(turn.under),
@@ -401,6 +501,15 @@ class PageCurlViewState extends ConsumerState<PageCurlView>
           clipper: _FlatPartClipper(curl),
           child: widget.sheetBuilder(turn.sheet),
         ),
+      ],
+    );
+    final left = widget.leftBuilder;
+    if (left == null) return fold;
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Expanded(child: left(turn.sheet)),
+        Expanded(child: fold),
       ],
     );
   }

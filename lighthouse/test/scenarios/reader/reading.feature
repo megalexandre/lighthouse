@@ -1,8 +1,8 @@
 Feature: Reading
 
-  A book opens on its first page, or where it was left. Swipes, the arrow
-  keys and taps on the screen's edges turn pages; Home and End jump; a tap
-  in the middle hides the bars. The place is saved once the reader stops a
+  A book opens on its first page, or where it was left. Swipes (forward
+  and back), the arrow keys and taps on the screen's edges turn pages;
+  Home and End jump; a tap in the middle hides the bars. The place is saved once the reader stops a
   moment, and at once on leaving; the last page marks the book read.
 
   Background:
@@ -29,6 +29,14 @@ Feature: Reading
     Then the reader shows {'Page 2 of 5'}
     When I stop a moment
     Then the server is told only page {2} of {'book-comic'}
+
+  Scenario: A swipe back brings the previous page
+    When I read {'book-comic'}
+    And I swipe to the next page
+    And I swipe to the next page
+    Then the reader shows {'Page 3 of 5'}
+    When I swipe back to the previous page
+    Then the reader shows {'Page 2 of 5'}
 
   Scenario: Pages turned quickly are saved once, where the reader stops
     When I read {'book-comic'}

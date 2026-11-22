@@ -261,6 +261,7 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
       );
 
   final _left = GlobalKey();
+  final _right = GlobalKey();
 
   /// A tap on a link in a page follows it. True when there was one.
   bool _followLink(Offset global, Spreads spreads, int spread) {
@@ -280,7 +281,7 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
       );
     }
 
-    return on(_left, spreads.left(spread)) || on(_curl, spreads.right(spread));
+    return on(_left, spreads.left(spread)) || on(_right, spreads.right(spread));
   }
 
   Future<void> _showDisplaySettings(ReaderSession session) async {
@@ -372,7 +373,7 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
                 );
           final colors = _theme.pageColors;
           // The sheet that turns: the page, or with two pages the one on the
-          // right, held at the spine between them.
+          // right, bound at the spine, turning over onto the left one.
           final curl = session.pageCount == 0
               ? const SizedBox.shrink()
               : PageCurlView(
@@ -388,8 +389,38 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
                   ),
                   sheetBuilder: (index) => KeyedSubtree(
                     key: index == spread ? ReaderScreen.pages : null,
-                    child: _sheet(session, spreads.right(index), colors),
+                    child: KeyedSubtree(
+                      key: index == spread ? _right : null,
+                      child: _sheet(session, spreads.right(index), colors),
+                    ),
                   ),
+                  leftBuilder: !twoPages
+                      ? null
+                      : (index) => switch (spreads.left(index)) {
+                          final page? when index == spread => KeyedSubtree(
+                            key: _left,
+                            child: KeyedSubtree(
+                              key: ReaderScreen.leftPage,
+                              child: _sheet(session, page, colors),
+                            ),
+                          ),
+                          final page? => _sheet(session, page, colors),
+                          // The cover: nothing on its left.
+                          null => const SizedBox.shrink(),
+                        },
+                  leftImage: !twoPages
+                      ? null
+                      : (index, size, ratio) async =>
+                            switch (spreads.left(index)) {
+                              final page? => sheetImage(
+                                session,
+                                page,
+                                size,
+                                ratio,
+                                colors,
+                              ),
+                              null => null,
+                            },
                   sheetImage: (index, size, ratio) =>
                       switch (spreads.right(index)) {
                         final page? => sheetImage(
@@ -436,27 +467,7 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
                     child: Center(
                       child: AspectRatio(
                         aspectRatio: twoPages ? pageAspect * 2 : pageAspect,
-                        child: twoPages
-                            ? Row(
-                                crossAxisAlignment: CrossAxisAlignment.stretch,
-                                children: [
-                                  Expanded(
-                                    child: switch (spreads.left(spread)) {
-                                      final page? => KeyedSubtree(
-                                        key: _left,
-                                        child: KeyedSubtree(
-                                          key: ReaderScreen.leftPage,
-                                          child: _sheet(session, page, colors),
-                                        ),
-                                      ),
-                                      // The cover: nothing on its left.
-                                      null => const SizedBox.shrink(),
-                                    },
-                                  ),
-                                  Expanded(child: curl),
-                                ],
-                              )
-                            : curl,
+                        child: curl,
                       ),
                     ),
                   ),

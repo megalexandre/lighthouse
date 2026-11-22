@@ -89,14 +89,15 @@ CurlGeometry? curlFor(Size size, Offset grab, Offset finger) {
 /// point mirrored over the spine.
 Offset turnedFinger(Offset grab) => Offset(-grab.dx, grab.dy);
 
-/// Whether a drag released at [finger], moving at [velocity] (px/s), turns
-/// the page (true) or lets it fall back (false): a flick decides; otherwise
-/// whether the grabbed point passed the middle.
-bool shouldTurn(Size size, Offset finger, Offset velocity) {
+/// Whether a drag released at [finger], moving at [velocity] (px/s), ends
+/// with the sheet on the far side (true) or back where it lies (false): a
+/// flick decides; otherwise whether the grabbed point passed [at], by
+/// default the middle of the page (with two pages, the spine: 0).
+bool shouldTurn(Size size, Offset finger, Offset velocity, {double? at}) {
   const flick = 400.0;
   if (velocity.dx < -flick) return true;
   if (velocity.dx > flick) return false;
-  return finger.dx < size.width / 2;
+  return finger.dx < (at ?? size.width / 2);
 }
 
 /// How long the page takes to finish from [from] to [to]: a full turn in

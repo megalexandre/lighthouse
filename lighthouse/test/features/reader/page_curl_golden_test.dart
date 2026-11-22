@@ -101,4 +101,68 @@ void main() {
       shadow: 0.3,
     );
   });
+
+  group('two pages: the right page turns over onto the left', () {
+    const spread = Size(600, 420);
+    late ui.Image left;
+    late ui.Image back;
+
+    setUpAll(() {
+      left = fakePage(3, const Color(0xFF3FA34D));
+      back = fakePage(4, const Color(0xFFE0A030));
+    });
+
+    Future<void> spreadFrame(
+      WidgetTester tester,
+      String name,
+      Offset grab,
+      Offset finger, {
+      bool cover = false,
+    }) async {
+      final curl = curlFor(size, grab, finger)!;
+      await tester.pumpWidget(
+        Center(
+          child: RepaintBoundary(
+            child: ColoredBox(
+              // The desk, beside the cover.
+              color: const Color(0xFF2B2B2B),
+              child: CustomPaint(
+                size: spread,
+                painter: PageCurlPainter(
+                  program: program,
+                  front: front,
+                  under: under,
+                  curl: curl,
+                  shadow: 1,
+                  paper: paper,
+                  back: back,
+                  underLeft: cover ? null : left,
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await expectLater(
+        find.byType(RepaintBoundary).first,
+        matchesGoldenFile('goldens/spread_$name.png'),
+      );
+    }
+
+    testWidgets('lifting, over the spine, landing', (tester) async {
+      await spreadFrame(tester, 'lift', middle, const Offset(180, 215));
+      await spreadFrame(tester, 'spine', middle, const Offset(0, 220));
+      await spreadFrame(tester, 'landing', middle, const Offset(-250, 215));
+    });
+
+    testWidgets('from the cover: the desk on the left', (tester) async {
+      await spreadFrame(
+        tester,
+        'cover',
+        corner,
+        const Offset(-40, 260),
+        cover: true,
+      );
+    });
+  });
 }

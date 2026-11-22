@@ -16,6 +16,7 @@ import './step/i_read.dart';
 import './step/i_swipe_to_the_next_page.dart';
 import './step/i_stop_a_moment.dart';
 import './step/the_server_is_told_only_page_of.dart';
+import './step/i_swipe_back_to_the_previous_page.dart';
 import './step/i_turn_the_page_with_the_right_arrow_key.dart';
 import './step/the_server_has_not_been_told_the_place.dart';
 import './step/i_press.dart';
@@ -120,6 +121,27 @@ void main() {
       } finally {
         await afterEach(
           '''A swipe turns the page, and the place is saved''',
+          success,
+        );
+      }
+    });
+    testWidgets('''A swipe back brings the previous page''', (tester) async {
+      var success = true;
+      try {
+        await beforeEach('''A swipe back brings the previous page''');
+        await bddSetUp(tester);
+        await iRead(tester, 'book-comic');
+        await iSwipeToTheNextPage(tester);
+        await iSwipeToTheNextPage(tester);
+        await theReaderShows(tester, 'Page 3 of 5');
+        await iSwipeBackToThePreviousPage(tester);
+        await theReaderShows(tester, 'Page 2 of 5');
+      } catch (_) {
+        success = false;
+        rethrow;
+      } finally {
+        await afterEach(
+          '''A swipe back brings the previous page''',
           success,
         );
       }

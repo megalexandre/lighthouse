@@ -12,6 +12,8 @@ import './step/the_reader_shows.dart';
 import './step/there_is_no_page_on_the_left.dart';
 import './step/i_press.dart';
 import './step/there_is_a_page_on_the_left.dart';
+import './step/i_swipe_to_the_next_page.dart';
+import './step/i_swipe_back_to_the_previous_page.dart';
 import './step/i_stop_a_moment.dart';
 import './step/the_server_has_as_read.dart';
 import './step/each_page_is_at_most_half_the_window_wide.dart';
@@ -62,6 +64,35 @@ void main() {
       } finally {
         await afterEach(
           '''A wide window shows two pages, the cover alone''',
+          success,
+        );
+      }
+    });
+    testWidgets('''The right page turns over onto the left, and comes back''',
+        (tester) async {
+      var success = true;
+      try {
+        await beforeEach(
+            '''The right page turns over onto the left, and comes back''');
+        await bddSetUp(tester);
+        await theWindowIsBy(tester, 1600, 1000);
+        await iRead(tester, 'book-comic');
+        await iSwipeToTheNextPage(tester);
+        await theReaderShows(tester, 'Pages 2–3 of 5');
+        await iSwipeToTheNextPage(tester);
+        await theReaderShows(tester, 'Pages 4–5 of 5');
+        await iSwipeBackToThePreviousPage(tester);
+        await theReaderShows(tester, 'Pages 2–3 of 5');
+        await thereIsAPageOnTheLeft(tester);
+        await iSwipeBackToThePreviousPage(tester);
+        await theReaderShows(tester, 'Page 1 of 5');
+        await thereIsNoPageOnTheLeft(tester);
+      } catch (_) {
+        success = false;
+        rethrow;
+      } finally {
+        await afterEach(
+          '''The right page turns over onto the left, and comes back''',
           success,
         );
       }

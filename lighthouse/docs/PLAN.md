@@ -228,8 +228,13 @@ bordas, teclado), progresso no servidor.
   `test/features/reader/goldens/` (conferidos a olho ao mudar o shader: `flutter test --update-goldens`).
 - **Página dupla (feita):** duas páginas lado a lado, como um livro aberto, para todos os formatos. A capa fica
   sozinha à direita, então as páginas ímpares ficam sempre à esquerda (`presentation/spreads.dart`, Dart puro e
-  testado). A página da esquerda fica parada e a da direita é a folha que vira, presa na lombada entre as duas; ao
-  fim da virada a da esquerda passa a ser a seguinte (o verso da folha ainda não é a página seguinte). O EPUB é
+  testado). A página da direita é a folha que vira, presa na lombada, e assenta sobre a da esquerda como num livro:
+  o verso dela é a próxima página da esquerda, e por baixo aparece a próxima da direita; arrastar na página da
+  esquerda traz a anterior de volta por cima. O `PageCurlView` cobre a abertura inteira, e o shader desenha a folha
+  na metade direita (`uSpine`) com mais duas imagens: o verso (`uBack`) e a página da esquerda por baixo
+  (`uUnderLeft`; ao lado da capa, a mesa). A geometria continua em coordenadas da folha; numa página só o desenho
+  é o mesmo de antes (os goldens não mudaram). Soltar antes da lombada volta; depois dela (ou com flick) vira.
+  Goldens `spread_*`. O EPUB é
   diagramado para a metade da largura. Layout nas opções de exibição: **Automático** (o padrão: duas páginas quando
   a janela é mais larga que alta e cada página fica com pelo menos 420 px), **Uma página** ou **Duas páginas**.
   Chegar à última abertura marca o livro como lido. Cenários em `test/scenarios/reader/layout.feature`; os outros
