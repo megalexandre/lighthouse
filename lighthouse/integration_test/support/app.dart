@@ -187,5 +187,17 @@ final _physical = {
 Future<void> pressKey(WidgetTester tester, LogicalKeyboardKey key) async {
   final physical = _physical[key];
   if (physical == null) throw ArgumentError('add $key to _physical');
+  await _activateWindow(tester);
   await tester.sendKeyEvent(key, physicalKey: physical);
+}
+
+/// The app's window active again. Xvfb has no window manager, and the window
+/// now and then loses the keyboard by itself: Flutter then takes the focus
+/// off every widget until it is back, and keys go nowhere.
+Future<void> _activateWindow(WidgetTester tester) async {
+  final binding = tester.binding;
+  if (binding.lifecycleState != AppLifecycleState.inactive) return;
+  binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+  // The focus goes back to the widget that had it.
+  await tester.pump();
 }
