@@ -44,6 +44,12 @@ services:
       #   Wayland, PipeWire:  the runtime dir (/run/user/<uid>)
       - /tmp/.X11-unix:/tmp/.X11-unix
       - ${XDG_RUNTIME_DIR}:/run/user/${USER_UID}
+    # Secrets (API keys) live in secrets.env, kept out of git: .env cannot hold
+    # them, initialize.sh rewrites it on every start. Optional, so a fresh
+    # clone (or CI) starts without one; see secrets.env.example for the names.
+    env_file:
+      - path: secrets.env
+        required: false
     environment:
       DISPLAY: ${DISPLAY:-:0}
       WAYLAND_DISPLAY: ${WAYLAND_DISPLAY:-wayland-0}
