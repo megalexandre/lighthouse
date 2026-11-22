@@ -4,6 +4,7 @@ import 'dart:math' as math;
 import 'dart:ui' show Offset, Size;
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/painting.dart' show EdgeInsets;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../api/models/base_item_dto.dart';
@@ -169,13 +170,16 @@ class ReaderController extends AsyncNotifier<ReaderSession> {
 
   /// The sheet size and type a reflowable book is laid out for.
   Size? _size;
+  EdgeInsets _keepClear = EdgeInsets.zero;
   EpubTypography _typography = const EpubTypography();
 
   /// Lays a reflowable book (an EPUB) out in pages of [size], the sheet
   /// the screen shows, keeping the reader where they were: on the page
-  /// that holds the first word they could see.
-  void layout(Size size) {
+  /// that holds the first word they could see. The text stays out of
+  /// [keepClear], at the sheet's edges.
+  void layout(Size size, {EdgeInsets keepClear = EdgeInsets.zero}) {
     _size = size;
+    _keepClear = keepClear;
     _relayout();
   }
 
@@ -187,7 +191,7 @@ class ReaderController extends AsyncNotifier<ReaderSession> {
     final fraction =
         _openAt ??
         (document.pageCount > 0 ? document.fractionOf(session.page) : 0.0);
-    if (!document.layout(size, _typography)) return;
+    if (!document.layout(size, _typography, keepClear: _keepClear)) return;
     _openAt = null;
     log.debug(
       'reader',

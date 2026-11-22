@@ -79,9 +79,18 @@ class ReaderScreen extends ConsumerStatefulWidget {
   /// and the desk around it are the theme's: [ReaderTheme].)
   static const margin = EdgeInsets.fromLTRB(12, 52, 12, 60);
 
-  /// The room around the page on touch, inside the system's bars: the
-  /// reader's bars come over the page instead.
+  /// The room around two pages on touch, inside the system's bars: the
+  /// reader's bars come over them instead. One page has no room around it:
+  /// its sheet is the whole screen.
   static const touchMargin = EdgeInsets.all(8);
+
+  /// The least between an EPUB's text and the system's bars or notch, when
+  /// the sheet is the whole screen.
+  static const _clearance = 8.0;
+
+  /// The widest an EPUB's lines get when the sheet is the whole screen (a
+  /// phone on its side, a tablet): longer ones are hard to follow.
+  static const maxLineWidth = 640.0;
 
   final String itemId;
 
@@ -322,9 +331,27 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
     return Size(width, width / aspect);
   }
 
-  /// The sheet size last asked for (an EPUB), so a rebuild asks only on a
-  /// change.
-  Size? _laidOutFor;
+  /// Where an EPUB's text does not go on a sheet that is the whole screen,
+  /// [width] wide: under the system's bars and the notch, and past
+  /// [ReaderScreen.maxLineWidth]. The same on both sides, so the text stays
+  /// in the middle.
+  static EdgeInsets _keepClear(EdgeInsets system, double width) {
+    final side = [
+      system.left + ReaderScreen._clearance,
+      system.right + ReaderScreen._clearance,
+      (width - ReaderScreen.maxLineWidth) / 2,
+    ].reduce(math.max);
+    return EdgeInsets.fromLTRB(
+      side,
+      system.top + ReaderScreen._clearance,
+      side,
+      system.bottom + ReaderScreen._clearance,
+    );
+  }
+
+  /// The sheet last asked for (an EPUB): its size, and where its text does
+  /// not go. A rebuild asks only on a change.
+  (Size, EdgeInsets)? _laidOutFor;
 
   Widget _reading(BuildContext context, ReaderSession session) {
     if (!_focusAsked) {
@@ -340,10 +367,12 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
       child: LayoutBuilder(
         builder: (context, constraints) {
           final document = session.document;
-          final margin = isTouch(context)
-              ? _systemInsets(context) + ReaderScreen.touchMargin
+          final touch = isTouch(context);
+          final system = touch ? _systemInsets(context) : EdgeInsets.zero;
+          final around = touch
+              ? system + ReaderScreen.touchMargin
               : ReaderScreen.margin;
-          final room = margin.deflateSize(constraints.biggest);
+          final room = around.deflateSize(constraints.biggest);
           final twoPages =
               session.pageCount > 0 &&
               showsTwoPages(
@@ -358,16 +387,22 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
               );
           final spreads = Spreads(session.pageCount, twoPages: twoPages);
           final spread = spreads.of(session.page);
+          // One page on touch: the sheet is the whole screen, no desk.
+          final fills = touch && !twoPages;
+          final margin = fills ? EdgeInsets.zero : around;
           // The space each page gets.
           final pageRoom = twoPages ? Size(room.width / 2, room.height) : room;
           if (document.reflowable) {
-            final sheet = _reflowSheet(pageRoom);
+            final sheet = fills ? constraints.biggest : _reflowSheet(pageRoom);
+            final keepClear = fills
+                ? _keepClear(system, sheet.width)
+                : EdgeInsets.zero;
             // Pages are cut for the sheet once its size is known (after
             // this frame: state cannot change while building).
-            if (sheet != _laidOutFor && !sheet.isEmpty) {
-              _laidOutFor = sheet;
+            if ((sheet, keepClear) != _laidOutFor && !sheet.isEmpty) {
+              _laidOutFor = (sheet, keepClear);
               WidgetsBinding.instance.addPostFrameCallback((_) {
-                if (mounted) _controller.layout(sheet);
+                if (mounted) _controller.layout(sheet, keepClear: keepClear);
               });
             }
           }
@@ -467,17 +502,23 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
                       _showChrome(!_chromeVisible);
                     }
                   },
-                  // The page itself: its shape, as large as fits, on the
-                  // desk; with two, side by side as an open book.
-                  child: Padding(
-                    padding: margin,
-                    child: Center(
-                      child: AspectRatio(
-                        aspectRatio: twoPages ? pageAspect * 2 : pageAspect,
-                        child: curl,
-                      ),
-                    ),
-                  ),
+                  // The sheet: the whole screen (a page of another shape
+                  // fits in it, its paper around); or the page's shape, as
+                  // large as fits, on the desk; with two, side by side as an
+                  // open book.
+                  child: fills
+                      ? curl
+                      : Padding(
+                          padding: margin,
+                          child: Center(
+                            child: AspectRatio(
+                              aspectRatio: twoPages
+                                  ? pageAspect * 2
+                                  : pageAspect,
+                              child: curl,
+                            ),
+                          ),
+                        ),
                 ),
               ),
               AnimatedOpacity(

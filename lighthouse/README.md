@@ -76,7 +76,7 @@ flutter build apk --release --target-platform android-arm64   # → build/app/ou
 For phones (arm64). Signed with Flutter's debug key for now, so a later
 build signed with the release key won't install over it: uninstall first.
 The first build takes ~20 min (Gradle and the libmpv download). The
-emulator runs on the host: see `.devcontainer/README.md`, "Android".
+emulator is `tool/emulator.sh`: see `.devcontainer/README.md`, "Android".
 
 ## Code generation
 

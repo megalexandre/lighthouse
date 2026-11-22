@@ -420,10 +420,11 @@ Decisões:
 - `applicationId`: `io.github.megalexandre.lighthouse`. Não muda depois da primeira instalação publicada.
 - minSdk 24 (o padrão do Flutter 3.50). ABIs: arm64-v8a para os aparelhos e x86_64 para o emulador. Um APK por ABI,
   porque o libmpv pesa dezenas de MB em cada uma.
-- Teste à mão: emulador no host (Android Studio), porque o dev container não tem `/dev/kvm`.
+- Teste à mão: emulador no dev container (`tool/emulator.sh`), com o `/dev/kvm` do host. Onde não há KVM, emulador no
+  host (Android Studio):
   - O adb do container fala com o servidor adb do host: `adb -a nodaemon server start` no host e
     `ADB_SERVER_SOCKET=tcp:host.docker.internal:5037` no container.
-  - O emulador alcança o servidor de dev em `http://10.0.2.2:8096`, que é a porta publicada no host.
+  - O emulador do host alcança o servidor de dev em `http://10.0.2.2:8096`, que é a porta publicada no host.
 - Áudio em segundo plano entra na A2 (A2c): sem ele, a música para quando a tela apaga.
 
 Achados no código, que no Android quebram sem erro visível:
@@ -482,7 +483,9 @@ Achados no código, que no Android quebram sem erro visível:
   - Duas páginas nunca numa tela pequena (`WindowSize.compact` ou baixa, o celular em pé ou deitado), nem com
     "Duas páginas" escolhido: ficariam pequenas demais para ler. A escolha fica salva e volta a valer num tablet ou
     no desktop.
-  - Tela cheia no toque: a página ocupa a tela inteira (dentro das barras do sistema, mais 8 px), e as barras do
+  - Tela cheia no toque: a folha é a tela inteira, de borda a borda, sem mesa em volta (com duas páginas, num tablet,
+    continua o livro aberto sobre a mesa). Num EPUB o texto desvia da câmera e das barras do sistema (`keepClear`) e a
+    linha tem no máximo 640 px; um PDF ou quadrinho aparece o maior que couber, sem corte, com o papel em volta. As barras do
     leitor vêm por cima dela. O toque no meio esconde as barras do leitor e as do Android juntas (`AppWindow`,
     modo imersivo); sair do livro devolve as barras. As margens das barras do sistema guardam o maior valor visto
     em cada orientação, então esconder as barras não move a página: num EPUB, mover a página repaginaria o livro.

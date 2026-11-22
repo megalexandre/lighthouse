@@ -13,6 +13,10 @@ import './step/i_use_the_phones_back.dart';
 import './step/the_contents_are_closed.dart';
 import './step/the_book_is_still_open.dart';
 import './step/i_am_back_on_the_books_page.dart';
+import './step/the_page_fills_the_screen.dart';
+import './step/the_text_of_is_clear_of_the_phones_bars.dart';
+import './step/the_picture_is_as_wide_as_the_screen.dart';
+import './step/the_lines_of_are_at_most_wide.dart';
 import './step/i_note_where_the_page_is.dart';
 import './step/i_tap_the_middle.dart';
 import './step/the_bars_are_hidden.dart';
@@ -70,6 +74,62 @@ void main() {
       } finally {
         await afterEach(
           '''Back closes the contents, then leaves the book''',
+          success,
+        );
+      }
+    });
+    testWidgets('''The page is the whole screen''', (tester) async {
+      var success = true;
+      try {
+        await beforeEach('''The page is the whole screen''');
+        await bddSetUp(tester);
+        await iRead(tester, 'book-epub');
+        await thePageFillsTheScreen(tester);
+        await theTextOfIsClearOfThePhonesBars(tester, 'book-epub');
+      } catch (_) {
+        success = false;
+        rethrow;
+      } finally {
+        await afterEach(
+          '''The page is the whole screen''',
+          success,
+        );
+      }
+    });
+    testWidgets('''A comic's page is the whole screen''', (tester) async {
+      var success = true;
+      try {
+        await beforeEach('''A comic's page is the whole screen''');
+        await bddSetUp(tester);
+        await iRead(tester, 'book-comic');
+        await thePageFillsTheScreen(tester);
+        await thePictureIsAsWideAsTheScreen(tester);
+      } catch (_) {
+        success = false;
+        rethrow;
+      } finally {
+        await afterEach(
+          '''A comic's page is the whole screen''',
+          success,
+        );
+      }
+    });
+    testWidgets('''The page is the whole screen on its side''', (tester) async {
+      var success = true;
+      try {
+        await beforeEach('''The page is the whole screen on its side''');
+        await bddSetUp(tester);
+        await theAppRunsOnA(tester, 'phone on its side');
+        await iRead(tester, 'book-epub');
+        await thePageFillsTheScreen(tester);
+        await theTextOfIsClearOfThePhonesBars(tester, 'book-epub');
+        await theLinesOfAreAtMostWide(tester, 'book-epub', 640);
+      } catch (_) {
+        success = false;
+        rethrow;
+      } finally {
+        await afterEach(
+          '''The page is the whole screen on its side''',
           success,
         );
       }

@@ -91,8 +91,9 @@ abstract interface class BookDocument {
   bool get reflowable;
 
   /// Cuts the book into pages of [size] (logical pixels), its type set as
-  /// [typography] says. True when the pages changed.
-  bool layout(Size size, EpubTypography typography);
+  /// [typography] says and out of the border [keepClear]. True when the
+  /// pages changed.
+  bool layout(Size size, EpubTypography typography, {EdgeInsets keepClear});
 
   /// Changes whenever the pages do: pictures of the old ones are stale.
   int get layoutVersion;
@@ -121,7 +122,11 @@ mixin FixedPages implements BookDocument {
   bool get reflowable => false;
 
   @override
-  bool layout(Size size, EpubTypography typography) => false;
+  bool layout(
+    Size size,
+    EpubTypography typography, {
+    EdgeInsets keepClear = EdgeInsets.zero,
+  }) => false;
 
   @override
   int get layoutVersion => 0;
@@ -195,10 +200,16 @@ class ComicBookDocument with FixedPages implements BookDocument {
     return size == null || size.height == 0 ? 2 / 3 : size.width / size.height;
   }
 
-  /// Drawings keep their colours, whatever the theme.
+  /// Drawings keep their colours, whatever the theme. A small one grows to
+  /// the space it gets, as [pageImage] does.
   @override
-  Widget buildPage(int index, PageColors colors) =>
-      Image.memory(_pages[index], fit: BoxFit.contain, gaplessPlayback: true);
+  Widget buildPage(int index, PageColors colors) => SizedBox.expand(
+    child: Image.memory(
+      _pages[index],
+      fit: BoxFit.contain,
+      gaplessPlayback: true,
+    ),
+  );
 
   @override
   Future<ui.Image> pageImage(int index, Size maxSize, PageColors colors) async {

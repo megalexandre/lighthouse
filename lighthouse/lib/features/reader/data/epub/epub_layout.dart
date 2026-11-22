@@ -35,11 +35,18 @@ class EpubTypography {
   /// Body text justified, or flush left.
   final bool justify;
 
-  /// The blank border of a page of [size]: wider on a big page.
-  EdgeInsets margins(Size size) => EdgeInsets.symmetric(
-    horizontal: (size.width * 0.08).clamp(16, 64),
-    vertical: (size.height * 0.06).clamp(16, 56),
-  );
+  /// The blank border of a page of [size]: wider on a big page, and never
+  /// narrower than [keepClear].
+  EdgeInsets margins(Size size, {EdgeInsets keepClear = EdgeInsets.zero}) {
+    final horizontal = (size.width * 0.08).clamp(16.0, 64.0);
+    final vertical = (size.height * 0.06).clamp(16.0, 56.0);
+    return EdgeInsets.fromLTRB(
+      math.max(horizontal, keepClear.left),
+      math.max(vertical, keepClear.top),
+      math.max(horizontal, keepClear.right),
+      math.max(vertical, keepClear.bottom),
+    );
+  }
 
   double headingScale(int level) => switch (level) {
     1 => 1.6,
@@ -74,13 +81,21 @@ class EpubTypography {
 /// [length]): unlike page numbers, that does not change with the size, so
 /// the place survives a resize, and its fraction is what the server keeps.
 class EpubLayout {
-  EpubLayout(this.book, this.size, {this.typography = const EpubTypography()}) {
+  EpubLayout(
+    this.book,
+    this.size, {
+    this.typography = const EpubTypography(),
+    this.keepClear = EdgeInsets.zero,
+  }) {
     _paginate();
   }
 
   final EpubBook book;
   final Size size;
   final EpubTypography typography;
+
+  /// The least blank border (a page under the system's bars and the notch).
+  final EdgeInsets keepClear;
 
   final pages = <EpubPage>[];
   final _painters = <TextPainter>[];
@@ -89,7 +104,10 @@ class EpubLayout {
   int get length => _length;
   int _length = 0;
 
-  late final EdgeInsets margins = typography.margins(size);
+  late final EdgeInsets margins = typography.margins(
+    size,
+    keepClear: keepClear,
+  );
   late final Size content = margins.deflateSize(size);
 
   /// How far into the book page [index] starts, from 0 to 1.

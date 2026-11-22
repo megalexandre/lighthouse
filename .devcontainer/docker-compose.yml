@@ -36,6 +36,9 @@ services:
       - pub-cache:/home/dev/.pub-cache
       # Gradle's cache too (~1 GB on the first Android build).
       - gradle-cache:/home/dev/.gradle
+      # The emulator's device, adb's key and the debug signing key: without
+      # it, each rebuild would sign differently and not install over the app.
+      - android-home:/home/dev/.android
       # Claude Code: login, settings and session history survive rebuilds.
       - claude-config:/home/dev/.claude
       # Display and audio sockets from the host, so the app window opens
@@ -75,6 +78,10 @@ services:
     # On a machine without /dev/dri, delete these two blocks.
     devices:
       - /dev/dri:/dev/dri
+      # KVM, for the Android emulator, when the host has it (initialize.sh
+      # decides). Compose has no optional devices: without KVM this maps a
+      # harmless stand-in that nothing reads.
+      - "${KVM_DEVICE:-/dev/null:/dev/no-kvm}"
     group_add:
       - ${RENDER_GID}
     security_opt:
@@ -117,6 +124,7 @@ services:
 volumes:
   pub-cache:
   gradle-cache:
+  android-home:
   claude-config:
   jellyfin-config:
   jellyfin-cache:

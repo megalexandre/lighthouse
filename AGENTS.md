@@ -71,6 +71,7 @@ Run commands from `lighthouse/`.
 | Behaviour scenarios (`.feature`) | `tool/scenarios.sh [file] ["scenario name"]` |
 | Code generation | `dart run build_runner build --delete-conflicting-outputs` |
 | Run the app | `tool/dev_server.sh && flutter run -d linux --dart-define=JELLYFIN_SERVER=$JELLYFIN_URL` |
+| Android emulator (needs the host's KVM) | `tool/emulator.sh [--headless]`, then `flutter run -d emulator-5554` |
 | Release AppImage | `tool/build_appimage.sh` |
 
 A piece of work is done only when `tool/check.sh` is green. It runs the integration tests in one

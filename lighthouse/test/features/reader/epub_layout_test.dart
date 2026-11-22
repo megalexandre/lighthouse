@@ -23,6 +23,23 @@ void main() {
     for (final page in layout.pages) ...page.pieces.whereType<TextPiece>(),
   ];
 
+  test('a border kept clear widens the margins, never narrows them', () {
+    const size = Size(400, 600);
+    final plain = EpubLayout(book, size);
+    addTearDown(plain.dispose);
+    final clear = EpubLayout(
+      book,
+      size,
+      keepClear: const EdgeInsets.only(left: 4, top: 90, right: 70),
+    );
+    addTearDown(clear.dispose);
+    expect(clear.margins.left, plain.margins.left);
+    expect(clear.margins.top, 90);
+    expect(clear.margins.right, 70);
+    expect(clear.margins.bottom, plain.margins.bottom);
+    expect(clear.content, clear.margins.deflateSize(size));
+  });
+
   test('nothing goes past the bottom of a page', () {
     final layout = EpubLayout(book, const Size(400, 600));
     addTearDown(layout.dispose);

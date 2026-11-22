@@ -1,11 +1,11 @@
 # Image for the "app" container: everything needed to build and run
 # the Flutter rewrite of Jellyfin Desktop on Linux, and to build it for
-# Android (the emulator runs on the host: there is no /dev/kvm in here).
+# Android, emulator included (it needs the host's /dev/kvm: see README.md).
 #
-# Three stages. "flutter" and "android" download the two SDKs on their own,
-# with only the few packages they need, so they never depend on the apt list
-# below: adding a system package later reuses the cached SDKs (local copies)
-# instead of downloading ~3 GB and ~4 GB again.
+# Four stages. "flutter", "android" and "emulator" download the SDKs on their
+# own, with only the few packages they need, so they never depend on the apt
+# list below: adding a system package later reuses the cached SDKs (local
+# copies) instead of downloading ~3 GB and ~4 GB again.
 
 # --- Stage 1: Flutter SDK ---------------------------------------------------
 FROM ubuntu:24.04 AS flutter
@@ -68,12 +68,23 @@ RUN yes | /opt/android-sdk/cmdline-tools/latest/bin/sdkmanager --sdk_root=/opt/a
         "ndk;28.2.13676358" \
         "cmake;3.22.1"
 
-# --- Stage 3: the dev image -------------------------------------------------
+# --- Stage 3: Android emulator ----------------------------------------------
+# On its own, so a new emulator or system image does not download the SDK
+# again. x86_64, the host's own architecture: KVM runs it at full speed.
+# The emulator has no pinned versions: the latest. The system image's name
+# is also in lighthouse/tool/emulator.sh.
+FROM android AS emulator
+
+RUN /opt/android-sdk/cmdline-tools/latest/bin/sdkmanager --sdk_root=/opt/android-sdk \
+        "emulator" \
+        "system-images;android-36;google_apis;x86_64"
+
+# --- Stage 4: the dev image -------------------------------------------------
 FROM ubuntu:24.04
 
 ENV DEBIAN_FRONTEND=noninteractive
 ENV ANDROID_HOME=/opt/android-sdk
-ENV PATH=/opt/flutter/bin:${ANDROID_HOME}/cmdline-tools/latest/bin:${ANDROID_HOME}/platform-tools:${PATH}
+ENV PATH=/opt/flutter/bin:${ANDROID_HOME}/cmdline-tools/latest/bin:${ANDROID_HOME}/platform-tools:${ANDROID_HOME}/emulator:${PATH}
 
 # --- System packages --------------------------------------------------------
 # Layers are ordered from "changes least" to "changes most":
@@ -157,7 +168,7 @@ RUN userdel --remove ubuntu \
     # Mount points for the named volumes in docker-compose.yml. A new volume
     # copies the owner of the folder it mounts over; without these folders
     # it would be owned by root and dev could not write to it.
-    && install -d -o dev -g dev /home/dev/.pub-cache /home/dev/.gradle /home/dev/.claude
+    && install -d -o dev -g dev /home/dev/.pub-cache /home/dev/.gradle /home/dev/.claude /home/dev/.android
 
 # --- Flutter SDK ------------------------------------------------------------
 # Copied from stage 1, owned by dev in the same step. Why it matters: each
@@ -169,6 +180,9 @@ COPY --from=flutter --chown=dev:dev /opt/flutter /opt/flutter
 # Owned by dev for the same reason, and so Gradle can add what a plugin asks
 # for (another build-tools or CMake) without root.
 COPY --from=android --chown=dev:dev /opt/android-sdk /opt/android-sdk
+# Two layers of their own, so changing them does not copy the SDK again.
+COPY --from=emulator --chown=dev:dev /opt/android-sdk/emulator /opt/android-sdk/emulator
+COPY --from=emulator --chown=dev:dev /opt/android-sdk/system-images /opt/android-sdk/system-images
 
 USER dev
 WORKDIR /workspace

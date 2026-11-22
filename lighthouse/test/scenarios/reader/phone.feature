@@ -2,7 +2,8 @@ Feature: Reading on a phone
 
   Android's Back closes the contents first, then leaves the book. A tap in
   the middle hides the reader's bars and the phone's together (full
-  screen); the page keeps its place, so an EPUB is not laid out again. On
+  screen); the page keeps its place, so an EPUB is not laid out again. The
+  page is the whole screen, its text clear of the notch and the bars. On
   a phone two pages would be too small to read: one at a time, even when
   two are asked for; a tablet still shows them.
 
@@ -18,6 +19,23 @@ Feature: Reading on a phone
     And the book is still open
     When I use the phone's Back
     Then I am back on the book's page
+
+  Scenario: The page is the whole screen
+    When I read {'book-epub'}
+    Then the page fills the screen
+    And the text of {'book-epub'} is clear of the phone's bars
+
+  Scenario: A comic's page is the whole screen
+    When I read {'book-comic'}
+    Then the page fills the screen
+    And the picture is as wide as the screen
+
+  Scenario: The page is the whole screen on its side
+    Given the app runs on a {'phone on its side'}
+    When I read {'book-epub'}
+    Then the page fills the screen
+    And the text of {'book-epub'} is clear of the phone's bars
+    And the lines of {'book-epub'} are at most {640} wide
 
   Scenario: Hiding the bars goes full screen
     When I read {'book-epub'}

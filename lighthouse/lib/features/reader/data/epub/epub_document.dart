@@ -20,6 +20,9 @@ class EpubBookDocument implements BookDocument {
   EpubTypography get typography =>
       _layout?.typography ?? const EpubTypography();
 
+  /// The blank border of the current layout's pages.
+  EdgeInsets get margins => _layout?.margins ?? EdgeInsets.zero;
+
   EpubLayout? _layout;
 
   /// The layout before the current one, kept until the next change: a
@@ -55,14 +58,25 @@ class EpubBookDocument implements BookDocument {
   int get layoutVersion => _version;
 
   @override
-  bool layout(Size size, EpubTypography typography) {
+  bool layout(
+    Size size,
+    EpubTypography typography, {
+    EdgeInsets keepClear = EdgeInsets.zero,
+  }) {
     if (size.isEmpty ||
-        (_layout?.size == size && _layout?.typography == typography)) {
+        (_layout?.size == size &&
+            _layout?.typography == typography &&
+            _layout?.keepClear == keepClear)) {
       return false;
     }
     _retired?.dispose();
     _retired = _layout;
-    _layout = EpubLayout(book, size, typography: typography);
+    _layout = EpubLayout(
+      book,
+      size,
+      typography: typography,
+      keepClear: keepClear,
+    );
     _version++;
     return true;
   }
