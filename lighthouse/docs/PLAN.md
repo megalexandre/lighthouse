@@ -486,8 +486,10 @@ Achados no código, que no Android quebram sem erro visível:
   - Tela cheia no toque: a folha é a tela inteira, de borda a borda, sem mesa em volta (com duas páginas, num tablet,
     continua o livro aberto sobre a mesa). Num EPUB o texto desvia da câmera e das barras do sistema (`keepClear`) e a
     linha tem no máximo 640 px; um PDF ou quadrinho aparece o maior que couber, sem corte, com o papel em volta. As barras do
-    leitor vêm por cima dela. O toque no meio esconde as barras do leitor e as do Android juntas (`AppWindow`,
-    modo imersivo); sair do livro devolve as barras. As margens das barras do sistema guardam o maior valor visto
+    leitor vêm por cima dela. O livro já abre sem barras (enquanto carrega, ou se falhar, as do Android ficam); o toque
+    no meio mostra e esconde as do leitor e as do Android juntas (`AppWindow`, modo imersivo); sair do livro devolve
+    as barras. A faixa da câmera faz parte da tela (`windowLayoutInDisplayCutoutMode`; antes do Android 15 ela ficaria
+    preta sem as barras). As margens das barras do sistema guardam o maior valor visto
     em cada orientação, então esconder as barras não move a página: num EPUB, mover a página repaginaria o livro.
   - No desktop nada mudou: a margem fixa para as barras e a janela como está.
   - Cenários em `test/scenarios/reader/phone.feature`.

@@ -33,8 +33,8 @@ import 'spreads.dart';
 /// a tap on a link in an EPUB follows it, with a button to come back.
 ///
 /// On touch (a phone, a tablet) the page is laid out for the whole screen
-/// and the bars come over it; hiding them hides the system's bars too (full
-/// screen). On a phone it is always one page at a time ([showsTwoPages]).
+/// and the bars come over it. The book opens without them; they are hidden
+/// and shown together with the system's bars (full screen). On a phone it is always one page at a time ([showsTwoPages]).
 ///
 /// Keys: ← → PgUp PgDn turn pages, Space the next one, Home / End the
 /// first / last, Esc or Backspace back.
@@ -356,8 +356,15 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
   Widget _reading(BuildContext context, ReaderSession session) {
     if (!_focusAsked) {
       _focusAsked = true;
+      // On touch the book opens full screen, without the bars (a tap in the
+      // middle brings them). Only now that there is a book: while it loads,
+      // or fails to, the system's bars stay.
+      final fullScreen = isTouch(context);
+      _chromeVisible = !fullScreen;
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) _focus.requestFocus();
+        if (!mounted) return;
+        _focus.requestFocus();
+        if (fullScreen) _showChrome(false);
       });
     }
     return Focus(

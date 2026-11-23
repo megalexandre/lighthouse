@@ -8,6 +8,7 @@ import './hook/hooks.dart';
 import './step/the_app_is_signed_in.dart';
 import './step/the_app_runs_on_a.dart';
 import './step/i_read.dart';
+import './step/i_tap_the_middle.dart';
 import './step/i_open_the_contents.dart';
 import './step/i_use_the_phones_back.dart';
 import './step/the_contents_are_closed.dart';
@@ -17,13 +18,13 @@ import './step/the_page_fills_the_screen.dart';
 import './step/the_text_of_is_clear_of_the_phones_bars.dart';
 import './step/the_picture_is_as_wide_as_the_screen.dart';
 import './step/the_lines_of_are_at_most_wide.dart';
-import './step/i_note_where_the_page_is.dart';
-import './step/i_tap_the_middle.dart';
 import './step/the_bars_are_hidden.dart';
 import './step/the_phones_bars_are_hidden.dart';
-import './step/the_page_is_where_it_was.dart';
+import './step/i_note_where_the_page_is.dart';
 import './step/the_bars_are_shown.dart';
 import './step/the_phones_bars_are_shown.dart';
+import './step/the_page_is_where_it_was.dart';
+import './step/the_book_cannot_be_downloaded.dart';
 import './step/the_screen_stays_on.dart';
 import './step/the_screen_may_turn_off.dart';
 import './step/i_press.dart';
@@ -62,6 +63,7 @@ void main() {
         await beforeEach('''Back closes the contents, then leaves the book''');
         await bddSetUp(tester);
         await iRead(tester, 'book-epub');
+        await iTapTheMiddle(tester);
         await iOpenTheContents(tester);
         await iUseThePhonesBack(tester);
         await theContentsAreClosed(tester);
@@ -134,26 +136,67 @@ void main() {
         );
       }
     });
-    testWidgets('''Hiding the bars goes full screen''', (tester) async {
+    testWidgets('''A book opens full screen''', (tester) async {
       var success = true;
       try {
-        await beforeEach('''Hiding the bars goes full screen''');
+        await beforeEach('''A book opens full screen''');
+        await bddSetUp(tester);
+        await iRead(tester, 'book-comic');
+        await theBarsAreHidden(tester);
+        await thePhonesBarsAreHidden(tester);
+      } catch (_) {
+        success = false;
+        rethrow;
+      } finally {
+        await afterEach(
+          '''A book opens full screen''',
+          success,
+        );
+      }
+    });
+    testWidgets('''A tap in the middle shows the bars, another hides them''',
+        (tester) async {
+      var success = true;
+      try {
+        await beforeEach(
+            '''A tap in the middle shows the bars, another hides them''');
         await bddSetUp(tester);
         await iRead(tester, 'book-epub');
         await iNoteWhereThePageIs(tester);
         await iTapTheMiddle(tester);
+        await theBarsAreShown(tester);
+        await thePhonesBarsAreShown(tester);
+        await thePageIsWhereItWas(tester);
+        await iTapTheMiddle(tester);
         await theBarsAreHidden(tester);
         await thePhonesBarsAreHidden(tester);
         await thePageIsWhereItWas(tester);
-        await iTapTheMiddle(tester);
-        await theBarsAreShown(tester);
+      } catch (_) {
+        success = false;
+        rethrow;
+      } finally {
+        await afterEach(
+          '''A tap in the middle shows the bars, another hides them''',
+          success,
+        );
+      }
+    });
+    testWidgets('''A book that cannot be opened leaves the phone's bars''',
+        (tester) async {
+      var success = true;
+      try {
+        await beforeEach(
+            '''A book that cannot be opened leaves the phone's bars''');
+        await bddSetUp(tester);
+        await theBookCannotBeDownloaded(tester);
+        await iRead(tester, 'book-comic');
         await thePhonesBarsAreShown(tester);
       } catch (_) {
         success = false;
         rethrow;
       } finally {
         await afterEach(
-          '''Hiding the bars goes full screen''',
+          '''A book that cannot be opened leaves the phone's bars''',
           success,
         );
       }
@@ -165,7 +208,7 @@ void main() {
         await beforeEach('''Leaving the book gives the phone's bars back''');
         await bddSetUp(tester);
         await iRead(tester, 'book-epub');
-        await iTapTheMiddle(tester);
+        await thePhonesBarsAreHidden(tester);
         await iUseThePhonesBack(tester);
         await iAmBackOnTheBooksPage(tester);
         await thePhonesBarsAreShown(tester);
@@ -209,6 +252,7 @@ void main() {
         await theAppRunsOnA(tester, 'phone on its side');
         await iRead(tester, 'book-comic');
         await iPress(tester, 'Right');
+        await iTapTheMiddle(tester);
         await iPickThePageLayout(tester, 'double');
         await theReaderShows(tester, 'Page 2 of 5');
         await thereIsNoPageOnTheLeft(tester);
@@ -230,6 +274,7 @@ void main() {
         await theAppRunsOnA(tester, 'tablet on its side');
         await iRead(tester, 'book-comic');
         await iPress(tester, 'Right');
+        await iTapTheMiddle(tester);
         await iPickThePageLayout(tester, 'double');
         await theReaderShows(tester, 'Pages 2–3 of 5');
         await thereIsAPageOnTheLeft(tester);
