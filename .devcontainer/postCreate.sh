@@ -2,7 +2,8 @@
 # Runs once, inside the "app" container, right after it is created.
 set -euo pipefail
 
-# Versioned git hooks (.githooks/pre-commit runs flutter analyze).
+# Versioned git hooks: .githooks/pre-commit analyzes the staged Dart files,
+# .githooks/pre-push the whole project.
 git config core.hooksPath .githooks
 
 # Show what Flutter sees. The "Linux toolchain" and "Android toolchain"

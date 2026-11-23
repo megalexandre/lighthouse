@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+# Runs `flutter analyze` on the whole project before a push: any issue,
+# even an info, stops it. Still not tool/check.sh (the full gate).
+# Skip once with `git push --no-verify`.
+set -euo pipefail
+cd "$(git rev-parse --show-toplevel)/lighthouse"
+
+# The analyzer reads the working tree, not the commits being pushed: say so
+# when the two differ.
+if [[ -n "$(git status --porcelain -- .)" ]]; then
+  printf '\033[1;33mNote: lighthouse/ has uncommitted changes; they are analyzed too.\033[0m\n'
+fi
+
+printf '\033[1;35m== flutter analyze (before push)\033[0m\n'
+flutter analyze
