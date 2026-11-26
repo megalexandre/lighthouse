@@ -54,6 +54,9 @@ final connectionProvider =
 class ConnectionController extends Notifier<ConnectionStatus> {
   Timer? _timer;
 
+  /// When the server last answered a call.
+  DateTime? _lastAnswer;
+
   @override
   ConnectionStatus build() {
     ref.onDispose(() => _timer?.cancel());
@@ -61,12 +64,21 @@ class ConnectionController extends Notifier<ConnectionStatus> {
   }
 
   /// Every API call says how it went: [reachable] false only when nothing
-  /// answered at all.
-  void report({required bool reachable}) {
+  /// answered at all. A call that fails when the server has answered
+  /// others since it was sent ([sentAt]) says nothing about the server:
+  /// one stuck connection (a slow TLS handshake, a socket the network
+  /// dropped) while the rest go through. Without [sentAt], it is gone.
+  void report({required bool reachable, DateTime? sentAt}) {
     if (!ref.mounted) return; // a call that ended after the app scope
     if (reachable) {
+      _lastAnswer = DateTime.now();
       if (!state.reachable) _recovered();
     } else if (state.reachable) {
+      final answered = _lastAnswer;
+      if (sentAt != null && answered != null && answered.isAfter(sentAt)) {
+        log.info('connection', 'one call failed while others got through');
+        return;
+      }
       log.warning('connection', 'server unreachable, retrying');
       state = const ConnectionStatus.offline(attempts: 0);
       _schedule();

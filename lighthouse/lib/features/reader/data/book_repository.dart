@@ -79,7 +79,7 @@ class JellyfinBookRepository implements BookRepository {
     this._cache,
     this._store, {
     required void Function() onUnauthorized,
-    void Function({required bool reachable})? onReachability,
+    ReachabilityListener? onReachability,
     HttpClientAdapter? adapter,
     this.cacheLimit = defaultCacheLimit,
   }) : _client = SessionClient(

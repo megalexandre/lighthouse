@@ -111,6 +111,32 @@ void main() {
       });
     });
 
+    test('one call failing while later ones got answers: still online', () {
+      fakeAsync((clock) {
+        final c = start();
+        final sent = DateTime.now().subtract(const Duration(seconds: 1));
+        c.read(connectionProvider.notifier)
+          ..report(reachable: true)
+          ..report(reachable: false, sentAt: sent);
+        expect(c.read(connectionProvider).reachable, isTrue);
+        clock.elapse(const Duration(minutes: 1));
+        expect(app.pings, isEmpty);
+      });
+    });
+
+    test('a call failing after the last answer: offline', () {
+      fakeAsync((clock) {
+        final c = start();
+        c.read(connectionProvider.notifier)
+          ..report(reachable: true)
+          ..report(
+            reachable: false,
+            sentAt: DateTime.now().add(const Duration(milliseconds: 1)),
+          );
+        expect(c.read(connectionProvider).reachable, isFalse);
+      });
+    });
+
     test('Retry now tries at once', () {
       fakeAsync((clock) {
         final c = start();
@@ -154,7 +180,7 @@ void main() {
         testSession,
         () async => const ClientInfo(deviceId: 'd', device: 'pc'),
         onUnauthorized: () {},
-        onReachability: ({required reachable}) => seen.add(reachable),
+        onReachability: ({required reachable, sentAt}) => seen.add(reachable),
         adapter: FakeAdapter((_) async => json({}, status: status)),
       );
       try {
@@ -179,7 +205,7 @@ void main() {
         ),
         () async => const ClientInfo(deviceId: 'd', device: 'pc'),
         onUnauthorized: () {},
-        onReachability: ({required reachable}) => seen.add(reachable),
+        onReachability: ({required reachable, sentAt}) => seen.add(reachable),
       );
       await expectLater(
         client.call((api) => api.getJson('/x', (j) => j)),

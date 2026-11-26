@@ -108,7 +108,7 @@ class JellyfinSettingsRepository
     Future<ClientInfo> Function() client,
     this.store, {
     required void Function() onUnauthorized,
-    void Function({required bool reachable})? onReachability,
+    ReachabilityListener? onReachability,
     HttpClientAdapter? adapter,
   }) : _client = SessionClient(
          session,

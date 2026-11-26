@@ -126,7 +126,7 @@ class JellyfinLibraryRepository implements LibraryRepository {
     Session session,
     Future<ClientInfo> Function() client, {
     required void Function() onUnauthorized,
-    void Function({required bool reachable})? onReachability,
+    ReachabilityListener? onReachability,
     HttpClientAdapter? adapter,
   }) : _client = SessionClient(
          session,

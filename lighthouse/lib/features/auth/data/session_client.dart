@@ -5,6 +5,13 @@ import '../../../api/jellyfin_api.dart';
 import '../../../core/failure.dart';
 import 'session.dart';
 
+/// Hears whether the server answered a call ([reachable] false: nothing
+/// did) and when that call was sent.
+typedef ReachabilityListener = void Function({
+  required bool reachable,
+  DateTime? sentAt,
+});
+
 /// Calls the API as the signed-in user. A 401 means the token was revoked
 /// while the app was open: [onUnauthorized] sends the app back to login,
 /// and the call still fails. [onReachability] hears after every call
@@ -27,19 +34,20 @@ class SessionClient {
 
   final Session session;
   final void Function() onUnauthorized;
-  final void Function({required bool reachable})? onReachability;
+  final ReachabilityListener? onReachability;
   final Future<JellyfinApi> _api;
 
   String get userId => session.userId;
   String get baseUrl => session.server.url;
 
   Future<T> call<T>(Future<T> Function(JellyfinApi api) request) async {
+    final sentAt = DateTime.now();
     try {
       final result = await request(await _api);
       onReachability?.call(reachable: true);
       return result;
     } on ServerUnreachable {
-      onReachability?.call(reachable: false);
+      onReachability?.call(reachable: false, sentAt: sentAt);
       rethrow;
     } on Unauthorized {
       onReachability?.call(reachable: true);
