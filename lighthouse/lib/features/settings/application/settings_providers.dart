@@ -57,6 +57,23 @@ class MaxStreamingBitrateController extends AsyncNotifier<int?> {
   }
 }
 
+/// Which swipes the player answers on touch (this device's).
+final swipeSettingsProvider =
+    AsyncNotifierProvider<SwipeSettingsController, SwipeSettings>(
+      SwipeSettingsController.new,
+    );
+
+class SwipeSettingsController extends AsyncNotifier<SwipeSettings> {
+  @override
+  Future<SwipeSettings> build() =>
+      ref.watch(settingsRepositoryProvider).swipes();
+
+  Future<void> set(SwipeSettings swipes) async {
+    await ref.read(settingsRepositoryProvider).setSwipes(swipes);
+    if (ref.mounted) state = AsyncData(swipes);
+  }
+}
+
 /// The choices of the quality setting: (bits/s or null, label).
 const qualityOptions = <(int?, String)>[
   (null, 'Maximum'),

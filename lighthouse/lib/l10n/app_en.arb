@@ -551,6 +551,22 @@
   "@autoplayNext": {
     "description": "Settings switch."
   },
+  "swipeLevels": "Swipe for brightness and volume",
+  "@swipeLevels": {
+    "description": "Settings switch (touch): swiping up or down on the video changes the brightness (left half) and the volume (right half)."
+  },
+  "swipeLevelsHelp": "Up or down on the video: the left half for brightness, the right half for volume.",
+  "@swipeLevelsHelp": {
+    "description": "Under the swipeLevels switch."
+  },
+  "swipeSeek": "Swipe to seek",
+  "@swipeSeek": {
+    "description": "Settings switch (touch): swiping sideways on the video moves through it."
+  },
+  "swipeSeekHelp": "Sideways on the video: back or forward, longer swipes go further.",
+  "@swipeSeekHelp": {
+    "description": "Under the swipeSeek switch."
+  },
   "themeNotUsed": "{file}: not used ({error})",
   "@themeNotUsed": {
     "description": "A theme file that could not be read; error is technical.",

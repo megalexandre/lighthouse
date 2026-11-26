@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
@@ -22,6 +23,7 @@ import 'osd/track_menu.dart';
 import 'osd/up_next.dart';
 import 'player_keys.dart';
 import 'player_overlays.dart';
+import 'player_swipes.dart';
 
 /// The player while an item plays: the picture (or the album cover), the
 /// on-screen controls that hide after a while, the keys, the "Up next"
@@ -264,21 +266,40 @@ class _PlayerViewState extends ConsumerState<PlayerView> {
               if (isTouch(context) && !_isAudio)
                 // As phone players do: a tap shows or hides the controls
                 // (play / pause is their button), a double tap on either
-                // half goes back or on 10 s.
-                _Picture(
-                  session: session,
-                  onTap: () => _osdVisible ? _setOsd(false) : _show(),
-                  onDoubleTapAt: (side) =>
-                      unawaited(_seekBy(side < 0 ? -seekStep : seekStep)),
+                // half goes back or on 10 s, and swipes change the
+                // brightness, the volume and the position.
+                PlayerSwipes(
+                  engine: engine,
+                  child: _Picture(
+                    session: session,
+                    onTap: () => _osdVisible ? _setOsd(false) : _show(),
+                    onDoubleTapAt: (side) =>
+                        unawaited(_seekBy(side < 0 ? -seekStep : seekStep)),
+                  ),
                 )
               else
-                _Picture(
-                  session: session,
-                  onTap: () {
-                    unawaited(engine.playOrPause());
-                    _show();
+                // The mouse wheel over the picture: the volume, as the
+                // up and down keys.
+                Listener(
+                  onPointerSignal: (event) {
+                    if (event case PointerScrollEvent(:final scrollDelta)
+                        when scrollDelta.dy != 0) {
+                      unawaited(
+                        c.changeVolume(
+                          scrollDelta.dy < 0 ? volumeStep : -volumeStep,
+                        ),
+                      );
+                      _show();
+                    }
                   },
-                  onDoubleTap: _isAudio ? null : _toggleFullscreen,
+                  child: _Picture(
+                    session: session,
+                    onTap: () {
+                      unawaited(engine.playOrPause());
+                      _show();
+                    },
+                    onDoubleTap: _isAudio ? null : _toggleFullscreen,
+                  ),
                 ),
               if (session.interruptedAt case final Duration at)
                 InterruptedNotice(

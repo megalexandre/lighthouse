@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../api/client_info.dart';
@@ -35,6 +36,31 @@ abstract interface class SettingsRepository {
   /// Bits per second, null = no limit.
   Future<int?> maxStreamingBitrate();
   Future<void> setMaxStreamingBitrate(int? bitsPerSecond);
+
+  /// Which swipes the player answers on touch (this device's).
+  Future<SwipeSettings> swipes();
+  Future<void> setSwipes(SwipeSettings swipes);
+}
+
+/// The player's swipes on touch, both on unless turned off: up and down
+/// for brightness (left half) and volume (right half), and sideways to
+/// seek.
+@immutable
+class SwipeSettings {
+  const SwipeSettings({this.levels = true, this.seek = true});
+
+  final bool levels;
+  final bool seek;
+
+  SwipeSettings copyWith({bool? levels, bool? seek}) =>
+      SwipeSettings(levels: levels ?? this.levels, seek: seek ?? this.seek);
+
+  @override
+  bool operator ==(Object other) =>
+      other is SwipeSettings && other.levels == levels && other.seek == seek;
+
+  @override
+  int get hashCode => Object.hash(levels, seek);
 }
 
 /// Empty language = "no preference" (the server's own value for it).
@@ -96,6 +122,22 @@ mixin _LocalSettings {
   Future<void> setMaxStreamingBitrate(int? bitsPerSecond) async {
     final settings = await _read()
       ..['maxStreamingBitrate'] = bitsPerSecond;
+    await store.write(key, jsonEncode(settings));
+  }
+
+  /// Anything but false (nothing stored, another type) leaves one on.
+  Future<SwipeSettings> swipes() async {
+    final settings = await _read();
+    return SwipeSettings(
+      levels: settings['swipeLevels'] != false,
+      seek: settings['swipeSeek'] != false,
+    );
+  }
+
+  Future<void> setSwipes(SwipeSettings swipes) async {
+    final settings = await _read()
+      ..['swipeLevels'] = swipes.levels
+      ..['swipeSeek'] = swipes.seek;
     await store.write(key, jsonEncode(settings));
   }
 }

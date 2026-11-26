@@ -535,6 +535,26 @@ Achados no código, que no Android quebram sem erro visível:
   - Conferir no aparelho: um álbum até o fim com a tela apagada, a notificação troca de faixa (com a capa e o ícone
     no build de release), uma ligação pausa e retoma, o fone desconectado pausa, e os reportes chegam ao servidor
     com a tela apagada.
+- **Gestos no player (código feito; falta conferir no aparelho):** pedido depois de usar o APK, no modelo do app
+  Android do Jellyfin (`PlayerGestureHelper.kt` do jellyfin-android, lido como referência). Cenários em
+  `test/scenarios/player/swipes.feature`.
+  - No toque, deslizar para cima ou para baixo: na metade esquerda o brilho, na direita o volume. Deslizar 60% da
+    altura vai de zero ao máximo. Para os lados, avançar ou voltar: um minuto para meia largura, três para a largura
+    inteira, passos finos nos gestos curtos (`swipeSeekOffset`). O salto acontece quando o dedo solta (um só pedido
+    ao servidor), e enquanto isso a tela mostra "+1:00" e "1:30 / 45:00". O gesto é de um tipo ou outro, decidido
+    pelos primeiros movimentos (um eixo com o dobro do outro).
+  - Gestos que começam a menos de 48 px de uma borda, ou dentro das áreas de gesto do sistema, são do Android
+    (voltar, notificações).
+  - Volume: o do sistema (`STREAM_MUSIC`, o das teclas do celular), sem o controle do Android na tela. Brilho: só o
+    da janela do app (`screenBrightness`), nunca a configuração do sistema; volta ao do aparelho quando o player
+    fecha. Pelo canal `lighthouse/device` (`core/device_levels.dart`, `MainActivity.kt`).
+  - Configurações, no toque: "Deslizar para brilho e volume" e "Deslizar para avançar e voltar", ligados por padrão,
+    guardados neste aparelho.
+  - Desktop: avançar e voltar já são as setas; a roda do mouse sobre o vídeo muda o volume (o do mpv), como as setas
+    para cima e para baixo. O brilho fica de fora: a janela de um app no Linux não controla o brilho da tela.
+  - Fica para depois: segurar o dedo para acelerar e a pinça para preencher a tela.
+  - Conferir no aparelho: o volume acompanha as teclas, o brilho volta ao sair do player, e o gesto de voltar do
+    Android e a cortina de notificações continuam funcionando sobre o vídeo.
 - **A2d, build, testes e release:**
   - `tool/build_apk.sh`: release, um APK por ABI, assinado com uma chave fora do repo (secrets na CI). Smoke test
     do APK no emulador, como o AppImage.

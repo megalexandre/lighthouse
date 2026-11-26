@@ -1,3 +1,4 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lighthouse/api/models/playback_report.dart';
@@ -71,3 +72,32 @@ PlaybackProgressInfo lastReport() => app.playback.progress.isEmpty
     : app.playback.progress.last;
 
 const ticksPerSecond = 10000000;
+
+/// Where the video is: the player, the whole window.
+Rect videoArea(WidgetTester tester) =>
+    tester.getRect(find.byType(PlayerScreen));
+
+/// Where a sideways swipe of [percent] of the video's width toward [side]
+/// starts (a little above the middle, clear of the big play button and of
+/// the edges), and how far it goes.
+(Offset, Offset) sideways(WidgetTester tester, num percent, String side) {
+  final video = videoArea(tester);
+  final toLeft = side == 'left';
+  final start = video.topLeft.translate(
+    video.width * (toLeft ? 0.75 : 0.25),
+    video.height * 0.4,
+  );
+  final by = video.width * percent / 100;
+  return (start, Offset(toLeft ? -by : by, 0));
+}
+
+/// The mouse wheel turned by [delta] over the video, beside its middle
+/// (the big play button is there).
+Future<void> scrollOverVideo(WidgetTester tester, Offset delta) async {
+  final video = videoArea(tester);
+  final mouse = TestPointer(1, PointerDeviceKind.mouse);
+  final at = video.topLeft.translate(video.width * 0.25, video.height * 0.4);
+  await tester.sendEventToBinding(mouse.hover(at));
+  await tester.sendEventToBinding(mouse.scroll(delta));
+  await tester.pumpAndSettle();
+}

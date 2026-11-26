@@ -18,6 +18,7 @@ import 'package:lighthouse/api/models/playback_report.dart';
 import 'package:lighthouse/api/models/user_configuration.dart';
 import 'package:lighthouse/api/models/user_item_data_dto.dart';
 import 'package:lighthouse/app.dart';
+import 'package:lighthouse/core/device_levels.dart';
 import 'package:lighthouse/core/failure.dart';
 import 'package:lighthouse/core/storage.dart';
 import 'package:lighthouse/core/theme/appearance.dart';
@@ -797,6 +798,14 @@ class FakeSettingsRepository implements SettingsRepository {
   @override
   Future<void> setMaxStreamingBitrate(int? bitsPerSecond) async =>
       bitrate = bitsPerSecond;
+
+  SwipeSettings swipeSettings = const SwipeSettings();
+
+  @override
+  Future<SwipeSettings> swipes() async => swipeSettings;
+
+  @override
+  Future<void> setSwipes(SwipeSettings swipes) async => swipeSettings = swipes;
 }
 
 /// Serves the fixture files and records what the reader saves.
@@ -906,6 +915,25 @@ class FakeAppWindow implements AppWindow {
   bool staysOn = false;
 }
 
+/// A phone's media volume and window brightness, 0..1. [brightness] null:
+/// the window follows the screen's, [screenBrightness].
+class FakeDeviceLevels implements DeviceLevels {
+  double volumeLevel = 0.5;
+  double screenBrightness = 0.5;
+  double? brightnessLevel;
+
+  @override
+  Future<double?> volume() async => volumeLevel;
+  @override
+  Future<void> setVolume(double level) async => volumeLevel = level;
+  @override
+  Future<double?> brightness() async => brightnessLevel ?? screenBrightness;
+  @override
+  Future<void> setBrightness(double level) async => brightnessLevel = level;
+  @override
+  Future<void> resetBrightness() async => brightnessLevel = null;
+}
+
 /// The phone's sound, which tests take away and give back with [happen].
 class FakeAudioFocus implements AudioFocus {
   final _events = StreamController<AudioFocusEvent>.broadcast();
@@ -996,6 +1024,7 @@ class TestApp {
   final library = FakeLibraryRepository();
   final playback = FakePlaybackRepository();
   final window = FakeAppWindow();
+  final levels = FakeDeviceLevels();
   final audioFocus = FakeAudioFocus();
   final mediaControls = FakeMediaControls();
   final settings = FakeSettingsRepository();
@@ -1046,6 +1075,7 @@ class TestApp {
     libraryRepositoryProvider.overrideWithValue(library),
     playbackRepositoryProvider.overrideWithValue(playback),
     appWindowProvider.overrideWithValue(window),
+    deviceLevelsProvider.overrideWithValue(levels),
     audioFocusProvider.overrideWithValue(audioFocus),
     mediaControlsProvider.overrideWithValue(mediaControls),
     settingsRepositoryProvider.overrideWithValue(settings),

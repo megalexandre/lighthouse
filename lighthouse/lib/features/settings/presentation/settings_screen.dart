@@ -10,6 +10,7 @@ import '../../../core/failure.dart';
 import '../../../core/log.dart';
 import '../../../core/theme/appearance.dart';
 import '../../../core/theme/theme_catalog.dart';
+import '../../../core/touch.dart';
 import '../../../core/window_size.dart';
 import '../../../l10n/l10n.dart';
 import '../../../widgets/error_retry.dart';
@@ -19,6 +20,7 @@ import '../data/settings_repository.dart';
 
 /// Playback settings: quality (this device), audio and subtitle languages,
 /// when subtitles show, next episode autoplay (the user's, on the server);
+/// on touch, the player's swipes (this device);
 /// the app's look (theme and mode, this device; docs/THEMES.md).
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
@@ -28,6 +30,8 @@ class SettingsScreen extends ConsumerWidget {
   static const subtitleLanguageField = Key('settings.subtitleLanguage');
   static const subtitleModeField = Key('settings.subtitleMode');
   static const autoplaySwitch = Key('settings.autoplay');
+  static const swipeLevelsSwitch = Key('settings.swipeLevels');
+  static const swipeSeekSwitch = Key('settings.swipeSeek');
   static const themeField = Key('settings.theme');
   static const languageField = Key('settings.language');
   static Key modeChoice(ThemeMode mode) => Key('settings.mode.${mode.name}');
@@ -76,6 +80,7 @@ class SettingsScreen extends ConsumerWidget {
                 child: Center(child: CircularProgressIndicator()),
               ),
             },
+            if (isTouch(context)) const _SwipeSettings(),
             _Heading(context.l10n.appearance),
             const _AppearanceSettings(),
             if (session != null) ...[
@@ -89,6 +94,43 @@ class SettingsScreen extends ConsumerWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+/// The player's swipes (this device's): a phone's, since only touch has
+/// them.
+class _SwipeSettings extends ConsumerWidget {
+  const _SwipeSettings();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final swipes =
+        ref.watch(swipeSettingsProvider).value ?? const SwipeSettings();
+    // From the settings at the tap, not at this build.
+    Future<void> update(SwipeSettings Function(SwipeSettings) change) {
+      final now =
+          ref.read(swipeSettingsProvider).value ?? const SwipeSettings();
+      return ref.read(swipeSettingsProvider.notifier).set(change(now));
+    }
+
+    return Column(
+      children: [
+        SwitchListTile(
+          key: SettingsScreen.swipeLevelsSwitch,
+          title: Text(context.l10n.swipeLevels),
+          subtitle: Text(context.l10n.swipeLevelsHelp),
+          value: swipes.levels,
+          onChanged: (v) => update((s) => s.copyWith(levels: v)),
+        ),
+        SwitchListTile(
+          key: SettingsScreen.swipeSeekSwitch,
+          title: Text(context.l10n.swipeSeek),
+          subtitle: Text(context.l10n.swipeSeekHelp),
+          value: swipes.seek,
+          onChanged: (v) => update((s) => s.copyWith(seek: v)),
+        ),
+      ],
     );
   }
 }

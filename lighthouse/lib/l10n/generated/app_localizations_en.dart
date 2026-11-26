@@ -393,6 +393,20 @@ class AppLocalizationsEn extends AppLocalizations {
   String get autoplayNext => 'Play the next episode automatically';
 
   @override
+  String get swipeLevels => 'Swipe for brightness and volume';
+
+  @override
+  String get swipeLevelsHelp =>
+      'Up or down on the video: the left half for brightness, the right half for volume.';
+
+  @override
+  String get swipeSeek => 'Swipe to seek';
+
+  @override
+  String get swipeSeekHelp =>
+      'Sideways on the video: back or forward, longer swipes go further.';
+
+  @override
   String themeNotUsed(String file, String error) {
     return '$file: not used ($error)';
   }

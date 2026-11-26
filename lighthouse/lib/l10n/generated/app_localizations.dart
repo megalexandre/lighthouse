@@ -753,6 +753,30 @@ abstract class AppLocalizations {
   /// **'Play the next episode automatically'**
   String get autoplayNext;
 
+  /// Settings switch (touch): swiping up or down on the video changes the brightness (left half) and the volume (right half).
+  ///
+  /// In en, this message translates to:
+  /// **'Swipe for brightness and volume'**
+  String get swipeLevels;
+
+  /// Under the swipeLevels switch.
+  ///
+  /// In en, this message translates to:
+  /// **'Up or down on the video: the left half for brightness, the right half for volume.'**
+  String get swipeLevelsHelp;
+
+  /// Settings switch (touch): swiping sideways on the video moves through it.
+  ///
+  /// In en, this message translates to:
+  /// **'Swipe to seek'**
+  String get swipeSeek;
+
+  /// Under the swipeSeek switch.
+  ///
+  /// In en, this message translates to:
+  /// **'Sideways on the video: back or forward, longer swipes go further.'**
+  String get swipeSeekHelp;
+
   /// A theme file that could not be read; error is technical.
   ///
   /// In en, this message translates to:
