@@ -555,6 +555,22 @@ Achados no código, que no Android quebram sem erro visível:
   - Fica para depois: segurar o dedo para acelerar e a pinça para preencher a tela.
   - Conferir no aparelho: o volume acompanha as teclas, o brilho volta ao sair do player, e o gesto de voltar do
     Android e a cortina de notificações continuam funcionando sobre o vídeo.
+- **Painel lateral do player (código feito; falta conferir no aparelho):** como o do Stremio. Cenários em
+  `test/scenarios/player/side_panel.feature`.
+  - Num episódio, os episódios da série por temporada (abas, começando pela do que toca): miniatura com o progresso,
+    número e nome, duração, marca de assistido; o que toca fica marcado ("Reproduzindo") e a lista abre rolada até
+    ele. Um toque toca outro episódio pelo mesmo caminho do Próximo (guarda o ponto antes). A lista vem do mesmo
+    `seriesEpisodesProvider` do Próximo/Anterior: um pedido só.
+  - Num filme com dois capítulos ou mais, os capítulos: nome (ou "Capítulo N") e início, o atual acompanha a
+    posição, um toque pula para ele. A miniatura é o quadro do trickplay no início do capítulo
+    (`TrickplayThumbnails.still`, uma imagem própria: a barra de tempo guarda só três tiles). Sem trickplay, um
+    ícone. As imagens de capítulo do próprio Jellyfin (extraídas pelo servidor, se configurado) ficam para depois.
+  - Sem painel: filme com menos de dois capítulos, e música (as faixas do álbum ficam para depois).
+  - Abre pelo botão da barra (Episódios ou Capítulos) ou C; fica à direita, por cima do vídeo, com cerca de 42% da
+    largura entre 300 e 400 px. Fecha no X, num clique fora, com Esc ou o voltar do Android, antes de sair do
+    player. Os controles ficam visíveis enquanto ele está aberto, e os gestos de deslizar param (o clique fora
+    cobre o vídeo). No teclado, as setas percorrem a lista e Enter escolhe; ao fechar, as teclas voltam ao player.
+  - Igual no desktop e no Android (no celular, sempre em paisagem); só muda a entrada.
 - **A2d, build, testes e release:**
   - `tool/build_apk.sh`: release, um APK por ABI, assinado com uma chave fora do repo (secrets na CI). Smoke test
     do APK no emulador, como o AppImage.

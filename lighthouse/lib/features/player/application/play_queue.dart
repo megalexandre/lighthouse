@@ -21,6 +21,14 @@ Neighbors neighborsIn(List<BaseItemDto> queue, String itemId) {
   );
 }
 
+/// Every episode of a series, in order: what plays on, and the player's
+/// side panel. One request for both.
+final seriesEpisodesProvider = FutureProvider.autoDispose
+    .family<List<BaseItemDto>, String>(
+      (ref, seriesId) =>
+          ref.watch(libraryRepositoryProvider).seriesEpisodes(seriesId),
+    );
+
 final playNeighborsProvider = FutureProvider.autoDispose
     .family<Neighbors, String>((ref, itemId) async {
       final library = ref.watch(libraryRepositoryProvider);
@@ -28,7 +36,7 @@ final playNeighborsProvider = FutureProvider.autoDispose
         final item = await library.item(itemId);
         final queue = switch (item) {
           BaseItemDto(type: BaseItemKind.episode, seriesId: final String id) =>
-            await library.seriesEpisodes(id),
+            await ref.watch(seriesEpisodesProvider(id).future),
           BaseItemDto(type: BaseItemKind.audio, albumId: final String id) =>
             await library.tracks(id),
           _ => const <BaseItemDto>[],

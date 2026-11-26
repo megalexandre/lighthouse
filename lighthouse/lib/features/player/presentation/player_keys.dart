@@ -24,6 +24,9 @@ enum PlayerAction {
   /// Next / previous episode or track ("step" in keyboard.json).
   next,
   previous,
+
+  /// The side panel: the series' episodes, or the movie's chapters.
+  contents,
 }
 
 /// The player's keys, ported from jellyfin-desktop's
@@ -100,6 +103,8 @@ const playerKeyBindings = <(SingleActivator, PlayerAction)>[
     PlayerAction.fullscreen,
   ),
   (SingleActivator(LogicalKeyboardKey.keyF), PlayerAction.fullscreen),
+  // Not in keyboard.json: C for "contents" (episodes or chapters).
+  (SingleActivator(LogicalKeyboardKey.keyC), PlayerAction.contents),
   (
     SingleActivator(LogicalKeyboardKey.enter, alt: true),
     PlayerAction.fullscreen,

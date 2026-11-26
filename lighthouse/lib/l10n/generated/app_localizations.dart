@@ -747,6 +747,36 @@ abstract class AppLocalizations {
   /// **'Never'**
   String get subtitlesNever;
 
+  /// Player side panel title, and its button on a video with chapters.
+  ///
+  /// In en, this message translates to:
+  /// **'Chapters'**
+  String get chapters;
+
+  /// A chapter with no name, in the player's side panel.
+  ///
+  /// In en, this message translates to:
+  /// **'Chapter {number}'**
+  String chapterNumber(int number);
+
+  /// A season with no name, in the player's side panel.
+  ///
+  /// In en, this message translates to:
+  /// **'Season {number}'**
+  String seasonNumber(int number);
+
+  /// Under the episode or chapter playing now, in the player's side panel.
+  ///
+  /// In en, this message translates to:
+  /// **'Playing'**
+  String get playingNow;
+
+  /// Button that closes a panel.
+  ///
+  /// In en, this message translates to:
+  /// **'Close'**
+  String get close;
+
   /// Settings switch.
   ///
   /// In en, this message translates to:

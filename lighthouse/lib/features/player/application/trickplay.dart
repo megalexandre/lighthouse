@@ -107,6 +107,27 @@ class TrickplayThumbnails {
     return at(position);
   }
 
+  /// The picture at [position] as an image of its own, which the caller
+  /// disposes: one that outlives the tiles kept here (a list of chapters
+  /// spans more tiles than [_keep]). Null when it cannot be had.
+  Future<ui.Image?> still(Duration position) async {
+    final thumbnail = await load(position);
+    if (thumbnail == null) return null;
+    final recorder = ui.PictureRecorder();
+    ui.Canvas(recorder).drawImageRect(
+      thumbnail.image,
+      thumbnail.source,
+      ui.Offset.zero & thumbnail.source.size,
+      ui.Paint(),
+    );
+    final picture = recorder.endRecording();
+    try {
+      return await picture.toImage(info.width, info.height);
+    } finally {
+      picture.dispose();
+    }
+  }
+
   Future<ui.Image?> _decode(int tile) async {
     try {
       final bytes = await _fetch.trickplayTile(

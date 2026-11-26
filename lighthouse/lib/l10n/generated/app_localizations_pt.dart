@@ -391,6 +391,25 @@ class AppLocalizationsPt extends AppLocalizations {
   String get subtitlesNever => 'Nunca';
 
   @override
+  String get chapters => 'Capítulos';
+
+  @override
+  String chapterNumber(int number) {
+    return 'Capítulo $number';
+  }
+
+  @override
+  String seasonNumber(int number) {
+    return 'Temporada $number';
+  }
+
+  @override
+  String get playingNow => 'Reproduzindo';
+
+  @override
+  String get close => 'Fechar';
+
+  @override
   String get autoplayNext => 'Reproduzir o próximo episódio automaticamente';
 
   @override

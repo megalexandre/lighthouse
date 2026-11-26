@@ -140,4 +140,27 @@ void main() {
       expect(repo.tilesAsked.where((t) => t == 'movie-1/160/0'), hasLength(2));
     },
   );
+
+  test(
+    'a still is a picture of its own: it outlives the tiles let go',
+    () async {
+      final repo = FakePlaybackRepository()..tile = await tilePng();
+      final thumbs = TrickplayThumbnails.of(
+        withTrickplay({'160': info.copyWith(thumbnailCount: 60)}),
+        'source-1',
+        repo,
+      )!;
+      addTearDown(thumbs.dispose);
+      final still = (await thumbs.still(Duration.zero))!;
+      addTearDown(still.dispose);
+      // Tile 0 let go, as a list of chapters across a movie does.
+      for (var tile = 1; tile < 5; tile++) {
+        await thumbs.load(Duration(seconds: 9 * tile));
+      }
+      expect(thumbs.at(Duration.zero), isNull);
+      expect((still.width, still.height), (160, 90));
+      final pixels = await still.toByteData();
+      expect(pixels!.getUint32(0), 0x336699FF, reason: 'the tile, RGBA');
+    },
+  );
 }

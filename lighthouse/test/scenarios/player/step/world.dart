@@ -38,6 +38,7 @@ const keys = {
   'L': LogicalKeyboardKey.keyL,
   'M': LogicalKeyboardKey.keyM,
   'S': LogicalKeyboardKey.keyS,
+  'C': LogicalKeyboardKey.keyC,
   'F11': LogicalKeyboardKey.f11,
   'Next track': LogicalKeyboardKey.mediaTrackNext,
 };
@@ -57,6 +58,10 @@ const buttons = <String, Key>{
   '+10 s': PlayerScreen.seekForwardButton,
   '-10 s': PlayerScreen.seekBackButton,
   'settings': PlayerScreen.settingsButton,
+  // The side panel's: "episodes" on an episode, "chapters" on a movie.
+  'episodes': PlayerScreen.sidePanelButton,
+  'chapters': PlayerScreen.sidePanelButton,
+  'close panel': PlayerScreen.sidePanelClose,
   'resume after break': PlayerScreen.resumeAfterBreak,
 };
 
@@ -101,3 +106,13 @@ Future<void> scrollOverVideo(WidgetTester tester, Offset delta) async {
   await tester.sendEventToBinding(mouse.scroll(delta));
   await tester.pumpAndSettle();
 }
+
+/// The side panel's rows, as their titles: episodes ("2. Episode 2") or
+/// chapters ("Storm").
+Finder panelRow(String title) => find.ancestor(
+  of: find.descendant(
+    of: find.byKey(PlayerScreen.sidePanel),
+    matching: find.text(title),
+  ),
+  matching: find.byType(InkWell),
+);

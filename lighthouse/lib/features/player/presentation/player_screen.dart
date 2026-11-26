@@ -53,6 +53,15 @@ class PlayerScreen extends ConsumerWidget {
   static const previousButton = Key('player.previous');
   static const cover = Key('player.cover');
   static const resumeAfterBreak = Key('player.resumeAfterBreak');
+
+  /// The side panel (episodes or chapters), its button and its close.
+  static const sidePanel = Key('player.panel');
+  static const sidePanelButton = Key('player.panelButton');
+  static const sidePanelClose = Key('player.panel.close');
+  static Key panelSeason(String season) => Key('player.panel.season.$season');
+  static Key panelEpisode(String id) => Key('player.panel.episode.$id');
+  static Key panelWatched(String id) => Key('player.panel.watched.$id');
+  static Key panelChapter(int index) => Key('player.panel.chapter.$index');
   static Key audioItem(int index) => Key('player.audio.$index');
   static Key subtitleItem(int index) => Key('player.subtitle.$index');
 
@@ -121,6 +130,7 @@ class PlayerScreen extends ConsumerWidget {
               onPrevious: neighbors.previous == null
                   ? null
                   : () => goTo(neighbors.previous!),
+              onPlay: goTo,
             ),
             AsyncError(:final error) => PlayerMessage(
               onBack: () => context.pop(),

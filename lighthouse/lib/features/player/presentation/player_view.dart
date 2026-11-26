@@ -19,6 +19,7 @@ import '../data/player_engine.dart';
 import 'osd/player_osd.dart';
 import 'osd/seek_bar.dart';
 import 'osd/settings_menu.dart';
+import 'osd/side_panel.dart';
 import 'osd/track_menu.dart';
 import 'osd/up_next.dart';
 import 'player_keys.dart';
@@ -36,6 +37,7 @@ class PlayerView extends ConsumerStatefulWidget {
     required this.onBack,
     this.onNext,
     this.onPrevious,
+    this.onPlay,
     this.upNext,
   });
 
@@ -46,6 +48,10 @@ class PlayerView extends ConsumerStatefulWidget {
   /// Null when there is nothing after / before.
   final VoidCallback? onNext;
   final VoidCallback? onPrevious;
+
+  /// Plays another episode of the series in this one's place (the side
+  /// panel's list).
+  final void Function(BaseItemDto item)? onPlay;
 
   /// The episode that will play on at the end, for the "Up next" card
   /// (null: nothing plays on).
@@ -85,6 +91,17 @@ class _PlayerViewState extends ConsumerState<PlayerView> {
   /// The settings panel, while open, and the page it opened on.
   SettingsPage? _menu;
   final _menuKey = GlobalKey<SettingsMenuState>();
+
+  /// The side panel this item has (null: none), and whether it is open.
+  late final PanelContents? _panelContents = PanelContents.of(
+    widget.session.item,
+    _chapters,
+  );
+  bool _panelOpen = false;
+
+  /// The player's keys: focus comes back here when the panel, which takes
+  /// it for its list, closes.
+  final _focus = FocusNode(debugLabel: 'player');
 
   /// The "Up next" card was dismissed (for this item).
   bool _upNextHidden = false;
@@ -127,6 +144,7 @@ class _PlayerViewState extends ConsumerState<PlayerView> {
 
   @override
   void dispose() {
+    _focus.dispose();
     _hideTimer?.cancel();
     unawaited(_playing?.cancel());
     _thumbnails?.dispose();
@@ -152,7 +170,9 @@ class _PlayerViewState extends ConsumerState<PlayerView> {
     if (_isAudio) return;
     _hideTimer = Timer(hideAfter, () {
       // Not while a menu is open: the user is choosing.
-      if (mounted && engine.playing && _menu == null) _setOsd(false);
+      if (mounted && engine.playing && _menu == null && !_panelOpen) {
+        _setOsd(false);
+      }
     });
   }
 
@@ -180,8 +200,28 @@ class _PlayerViewState extends ConsumerState<PlayerView> {
   Future<void> _next() async => widget.onNext?.call();
 
   void _openMenu(SettingsPage page) {
-    setState(() => _menu = page);
+    setState(() {
+      _menu = page;
+      _panelOpen = false;
+    });
     _show(hide: false);
+  }
+
+  void _togglePanel() {
+    if (_panelContents == null) return;
+    if (_panelOpen) return _closePanel();
+    setState(() {
+      _panelOpen = true;
+      _menu = null;
+    });
+    _show(hide: false);
+  }
+
+  void _closePanel() {
+    if (!_panelOpen) return;
+    setState(() => _panelOpen = false);
+    _focus.requestFocus();
+    _scheduleHide();
   }
 
   void _closeMenu() {
@@ -193,16 +233,24 @@ class _PlayerViewState extends ConsumerState<PlayerView> {
   /// Esc or the system's Back: in the menu one level up, then closed (not
   /// leaving the player); otherwise out of the player.
   void _back() {
+    if (_panelOpen) return _closePanel();
     if (_menu == null) return widget.onBack();
     if (!(_menuKey.currentState?.back() ?? false)) _closeMenu();
   }
 
   KeyEventResult _onKey(FocusNode _, KeyEvent event) {
-    if (_menu != null &&
+    if ((_menu != null || _panelOpen) &&
         event is KeyDownEvent &&
         event.logicalKey == LogicalKeyboardKey.escape) {
       _back();
       return KeyEventResult.handled;
+    }
+    // The panel's list takes the rest (arrows, Enter, Space), but for its
+    // own key.
+    if (_panelOpen &&
+        !(event is KeyDownEvent &&
+            event.logicalKey == LogicalKeyboardKey.keyC)) {
+      return KeyEventResult.ignored;
     }
     final action = playerActionFor(event, HardwareKeyboard.instance);
     if (action == null) return KeyEventResult.ignored;
@@ -226,6 +274,7 @@ class _PlayerViewState extends ConsumerState<PlayerView> {
       PlayerAction.fullscreen => Future.sync(_toggleFullscreen),
       PlayerAction.next => _next(),
       PlayerAction.previous => _previous(),
+      PlayerAction.contents => Future.sync(_togglePanel),
     };
     switch (action) {
       // A track that needs a new stream can fail: said, as from the menu.
@@ -255,6 +304,7 @@ class _PlayerViewState extends ConsumerState<PlayerView> {
         if (!didPop) _back();
       },
       child: Focus(
+        focusNode: _focus,
         autofocus: true,
         onKeyEvent: _onKey,
         child: MouseRegion(
@@ -328,10 +378,14 @@ class _PlayerViewState extends ConsumerState<PlayerView> {
                     onInteract: _show,
                     onMenu: _openMenu,
                     showCenterPlay: !_isAudio,
+                    panel: _panelContents,
+                    onPanel: _togglePanel,
                   ),
                 ),
               ),
-              if (widget.upNext case final BaseItemDto next when !_upNextHidden)
+              if (widget.upNext case final BaseItemDto next
+                  // The panel lists what comes next anyway.
+                  when !_upNextHidden && !_panelOpen)
                 _UpNextLayer(
                   engine: engine,
                   next: next,
@@ -339,6 +393,24 @@ class _PlayerViewState extends ConsumerState<PlayerView> {
                   onWatchNow: () => unawaited(_next()),
                   onHide: () => setState(() => _upNextHidden = true),
                 ),
+              if (_panelContents case final PanelContents contents
+                  when _panelOpen) ...[
+                MenuBarrier(onDismiss: _closePanel),
+                PlayerSidePanel(
+                  contents: contents,
+                  session: session,
+                  chapters: _chapters,
+                  onClose: _closePanel,
+                  onSeek: (start) {
+                    unawaited(engine.seek(start));
+                    _show(hide: false);
+                  },
+                  onPlay: (episode) {
+                    _closePanel();
+                    widget.onPlay?.call(episode);
+                  },
+                ),
+              ],
               if (_menu case final SettingsPage page) ...[
                 MenuBarrier(onDismiss: _closeMenu),
                 Positioned(

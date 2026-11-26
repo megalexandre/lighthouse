@@ -19,6 +19,7 @@ import '../player_screen.dart';
 import 'control_button.dart';
 import 'seek_bar.dart';
 import 'settings_menu.dart';
+import 'side_panel.dart';
 
 /// The on-screen controls (the design system's VideoPlayer): the title
 /// over a gradient at the top; at the bottom, over another, the seek bar
@@ -39,6 +40,8 @@ class PlayerOsd extends StatelessWidget {
     required this.onInteract,
     required this.onMenu,
     required this.showCenterPlay,
+    this.panel,
+    this.onPanel,
   });
 
   final PlayerSession session;
@@ -54,6 +57,11 @@ class PlayerOsd extends StatelessWidget {
   final VoidCallback onInteract;
   final void Function(SettingsPage page) onMenu;
   final bool showCenterPlay;
+
+  /// The side panel this item has, and what opens or closes it; null:
+  /// none, and no button.
+  final PanelContents? panel;
+  final VoidCallback? onPanel;
 
   @override
   Widget build(BuildContext context) {
@@ -340,6 +348,21 @@ class _Extras extends StatelessWidget {
             shortcut: 'S',
             active: session.subtitleStreamIndex != null,
             onPressed: () => osd.onMenu(SettingsPage.subtitles),
+          ),
+        if ((osd.panel, osd.onPanel) case (
+          final PanelContents panel,
+          final VoidCallback onPanel,
+        ))
+          ControlButton(
+            key: PlayerScreen.sidePanelButton,
+            icon: panel == PanelContents.episodes
+                ? Icons.video_library
+                : Icons.format_list_bulleted,
+            label: panel == PanelContents.episodes
+                ? context.l10n.episodes
+                : context.l10n.chapters,
+            shortcut: 'C',
+            onPressed: onPanel,
           ),
         ControlButton(
           key: PlayerScreen.settingsButton,
