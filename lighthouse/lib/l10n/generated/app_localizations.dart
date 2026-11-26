@@ -885,13 +885,13 @@ abstract class AppLocalizations {
   /// **'Subtitles'**
   String get subtitles;
 
-  /// Player button.
+  /// Player and reader button.
   ///
   /// In en, this message translates to:
   /// **'Full screen'**
   String get fullScreen;
 
-  /// Player button.
+  /// Player and reader button.
   ///
   /// In en, this message translates to:
   /// **'Exit full screen'**

@@ -34,10 +34,13 @@ import 'spreads.dart';
 ///
 /// On touch (a phone, a tablet) the page is laid out for the whole screen
 /// and the bars come over it. The book opens without them; they are hidden
-/// and shown together with the system's bars (full screen). On a phone it is always one page at a time ([showsTwoPages]).
+/// and shown together with the system's bars (full screen). With a mouse,
+/// full screen (F11, F or its button; Esc leaves it) is the same page over
+/// the whole screen, and the bars come and go with a click. On a phone it is always one page at a time ([showsTwoPages]).
 ///
 /// Keys: ← → PgUp PgDn turn pages, Space the next one, Home / End the
-/// first / last, Esc or Backspace back.
+/// first / last, F11 or F full screen, Esc out of full screen or back,
+/// Backspace back.
 class ReaderScreen extends ConsumerStatefulWidget {
   const ReaderScreen({super.key, required this.itemId});
 
@@ -52,6 +55,7 @@ class ReaderScreen extends ConsumerStatefulWidget {
   static const contentsButton = Key('reader.contents');
   static const bookmarkButton = Key('reader.bookmark');
   static const displayButton = Key('reader.display');
+  static const fullScreenButton = Key('reader.fullScreen');
   static const linkBack = Key('reader.linkBack');
   static const contentsTab = Key('reader.contentsTab');
   static const bookmarksTab = Key('reader.bookmarksTab');
@@ -107,7 +111,8 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
   /// provider cannot be read there.
   late final AppWindow _window = ref.read(appWindowProvider);
 
-  /// Whether this screen hid the system's bars.
+  /// Whether this screen made the window full screen (on touch: hid the
+  /// system's bars).
   bool _fullScreen = false;
 
   /// Shows or hides the bars; on touch the system's too (full screen).
@@ -117,6 +122,18 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
       _fullScreen = !visible;
       _window.isFullScreen = _fullScreen;
     }
+  }
+
+  /// In or out of full screen. On touch it goes with the bars; with a mouse
+  /// the bars go as it comes in, and a click brings them over the page.
+  void _toggleFullScreen() {
+    if (isTouch(context)) return _showChrome(_fullScreen);
+    final value = !_fullScreen;
+    setState(() {
+      _fullScreen = value;
+      _chromeVisible = !value;
+    });
+    _window.isFullScreen = value;
   }
 
   /// The system's bars and notch, as large as they have been in this
@@ -190,6 +207,13 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
       _controller.goTo(0);
     } else if (key == LogicalKeyboardKey.end) {
       _controller.goTo(session.pageCount - 1);
+    } else if (key == LogicalKeyboardKey.f11 ||
+        key == LogicalKeyboardKey.keyF) {
+      if (event is KeyDownEvent) _toggleFullScreen();
+    } else if (key == LogicalKeyboardKey.escape &&
+        _fullScreen &&
+        !isTouch(context)) {
+      if (event is KeyDownEvent) _toggleFullScreen();
     } else if (key == LogicalKeyboardKey.escape ||
         key == LogicalKeyboardKey.backspace) {
       if (event is KeyDownEvent) unawaited(_close());
@@ -375,8 +399,11 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
         builder: (context, constraints) {
           final document = session.document;
           final touch = isTouch(context);
+          // The page over the whole screen, the bars coming over it: always
+          // on touch, in full screen with a mouse.
+          final bleed = touch || _fullScreen;
           final system = touch ? _systemInsets(context) : EdgeInsets.zero;
-          final around = touch
+          final around = bleed
               ? system + ReaderScreen.touchMargin
               : ReaderScreen.margin;
           final room = around.deflateSize(constraints.biggest);
@@ -394,8 +421,8 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
               );
           final spreads = Spreads(session.pageCount, twoPages: twoPages);
           final spread = spreads.of(session.page);
-          // One page on touch: the sheet is the whole screen, no desk.
-          final fills = touch && !twoPages;
+          // One page: the sheet is the whole screen, no desk.
+          final fills = bleed && !twoPages;
           final margin = fills ? EdgeInsets.zero : around;
           // The space each page gets.
           final pageRoom = twoPages ? Size(room.width / 2, room.height) : room;
@@ -544,6 +571,8 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
                     onContents: () => _scaffold.currentState?.openDrawer(),
                     onBookmark: () => unawaited(_controller.toggleBookmark()),
                     onDisplay: () => unawaited(_showDisplaySettings(session)),
+                    fullScreen: _fullScreen,
+                    onFullScreen: _toggleFullScreen,
                   ),
                 ),
               ),

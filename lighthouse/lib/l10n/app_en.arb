@@ -677,11 +677,11 @@
   },
   "fullScreen": "Full screen",
   "@fullScreen": {
-    "description": "Player button."
+    "description": "Player and reader button."
   },
   "exitFullScreen": "Exit full screen",
   "@exitFullScreen": {
-    "description": "Player button."
+    "description": "Player and reader button."
   },
   "mute": "Mute",
   "@mute": {

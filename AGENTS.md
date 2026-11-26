@@ -101,6 +101,9 @@ the bundle by hand.
   package is there. Prefer versions with a few weeks of use.
 - **Generated files** (`*.g.dart`, `*.freezed.dart`, the `x_test.dart` made from `x.feature`) are
   committed and never edited by hand; `check.sh` regenerates them first.
+- **Same features on every platform:** a feature built for one platform (Linux, Android) gets its
+  counterpart on the others in the same piece of work, adapted to the input (keys and mouse, touch).
+  Leave one out only for a real platform limit, and say so in `docs/PLAN.md`.
 - **Commits:** conventional style, e.g. `feat: books L3 - contents, links, type, themes,
   bookmarks`, `fix: reader - ...`, `chore(vscode): ...`, `test: ...`. Commit only when asked.
 

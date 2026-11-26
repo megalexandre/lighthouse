@@ -25,6 +25,7 @@ import './step/the_bars_are_shown.dart';
 import './step/the_phones_bars_are_shown.dart';
 import './step/the_page_is_where_it_was.dart';
 import './step/the_book_cannot_be_downloaded.dart';
+import './step/i_tap_the_full_screen_button.dart';
 import './step/the_screen_stays_on.dart';
 import './step/the_screen_may_turn_off.dart';
 import './step/i_press.dart';
@@ -197,6 +198,26 @@ void main() {
       } finally {
         await afterEach(
           '''A book that cannot be opened leaves the phone's bars''',
+          success,
+        );
+      }
+    });
+    testWidgets('''The full screen button hides the bars''', (tester) async {
+      var success = true;
+      try {
+        await beforeEach('''The full screen button hides the bars''');
+        await bddSetUp(tester);
+        await iRead(tester, 'book-epub');
+        await iTapTheMiddle(tester);
+        await iTapTheFullScreenButton(tester);
+        await theBarsAreHidden(tester);
+        await thePhonesBarsAreHidden(tester);
+      } catch (_) {
+        success = false;
+        rethrow;
+      } finally {
+        await afterEach(
+          '''The full screen button hides the bars''',
           success,
         );
       }

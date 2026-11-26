@@ -5,8 +5,8 @@ import '../../../l10n/l10n.dart';
 import '../application/reader_controller.dart';
 import 'reader_screen.dart';
 
-/// The bars over the page: back, title, contents, bookmark and display
-/// settings above; the page slider below.
+/// The bars over the page: back, title, contents, bookmark, display
+/// settings and full screen above; the page slider below.
 class ReaderChrome extends StatelessWidget {
   const ReaderChrome({
     super.key,
@@ -17,6 +17,8 @@ class ReaderChrome extends StatelessWidget {
     required this.onContents,
     required this.onBookmark,
     required this.onDisplay,
+    required this.fullScreen,
+    required this.onFullScreen,
   });
 
   final ReaderSession session;
@@ -28,6 +30,8 @@ class ReaderChrome extends StatelessWidget {
   final VoidCallback onContents;
   final VoidCallback onBookmark;
   final VoidCallback onDisplay;
+  final bool fullScreen;
+  final VoidCallback onFullScreen;
 
   @override
   Widget build(BuildContext context) => Column(
@@ -38,6 +42,8 @@ class ReaderChrome extends StatelessWidget {
         onContents: onContents,
         onBookmark: onBookmark,
         onDisplay: onDisplay,
+        fullScreen: fullScreen,
+        onFullScreen: onFullScreen,
       ),
       const Spacer(),
       _BottomBar(session: session, shown: shown, onSeek: onSeek),
@@ -45,7 +51,8 @@ class ReaderChrome extends StatelessWidget {
   );
 }
 
-/// Back, the book's title, contents, bookmark and display settings.
+/// Back, the book's title, contents, bookmark, display settings and full
+/// screen.
 class _TopBar extends StatelessWidget {
   const _TopBar({
     required this.session,
@@ -53,6 +60,8 @@ class _TopBar extends StatelessWidget {
     required this.onContents,
     required this.onBookmark,
     required this.onDisplay,
+    required this.fullScreen,
+    required this.onFullScreen,
   });
 
   final ReaderSession session;
@@ -60,6 +69,8 @@ class _TopBar extends StatelessWidget {
   final VoidCallback onContents;
   final VoidCallback onBookmark;
   final VoidCallback onDisplay;
+  final bool fullScreen;
+  final VoidCallback onFullScreen;
 
   @override
   Widget build(BuildContext context) {
@@ -110,6 +121,15 @@ class _TopBar extends StatelessWidget {
               tooltip: context.l10n.display,
               icon: const Icon(Icons.text_format),
               onPressed: onDisplay,
+            ),
+            IconButton(
+              key: ReaderScreen.fullScreenButton,
+              color: ink,
+              tooltip: fullScreen
+                  ? context.l10n.exitFullScreen
+                  : context.l10n.fullScreen,
+              icon: Icon(fullScreen ? Icons.fullscreen_exit : Icons.fullscreen),
+              onPressed: onFullScreen,
             ),
           ],
         ),

@@ -61,6 +61,13 @@ Feature: Reading on a phone
     When I read {'book-comic'}
     Then the phone's bars are shown
 
+  Scenario: The full screen button hides the bars
+    When I read {'book-epub'}
+    And I tap the middle
+    And I tap the full screen button
+    Then the bars are hidden
+    And the phone's bars are hidden
+
   Scenario: Leaving the book gives the phone's bars back
     When I read {'book-epub'}
     Then the phone's bars are hidden

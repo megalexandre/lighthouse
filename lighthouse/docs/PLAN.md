@@ -491,7 +491,10 @@ Achados no código, que no Android quebram sem erro visível:
     as barras. A faixa da câmera faz parte da tela (`windowLayoutInDisplayCutoutMode`; antes do Android 15 ela ficaria
     preta sem as barras). As margens das barras do sistema guardam o maior valor visto
     em cada orientação, então esconder as barras não move a página: num EPUB, mover a página repaginaria o livro.
-  - No desktop nada mudou: a margem fixa para as barras e a janela como está.
+  - No desktop, a mesma tela cheia: F11, F ou o botão da barra do topo (Esc sai dela antes de sair do livro). A
+    página vira a tela inteira como no celular, e as barras somem ao entrar e voltam por cima com um clique no meio.
+    Fora da tela cheia, a margem fixa para as barras, como antes. O botão também existe no toque (esconde as barras,
+    como o toque no meio). Cenários em `test/scenarios/reader/full_screen.feature`.
   - Cenários em `test/scenarios/reader/phone.feature`.
 - **A2b, reprodução (código feito; falta conferir no aparelho):**
   - O que saiu:

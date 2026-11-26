@@ -8,6 +8,8 @@ const _keys = {
   'End': LogicalKeyboardKey.end,
   'Esc': LogicalKeyboardKey.escape,
   'Backspace': LogicalKeyboardKey.backspace,
+  'F11': LogicalKeyboardKey.f11,
+  'F': LogicalKeyboardKey.keyF,
 };
 
 /// Usage: When I press {'End'}
