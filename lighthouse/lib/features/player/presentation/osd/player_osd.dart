@@ -17,6 +17,7 @@ import '../../application/trickplay.dart';
 import '../../data/player_engine.dart';
 import '../player_screen.dart';
 import 'control_button.dart';
+import 'lock.dart';
 import 'seek_bar.dart';
 import 'settings_menu.dart';
 import 'side_panel.dart';
@@ -43,6 +44,7 @@ class PlayerOsd extends StatelessWidget {
     this.panel,
     this.onPanel,
     this.onFloating,
+    this.onLock,
   });
 
   final PlayerSession session;
@@ -68,6 +70,9 @@ class PlayerOsd extends StatelessWidget {
   /// a phone without picture in picture), and no button.
   final VoidCallback? onFloating;
 
+  /// Locks the controls (null: no button).
+  final VoidCallback? onLock;
+
   @override
   Widget build(BuildContext context) {
     final tokens = context.tokens;
@@ -79,7 +84,12 @@ class PlayerOsd extends StatelessWidget {
       children: [
         Column(
           children: [
-            _TitleBar(item: session.item, margin: margin, onBack: onBack),
+            _TitleBar(
+              item: session.item,
+              margin: margin,
+              onBack: onBack,
+              onLock: onLock,
+            ),
             const Spacer(),
             _ControlBar(
               osd: this,
@@ -160,11 +170,13 @@ class _TitleBar extends StatelessWidget {
     required this.item,
     required this.margin,
     required this.onBack,
+    this.onLock,
   });
 
   final BaseItemDto item;
   final double margin;
   final VoidCallback onBack;
+  final VoidCallback? onLock;
 
   @override
   Widget build(BuildContext context) {
@@ -198,6 +210,9 @@ class _TitleBar extends StatelessWidget {
                 shortcut: 'Esc',
                 onPressed: onBack,
               ),
+              // Beside Back, where the thumb already is.
+              if (onLock case final VoidCallback onLock)
+                LockButton(onPressed: onLock),
               SizedBox(width: tokens.space(2)),
               Expanded(
                 child: Column(

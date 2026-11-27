@@ -18,6 +18,7 @@ import android.os.Looper
 import android.provider.Settings
 import android.util.Base64
 import android.util.Rational
+import android.view.KeyEvent
 import android.view.WindowManager
 import com.ryanheise.audioservice.AudioServiceActivity
 import io.flutter.embedding.engine.FlutterEngine
@@ -57,6 +58,10 @@ class MainActivity : AudioServiceActivity() {
                     "brightness" -> result.success(brightness())
                     "setBrightness" -> {
                         setBrightness(call.arguments as Double?)
+                        result.success(null)
+                    }
+                    "holdVolumeKeys" -> {
+                        volumeKeysHeld = call.arguments as Boolean
                         result.success(null)
                     }
                     else -> result.notImplemented()
@@ -103,6 +108,21 @@ class MainActivity : AudioServiceActivity() {
         attributes.screenBrightness = level?.coerceIn(0.0, 1.0)?.toFloat()
             ?: WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_NONE
         window.attributes = attributes
+    }
+
+    // The player is locked: the volume keys do nothing, for the system
+    // (its slider) and for Flutter alike.
+    private var volumeKeysHeld = false
+
+    override fun dispatchKeyEvent(event: KeyEvent): Boolean {
+        if (volumeKeysHeld) {
+            when (event.keyCode) {
+                KeyEvent.KEYCODE_VOLUME_UP,
+                KeyEvent.KEYCODE_VOLUME_DOWN,
+                KeyEvent.KEYCODE_VOLUME_MUTE -> return true
+            }
+        }
+        return super.dispatchKeyEvent(event)
     }
 
     // ---- Picture in picture ------------------------------------------------

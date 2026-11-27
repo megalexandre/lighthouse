@@ -31,7 +31,12 @@ Duration swipeSeekOffset(double fraction) {
 /// each kind can be turned off in Settings. The brightness goes back to
 /// the screen's when the player closes.
 class PlayerSwipes extends ConsumerStatefulWidget {
-  const PlayerSwipes({super.key, required this.engine, required this.child});
+  const PlayerSwipes({
+    super.key,
+    required this.engine,
+    required this.child,
+    this.enabled = true,
+  });
 
   /// The overlay showing the level, or where the seek goes.
   static const feedback = Key('player.swipeFeedback');
@@ -46,6 +51,10 @@ class PlayerSwipes extends ConsumerStatefulWidget {
 
   final PlayerEngine engine;
   final Widget child;
+
+  /// Off while the player is locked; the child stays as it is (the video
+  /// is not built again).
+  final bool enabled;
 
   @override
   ConsumerState<PlayerSwipes> createState() => _PlayerSwipesState();
@@ -218,10 +227,10 @@ class _PlayerSwipesState extends ConsumerState<PlayerSwipes> {
               // From where the finger came down, not from where the swipe
               // was recognised: that is what the edges are judged by.
               dragStartBehavior: DragStartBehavior.down,
-              onPanStart: _onStart,
-              onPanUpdate: _onUpdate,
-              onPanEnd: (_) => _onEnd(),
-              onPanCancel: _onEnd,
+              onPanStart: widget.enabled ? _onStart : null,
+              onPanUpdate: widget.enabled ? _onUpdate : null,
+              onPanEnd: widget.enabled ? (_) => _onEnd() : null,
+              onPanCancel: widget.enabled ? _onEnd : null,
               child: widget.child,
             ),
             if (_level != null || _offset != null)

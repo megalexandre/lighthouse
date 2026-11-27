@@ -19,6 +19,7 @@ import '../application/trickplay.dart';
 import '../data/playback_repository.dart';
 import '../data/player_engine.dart';
 import 'osd/floating_controls.dart';
+import 'osd/lock.dart';
 import 'osd/player_osd.dart';
 import 'osd/seek_bar.dart';
 import 'osd/settings_menu.dart';
@@ -94,6 +95,14 @@ class _PlayerViewState extends ConsumerState<PlayerView> {
 
   bool get _floating => ref.read(playerFloatingProvider);
 
+  /// Locked (see playerLockProvider): the controls hidden, and the
+  /// padlock shown a while at each touch, key or move of the mouse.
+  bool get _locked => ref.read(playerLockProvider);
+  bool _unlockShown = false;
+  bool _unlockHeld = false;
+  Timer? _unlockTimer;
+  final _unlockFocus = FocusNode(debugLabel: 'unlock');
+
   /// The settings panel, while open, and the page it opened on.
   SettingsPage? _menu;
   final _menuKey = GlobalKey<SettingsMenuState>();
@@ -125,6 +134,13 @@ class _PlayerViewState extends ConsumerState<PlayerView> {
   @override
   void initState() {
     super.initState();
+    // The next episode of a locked player opens locked: the padlock shows
+    // where to unlock.
+    if (_locked) {
+      _osdVisible = false;
+      _unlockShown = true;
+      _scheduleUnlockHide();
+    }
     _thumbnails = TrickplayThumbnails.of(
       widget.session.item,
       widget.session.plan.source.id,
@@ -161,6 +177,8 @@ class _PlayerViewState extends ConsumerState<PlayerView> {
   void dispose() {
     unawaited(_floatingEvents?.cancel());
     _focus.dispose();
+    _unlockFocus.dispose();
+    _unlockTimer?.cancel();
     _hideTimer?.cancel();
     unawaited(_playing?.cancel());
     _thumbnails?.dispose();
@@ -186,6 +204,8 @@ class _PlayerViewState extends ConsumerState<PlayerView> {
   /// plays, it floats by itself when the user goes Home.
   void _offerFloating() {
     if (_isAudio || !mounted) return;
+    // Locked, nothing to float with: going Home pauses, as without it.
+    if (_locked) return ref.read(floatingWindowProvider).offer(null);
     final l10n = context.l10n;
     ref.read(floatingWindowProvider).offer((
       aspectRatio: _aspectRatio,
@@ -214,6 +234,11 @@ class _PlayerViewState extends ConsumerState<PlayerView> {
   /// The floating window's own buttons (Android's), and its X.
   void _onFloatingEvent(FloatingEvent event) {
     switch (event) {
+      case FloatingEvent.playPause ||
+              FloatingEvent.seekBack ||
+              FloatingEvent.seekForward
+          when _locked:
+        return;
       case FloatingEvent.closed:
         widget.onBack();
       case FloatingEvent.playPause:
@@ -237,6 +262,7 @@ class _PlayerViewState extends ConsumerState<PlayerView> {
   }
 
   void _show({bool hide = true}) {
+    if (_locked) return;
     _setOsd(true);
     if (hide) _scheduleHide();
   }
@@ -275,6 +301,61 @@ class _PlayerViewState extends ConsumerState<PlayerView> {
 
   Future<void> _next() async => widget.onNext?.call();
 
+  void _lock() {
+    _hideTimer?.cancel();
+    setState(() {
+      _menu = null;
+      _panelOpen = false;
+    });
+    ref.read(playerLockProvider.notifier).lock();
+    _setOsd(false);
+    _offerFloating();
+    _revealUnlock(focus: !isTouch(context));
+  }
+
+  void _unlock() {
+    _unlockTimer?.cancel();
+    setState(() {
+      _unlockShown = false;
+      _unlockHeld = false;
+    });
+    ref.read(playerLockProvider.notifier).unlock();
+    _focus.requestFocus();
+    _offerFloating();
+    _show();
+  }
+
+  /// The padlock, for a while; [focus]: with the keys' focus, so Enter or
+  /// Space held unlocks.
+  void _revealUnlock({bool focus = false}) {
+    if (!_unlockShown) setState(() => _unlockShown = true);
+    if (focus) {
+      // Once it is built.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && _unlockShown) _unlockFocus.requestFocus();
+      });
+    }
+    _scheduleUnlockHide();
+  }
+
+  void _scheduleUnlockHide() {
+    _unlockTimer?.cancel();
+    _unlockTimer = Timer(hideAfter, () {
+      if (!mounted || _unlockHeld) return;
+      if (_unlockFocus.hasFocus) _focus.requestFocus();
+      setState(() => _unlockShown = false);
+    });
+  }
+
+  void _onUnlockHolding(bool held) {
+    _unlockHeld = held;
+    if (held) {
+      _unlockTimer?.cancel();
+    } else {
+      _scheduleUnlockHide();
+    }
+  }
+
   void _openMenu(SettingsPage page) {
     setState(() {
       _menu = page;
@@ -310,6 +391,7 @@ class _PlayerViewState extends ConsumerState<PlayerView> {
   /// leaving the player); floating, back to the window; otherwise out of
   /// the player.
   void _back() {
+    if (_locked) return _revealUnlock(focus: !isTouch(context));
     if (_floating) {
       return unawaited(ref.read(playerFloatingProvider.notifier).expand());
     }
@@ -319,6 +401,12 @@ class _PlayerViewState extends ConsumerState<PlayerView> {
   }
 
   KeyEventResult _onKey(FocusNode _, KeyEvent event) {
+    // Locked, every key is the lock's: it shows the padlock, with the
+    // focus, which holds Enter and Space itself.
+    if (_locked) {
+      if (event is KeyDownEvent) _revealUnlock(focus: true);
+      return KeyEventResult.handled;
+    }
     if ((_menu != null || _panelOpen) &&
         event is KeyDownEvent &&
         event.logicalKey == LogicalKeyboardKey.escape) {
@@ -380,6 +468,7 @@ class _PlayerViewState extends ConsumerState<PlayerView> {
     final c = widget.controller;
     final tokens = context.tokens;
     final floating = ref.watch(playerFloatingProvider);
+    final locked = ref.watch(playerLockProvider);
     // The system's Back (Android) does what Esc does; leaving saves the
     // resume point first (onBack), so the route is never popped directly.
     return PopScope(
@@ -392,10 +481,10 @@ class _PlayerViewState extends ConsumerState<PlayerView> {
         autofocus: true,
         onKeyEvent: _onKey,
         child: MouseRegion(
-          cursor: _osdVisible || floating
+          cursor: _osdVisible || floating || (locked && _unlockShown)
               ? MouseCursor.defer
               : SystemMouseCursors.none,
-          onHover: floating ? null : (_) => _show(),
+          onHover: floating ? null : (_) => locked ? _revealUnlock() : _show(),
           child: Stack(
             fit: StackFit.expand,
             children: [
@@ -406,11 +495,17 @@ class _PlayerViewState extends ConsumerState<PlayerView> {
                 // brightness, the volume and the position.
                 PlayerSwipes(
                   engine: engine,
+                  enabled: !locked,
                   child: _Picture(
                     session: session,
-                    onTap: () => _osdVisible ? _setOsd(false) : _show(),
-                    onDoubleTapAt: (side) =>
-                        unawaited(_seekBy(side < 0 ? -seekStep : seekStep)),
+                    onTap: locked
+                        ? _revealUnlock
+                        : () => _osdVisible ? _setOsd(false) : _show(),
+                    onDoubleTapAt: locked
+                        ? null
+                        : (side) => unawaited(
+                            _seekBy(side < 0 ? -seekStep : seekStep),
+                          ),
                   ),
                 )
               else
@@ -418,6 +513,7 @@ class _PlayerViewState extends ConsumerState<PlayerView> {
                 // up and down keys.
                 Listener(
                   onPointerSignal: (event) {
+                    if (locked) return _revealUnlock();
                     if (event case PointerScrollEvent(:final scrollDelta)
                         when scrollDelta.dy != 0) {
                       unawaited(
@@ -430,11 +526,13 @@ class _PlayerViewState extends ConsumerState<PlayerView> {
                   },
                   child: _Picture(
                     session: session,
-                    onTap: () {
-                      unawaited(engine.playOrPause());
-                      _show();
-                    },
-                    onDoubleTap: _isAudio ? null : _toggleFullscreen,
+                    onTap: locked
+                        ? _revealUnlock
+                        : () {
+                            unawaited(engine.playOrPause());
+                            _show();
+                          },
+                    onDoubleTap: _isAudio || locked ? null : _toggleFullscreen,
                   ),
                 ),
               // Android's floating window takes no touch: only the picture
@@ -453,7 +551,7 @@ class _PlayerViewState extends ConsumerState<PlayerView> {
                     onDrag: ref.read(floatingWindowProvider).startDragging,
                   ),
               ] else
-                ..._controls(session, c, tokens),
+                ..._controls(session, c, tokens, locked: locked),
             ],
           ),
         ),
@@ -467,13 +565,18 @@ class _PlayerViewState extends ConsumerState<PlayerView> {
   List<Widget> _controls(
     PlayerSession session,
     PlayerController c,
-    AppTokens tokens,
-  ) => [
+    AppTokens tokens, {
+    required bool locked,
+  }) => [
     if (session.interruptedAt case final Duration at)
-      InterruptedNotice(
-        at: at,
-        onResume: c.resumeAfterInterruption,
-        onBack: widget.onBack,
+      // Said, but its buttons wait for the unlock.
+      IgnorePointer(
+        ignoring: locked,
+        child: InterruptedNotice(
+          at: at,
+          onResume: c.resumeAfterInterruption,
+          onBack: widget.onBack,
+        ),
       ),
     _Buffering(engine: engine),
     AnimatedOpacity(
@@ -502,12 +605,13 @@ class _PlayerViewState extends ConsumerState<PlayerView> {
               !_isAudio && (ref.watch(floatingSupportedProvider).value ?? false)
               ? () => unawaited(_toggleFloating())
               : null,
+          onLock: _lock,
         ),
       ),
     ),
     if (widget.upNext case final BaseItemDto next
         // The panel lists what comes next anyway.
-        when !_upNextHidden && !_panelOpen)
+        when !_upNextHidden && !_panelOpen && !locked)
       _UpNextLayer(
         engine: engine,
         next: next,
@@ -548,6 +652,13 @@ class _PlayerViewState extends ConsumerState<PlayerView> {
         ),
       ),
     ],
+    if (locked && _isAudio) LockedSongTime(engine: engine),
+    if (locked && _unlockShown)
+      UnlockButton(
+        focusNode: _unlockFocus,
+        onUnlock: _unlock,
+        onHolding: _onUnlockHolding,
+      ),
   ];
 }
 

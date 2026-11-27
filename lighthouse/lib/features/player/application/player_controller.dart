@@ -152,6 +152,11 @@ class PlayerController extends AsyncNotifier<PlayerSession> {
           ? engine.play()
           : resumeAfterInterruption(),
     );
+    ref.listen(
+      playerLockProvider,
+      (_, locked) => _system?.locked = locked,
+      fireImmediately: true,
+    );
 
     // The volume and mute the user left the last item at.
     final sound = ref.read(playerSoundProvider);

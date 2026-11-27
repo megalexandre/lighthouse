@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/device_levels.dart';
 import '../../../core/floating_window.dart';
 import '../../../core/window.dart';
 
@@ -148,5 +149,45 @@ class PlayerFloatingNotifier extends Notifier<bool> {
   /// Back to the window it floated from.
   Future<void> expand() async {
     if (state) await _window.leave();
+  }
+}
+
+/// The player's controls locked against touches by mistake (a pocket, a
+/// palm, a child): nothing on the screen answers, nor the keys, the
+/// phone's volume keys, the notification or a headset, until the padlock
+/// is held. Across items, as full screen is: the next episode (a new
+/// screen) stays locked, and the last player screen to close unlocks.
+final playerLockProvider = NotifierProvider<PlayerLockNotifier, bool>(
+  PlayerLockNotifier.new,
+);
+
+class PlayerLockNotifier extends Notifier<bool> {
+  int _screens = 0;
+
+  @override
+  bool build() => false;
+
+  /// A player screen opened.
+  void enter() => _screens++;
+
+  /// A player screen closed: the last one unlocks. Called from dispose,
+  /// so done right after.
+  void leave() {
+    if (_screens > 0) _screens--;
+    if (_screens > 0) return;
+    scheduleMicrotask(() {
+      if (ref.mounted && _screens == 0) unlock();
+    });
+  }
+
+  void lock() => _set(true);
+
+  void unlock() => _set(false);
+
+  void _set(bool locked) {
+    if (state == locked) return;
+    state = locked;
+    // The phone's volume keys are the system's: held by the app meanwhile.
+    unawaited(ref.read(deviceLevelsProvider).holdVolumeKeys(hold: locked));
   }
 }

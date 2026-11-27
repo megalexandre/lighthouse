@@ -753,6 +753,18 @@ abstract class AppLocalizations {
   /// **'Never'**
   String get subtitlesNever;
 
+  /// Player button: hides the controls and ignores taps, keys and the headset until unlocked.
+  ///
+  /// In en, this message translates to:
+  /// **'Lock controls'**
+  String get lockControls;
+
+  /// Player, while locked: the padlock, held for a moment to bring the controls back.
+  ///
+  /// In en, this message translates to:
+  /// **'Hold to unlock'**
+  String get holdToUnlock;
+
   /// Player side panel title, and its button on a video with chapters.
   ///
   /// In en, this message translates to:

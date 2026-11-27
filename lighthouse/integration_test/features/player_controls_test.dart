@@ -12,6 +12,10 @@ import './step/i_press_in_the_player.dart';
 import './step/i_pick_the_speed.dart';
 import './step/mpv_plays_at_volume_muted_at_times_the_speed.dart';
 import './step/mpv_draws_at_the_size_the_video_takes_on_screen.dart';
+import './step/i_lock_the_player.dart';
+import './step/mpv_is_still_playing.dart';
+import './step/i_hold_the_padlock.dart';
+import './step/the_players_controls_are_back.dart';
 
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
@@ -68,6 +72,28 @@ void main() {
       } finally {
         await afterEach(
           '''mpv draws the picture at its size on screen''',
+          success,
+        );
+      }
+    });
+    testWidgets('''Locked, a key reaches the padlock and not mpv''',
+        (tester) async {
+      var success = true;
+      try {
+        await beforeEach('''Locked, a key reaches the padlock and not mpv''');
+        await iAmSignedInAsANewUser(tester);
+        await iPlayFrom(tester, 'Test Movie (2020)', 'Movies');
+        await iLockThePlayer(tester);
+        await iPressInThePlayer(tester, 'Space');
+        await mpvIsStillPlaying(tester);
+        await iHoldThePadlock(tester);
+        await thePlayersControlsAreBack(tester);
+      } catch (_) {
+        success = false;
+        rethrow;
+      } finally {
+        await afterEach(
+          '''Locked, a key reaches the padlock and not mpv''',
           success,
         );
       }

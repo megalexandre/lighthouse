@@ -50,6 +50,10 @@ class PlayerScreen extends ConsumerWidget {
   static const subtitleOff = Key('player.subtitle.off');
   static const fullscreenButton = Key('player.fullscreen');
 
+  /// Locking: the title bar's button, then the padlock held to unlock.
+  static const lockButton = Key('player.lock');
+  static const unlockButton = Key('player.unlock');
+
   /// Floating: the OSD's button, then the small window's own.
   static const floatingButton = Key('player.floating');
   static const floatingWindow = Key('player.floating.window');
@@ -202,9 +206,10 @@ class _PlayerTheme extends ConsumerWidget {
   }
 }
 
-/// Counts this screen among the player screens open, so full screen and
-/// the floating window last from one item to the next and end when the
-/// player closes (see playerFullscreenProvider, playerFloatingProvider).
+/// Counts this screen among the player screens open, so full screen, the
+/// floating window and the lock last from one item to the next and end
+/// when the player closes (see playerFullscreenProvider,
+/// playerFloatingProvider, playerLockProvider).
 class _FullscreenScope extends ConsumerStatefulWidget {
   const _FullscreenScope({required this.child});
 
@@ -221,16 +226,19 @@ class _FullscreenScopeState extends ConsumerState<_FullscreenScope> {
   late final PlayerFloatingNotifier _floating = ref.read(
     playerFloatingProvider.notifier,
   );
+  late final PlayerLockNotifier _lock = ref.read(playerLockProvider.notifier);
 
   @override
   void initState() {
     super.initState();
     _fullscreen.enter();
     _floating.enter();
+    _lock.enter();
   }
 
   @override
   void dispose() {
+    _lock.leave();
     _floating.leave();
     _fullscreen.leave();
     super.dispose();

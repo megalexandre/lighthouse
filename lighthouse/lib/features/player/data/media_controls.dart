@@ -20,12 +20,14 @@ typedef NowPlaying = ({
 });
 
 /// How it goes; the system moves the position on by itself while playing.
+/// [locked]: the player is locked, and the controls show no buttons.
 typedef PlayingState = ({
   bool playing,
   bool buffering,
   Duration position,
   double rate,
   bool hasNext,
+  bool locked,
 });
 
 /// What the system's controls ask for (the notification, the lock screen,
@@ -163,12 +165,17 @@ class _Handler extends BaseAudioHandler {
             : AudioProcessingState.ready,
         playing: state.playing,
         controls: [
-          MediaControl.skipToPrevious,
-          state.playing ? MediaControl.pause : MediaControl.play,
-          if (state.hasNext) MediaControl.skipToNext,
+          if (!state.locked) ...[
+            MediaControl.skipToPrevious,
+            state.playing ? MediaControl.pause : MediaControl.play,
+            if (state.hasNext) MediaControl.skipToNext,
+          ],
         ],
-        androidCompactActionIndices: [0, 1, if (state.hasNext) 2],
-        systemActions: const {MediaAction.seek},
+        androidCompactActionIndices: [
+          if (!state.locked) ...[0, 1, if (state.hasNext) 2],
+        ],
+        // No seek bar either, locked.
+        systemActions: state.locked ? const {} : const {MediaAction.seek},
         updatePosition: state.position,
         speed: state.rate,
       ),

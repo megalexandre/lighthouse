@@ -109,6 +109,8 @@
   "subtitlesAlways": "Sempre",
   "subtitlesForced": "Só legendas forçadas",
   "subtitlesNever": "Nunca",
+  "lockControls": "Bloquear controles",
+  "holdToUnlock": "Segure para desbloquear",
   "chapters": "Capítulos",
   "chapterNumber": "Capítulo {number}",
   "seasonNumber": "Temporada {number}",

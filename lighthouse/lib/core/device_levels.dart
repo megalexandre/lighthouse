@@ -20,6 +20,10 @@ abstract interface class DeviceLevels {
 
   /// The window follows the screen's own brightness again.
   Future<void> resetBrightness();
+
+  /// While [hold], the phone's volume keys do nothing (the player is
+  /// locked); only while the app is in front.
+  Future<void> holdVolumeKeys({required bool hold});
 }
 
 final deviceLevelsProvider = Provider<DeviceLevels>(
@@ -40,6 +44,8 @@ class NoDeviceLevels implements DeviceLevels {
   Future<void> setBrightness(double level) async {}
   @override
   Future<void> resetBrightness() async {}
+  @override
+  Future<void> holdVolumeKeys({required bool hold}) async {}
 }
 
 /// Through MainActivity.kt ("lighthouse/device"). A failure is logged and
@@ -67,4 +73,7 @@ class AndroidDeviceLevels implements DeviceLevels {
       _call<void>('setBrightness', level);
   @override
   Future<void> resetBrightness() => _call<void>('setBrightness');
+  @override
+  Future<void> holdVolumeKeys({required bool hold}) =>
+      _call<void>('holdVolumeKeys', hold);
 }

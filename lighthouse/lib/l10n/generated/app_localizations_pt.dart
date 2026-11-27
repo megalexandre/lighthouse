@@ -394,6 +394,12 @@ class AppLocalizationsPt extends AppLocalizations {
   String get subtitlesNever => 'Nunca';
 
   @override
+  String get lockControls => 'Bloquear controles';
+
+  @override
+  String get holdToUnlock => 'Segure para desbloquear';
+
+  @override
   String get chapters => 'Capítulos';
 
   @override

@@ -59,6 +59,10 @@ class SystemMedia implements MediaCommands {
   /// The user dismissed the controls: they come back when it plays.
   bool _dismissed = false;
 
+  /// The player is locked: the controls show no buttons, and what they
+  /// (or a headset) ask is ignored.
+  bool _locked = false;
+
   /// What the controls were last told, and how long ago, to notice a seek:
   /// they move the position on by themselves.
   ({Duration position, bool playing, double rate})? _told;
@@ -78,6 +82,12 @@ class SystemMedia implements MediaCommands {
   /// A new song is on its way, in place of this one.
   void changing() {
     _changing = true;
+    _announce();
+  }
+
+  set locked(bool locked) {
+    if (_locked == locked) return;
+    _locked = locked;
     _announce();
   }
 
@@ -176,35 +186,48 @@ class SystemMedia implements MediaCommands {
         position: position,
         rate: rate,
         hasNext: _hasNext,
+        locked: _locked,
       ),
     );
   }
 
   @override
-  Future<void> play() => onPlay();
-
-  @override
-  Future<void> pause() {
-    _resumeWhenFree = false;
-    return _engine.pause();
+  Future<void> play() async {
+    if (!_locked) await onPlay();
   }
 
   @override
-  Future<void> seek(Duration position) => _engine.seek(position);
+  Future<void> pause() async {
+    if (_locked) return;
+    _resumeWhenFree = false;
+    await _engine.pause();
+  }
 
   @override
-  Future<void> next() => onNext();
+  Future<void> seek(Duration position) async {
+    if (!_locked) await _engine.seek(position);
+  }
 
   @override
-  Future<void> previous() => onPrevious();
+  Future<void> next() async {
+    if (!_locked) await onNext();
+  }
+
+  @override
+  Future<void> previous() async {
+    if (!_locked) await onPrevious();
+  }
 
   /// Paused, the place kept (a pause is reported), the controls gone.
+  /// Locked too: it is the app swiped away from the recent ones (the
+  /// notification cannot be dismissed while it plays).
   @override
   Future<void> stop() async {
     _dismissed = true;
     _told = null;
     _controls.clear(this);
-    await pause();
+    _resumeWhenFree = false;
+    await _engine.pause();
     unawaited(_focus.release(this));
   }
 }

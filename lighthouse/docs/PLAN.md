@@ -575,16 +575,18 @@ Achados no código, que no Android quebram sem erro visível:
     player. Os controles ficam visíveis enquanto ele está aberto, e os gestos de deslizar param (o clique fora
     cobre o vídeo). No teclado, as setas percorrem a lista e Enter escolhe; ao fechar, as teclas voltam ao player.
   - Igual no desktop e no Android (no celular, sempre em paisagem); só muda a entrada.
-- **Bloqueio dos controles (planejado):** no modelo do app Android do Jellyfin, contra toques sem querer (bolso,
-  palma da mão, criança). Cenários em `test/scenarios/player/lock.feature`.
-  - Um cadeado aberto na barra de cima, à direita do título (a de baixo já está cheia no celular), no vídeo e na
-    música. Bloquear fecha o menu e o painel lateral e esconde os controles; na música ficam a capa, o título e o
-    tempo, só de olhar. O Próximo continua sozinho e o bloqueio continua no item seguinte (mesma tela,
-    `playInstead`); o cartão do Próximo fica escondido.
+- **Bloqueio dos controles (código feito; falta conferir no aparelho):** no modelo do app Android do Jellyfin,
+  contra toques sem querer (bolso, palma da mão, criança). Cenários em `test/scenarios/player/lock.feature`; no
+  app de verdade, `integration_test/features/player_controls.feature` (uma tecla não chega ao mpv, segurar o
+  cadeado com o mouse desbloqueia).
+  - Um cadeado aberto na barra de cima, à esquerda, ao lado do voltar (a de baixo já está cheia no celular), no
+    vídeo e na música. Bloquear fecha o menu e o painel lateral e esconde os controles; na música ficam a capa, o
+    título e o tempo, só de olhar. O Próximo continua sozinho, e o item seguinte abre bloqueado; o cartão do
+    Próximo fica escondido.
   - Bloqueado, um toque no vídeo (ou mover o mouse, ou qualquer tecla) mostra só um cadeado fechado por uns 3 s,
-    no meio da borda esquerda: longe do botão que bloqueou, para um toque duplo não bloquear e desbloquear, e do
-    lado oposto à aba do painel.
-  - Desbloquear é segurar o cadeado: um anel em volta (`accent` sobre `osdSurface`) se completa em uns 1,5 s;
+    no meio da borda esquerda: abaixo do botão que bloqueou, não em cima dele (um toque duplo não bloqueia e
+    desbloqueia), e longe da aba do painel, à direita.
+  - Desbloquear é segurar o cadeado: um anel em volta (`accent` sobre `osdSurface`) se completa em 1 s;
     soltar antes faz o anel voltar e nada acontece; completo, desbloqueia (com uma vibração curta no Android) e os
     controles voltam. No desktop, segurar o botão do mouse sobre o cadeado, ou Enter ou Espaço com ele focado
     (qualquer tecla o mostra já focado).
@@ -598,10 +600,18 @@ Achados no código, que no Android quebram sem erro visível:
       (`setLocked` no canal `lighthouse/device`), só com o app na frente.
   - Limite da plataforma: a cortina de notificações, o botão liga/desliga e o gesto de início são do Android; com a
     tela apagada, só a notificação e o fone agem, e por isso ela também bloqueia.
-  - O bloqueio vale para a tela do player: sair dele (o fim da fila) o desfaz. Não é guardado.
-  - Código: `_locked` em `_PlayerViewState`, com um timer próprio para o cadeado; `PlayerSwipes`, `_Picture`,
-    `PlayerKeys` e o `PopScope` recebem o estado; o botão e o cadeado com o anel em `osd/lock.dart`
-    (`PlayerScreen.lockButton`, `PlayerScreen.unlockButton`); `MediaControls` ganha um modo sem botões.
+  - O bloqueio vale para as telas do player (`playerLockProvider`, que as conta como o `playerFullscreenProvider`):
+    o próximo episódio abre bloqueado, mostrando o cadeado; fechar o player (o fim da fila) desbloqueia. Não é
+    guardado.
+  - Bloqueado, não há janela flutuante: o player retira a oferta, e ir para o início do Android pausa o vídeo,
+    como sem ela; os botões de um PiP já aberto são ignorados. O aviso de conexão perdida continua na tela, com
+    os botões esperando o desbloqueio.
+  - Código: `playerLockProvider` (`player_carry_over.dart`) segura as teclas de volume
+    (`DeviceLevels.holdVolumeKeys`, `dispatchKeyEvent` no `MainActivity.kt`) e é seguido pelo `SystemMedia`
+    (`locked`: ignora os comandos; `PlayingState.locked`: a notificação sem botões nem barra de tempo). Na tela,
+    `_PlayerViewState` esconde os controles e mostra o cadeado por 3 s a cada toque, tecla, movimento do mouse ou
+    voltar; `PlayerSwipes(enabled:)` desliga os gestos sem reconstruir o vídeo. O botão e o cadeado com o anel
+    ficam em `osd/lock.dart` (`PlayerScreen.lockButton`, `PlayerScreen.unlockButton`).
   - Fica para depois: abrir a música já bloqueada (opção em Configurações).
   - Conferir no aparelho: o voltar por gesto, a palma da mão sobre o vídeo, as teclas de volume, a notificação da
     música com a tela apagada e o fone Bluetooth.

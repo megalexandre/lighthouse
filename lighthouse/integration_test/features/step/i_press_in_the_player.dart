@@ -6,6 +6,7 @@ import '../../support/app.dart';
 const _keys = {
   'Down': LogicalKeyboardKey.arrowDown,
   'M': LogicalKeyboardKey.keyM,
+  'Space': LogicalKeyboardKey.space,
 };
 
 /// Usage: When I press {'Down'} in the player

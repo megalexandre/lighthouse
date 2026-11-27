@@ -27,6 +27,7 @@ TestGesture? finger;
 /// The keys the steps name, as the desktop client's keyboard.json does.
 const keys = {
   'Esc': LogicalKeyboardKey.escape,
+  'Enter': LogicalKeyboardKey.enter,
   'Space': LogicalKeyboardKey.space,
   'Left': LogicalKeyboardKey.arrowLeft,
   'Right': LogicalKeyboardKey.arrowRight,
@@ -68,6 +69,8 @@ const buttons = <String, Key>{
   'floating window': PlayerScreen.floatingButton,
   'back to the window': PlayerScreen.floatingExpand,
   'close floating window': PlayerScreen.floatingClose,
+  'lock': PlayerScreen.lockButton,
+  'unlock': PlayerScreen.unlockButton,
 };
 
 /// The fake movie's tracks (FakePlaybackRepository.streams), by the
@@ -121,3 +124,12 @@ Finder panelRow(String title) => find.ancestor(
   ),
   matching: find.byType(InkWell),
 );
+
+/// Time passing while a finger or a key stays down, a frame at a time
+/// (the padlock's ring fills meanwhile).
+Future<void> holdFor(WidgetTester tester, num seconds) async {
+  final frames = (seconds * 10).round();
+  for (var i = 0; i < frames; i++) {
+    await tester.pump(const Duration(milliseconds: 100));
+  }
+}

@@ -1009,6 +1009,12 @@ class FakeDeviceLevels implements DeviceLevels {
   Future<void> setBrightness(double level) async => brightnessLevel = level;
   @override
   Future<void> resetBrightness() async => brightnessLevel = null;
+
+  /// The volume keys held by the app (the player locked).
+  bool volumeKeysHeld = false;
+  @override
+  Future<void> holdVolumeKeys({required bool hold}) async =>
+      volumeKeysHeld = hold;
 }
 
 /// The phone's sound, which tests take away and give back with [happen].

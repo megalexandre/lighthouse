@@ -15,3 +15,12 @@ Feature: Player controls
     Given I am signed in as a new user
     When I play {'Test Movie (2020)'} from {'Movies'}
     Then mpv draws at the size the video takes on screen
+
+  Scenario: Locked, a key reaches the padlock and not mpv
+    Given I am signed in as a new user
+    When I play {'Test Movie (2020)'} from {'Movies'}
+    And I lock the player
+    And I press {'Space'} in the player
+    Then mpv is still playing
+    When I hold the padlock
+    Then the player's controls are back

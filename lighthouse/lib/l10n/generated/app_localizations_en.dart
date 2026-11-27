@@ -393,6 +393,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get subtitlesNever => 'Never';
 
   @override
+  String get lockControls => 'Lock controls';
+
+  @override
+  String get holdToUnlock => 'Hold to unlock';
+
+  @override
   String get chapters => 'Chapters';
 
   @override

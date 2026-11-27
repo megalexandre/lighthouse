@@ -551,6 +551,10 @@
   "@subtitlesNever": {
     "description": "Show subtitles."
   },
+  "lockControls": "Lock controls",
+  "@lockControls": {"description": "Player button: hides the controls and ignores taps, keys and the headset until unlocked."},
+  "holdToUnlock": "Hold to unlock",
+  "@holdToUnlock": {"description": "Player, while locked: the padlock, held for a moment to bring the controls back."},
   "chapters": "Chapters",
   "@chapters": {"description": "Player side panel title, and its button on a video with chapters."},
   "chapterNumber": "Chapter {number}",
