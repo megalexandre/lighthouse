@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/floating_window.dart';
 import '../../../core/window.dart';
 
 /// The volume and mute the user chose, kept while the app runs: the next
@@ -74,5 +75,78 @@ class PlayerFullscreenNotifier extends Notifier<bool> {
   void toggle() {
     state = !state;
     _window.isFullScreen = state;
+  }
+}
+
+/// The player floating (a small window over the others, only the picture),
+/// across items as full screen is: the last player screen to close gives
+/// the window back. The window says when it floats, since Android may do
+/// it by itself (the user went Home) or stop (the user expanded it).
+final playerFloatingProvider = NotifierProvider<PlayerFloatingNotifier, bool>(
+  PlayerFloatingNotifier.new,
+);
+
+class PlayerFloatingNotifier extends Notifier<bool> {
+  int _screens = 0;
+
+  /// It left full screen to float: back to it when it stops.
+  bool _wasFullScreen = false;
+
+  FloatingWindow get _window => ref.read(floatingWindowProvider);
+
+  @override
+  bool build() {
+    final events = ref.watch(floatingWindowProvider).events.listen(_on);
+    ref.onDispose(events.cancel);
+    return false;
+  }
+
+  void _on(FloatingEvent event) {
+    switch (event) {
+      case FloatingEvent.entered:
+        state = true;
+      case FloatingEvent.expanded || FloatingEvent.closed:
+        state = false;
+        if (_wasFullScreen && _screens > 0) {
+          ref.read(playerFullscreenProvider.notifier).toggle();
+        }
+        _wasFullScreen = false;
+      case _:
+    }
+  }
+
+  /// A player screen opened.
+  void enter() => _screens++;
+
+  /// A player screen closed: the last one takes the offer back, and the
+  /// window out of floating. Called from dispose, so done right after.
+  void leave() {
+    if (_screens > 0) _screens--;
+    if (_screens > 0) return;
+    scheduleMicrotask(() {
+      if (!ref.mounted || _screens > 0) return;
+      _window.offer(null);
+      _wasFullScreen = false;
+      if (state) unawaited(_window.leave());
+    });
+  }
+
+  /// Floats, the picture [aspectRatio] wide to 1 high.
+  Future<void> float(double aspectRatio) async {
+    if (state) return;
+    final fullscreen = ref.read(playerFullscreenProvider.notifier);
+    if (_window.leavesFullScreen && ref.read(playerFullscreenProvider)) {
+      _wasFullScreen = true;
+      fullscreen.toggle();
+    }
+    if (!await _window.enter(aspectRatio) && _wasFullScreen) {
+      _wasFullScreen = false;
+      fullscreen.toggle();
+    }
+  }
+
+  /// Back to the window it floated from.
+  Future<void> expand() async {
+    if (state) await _window.leave();
   }
 }

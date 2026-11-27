@@ -27,6 +27,9 @@ enum PlayerAction {
 
   /// The side panel: the series' episodes, or the movie's chapters.
   contents,
+
+  /// A small window over the others, or back to the window.
+  floating,
 }
 
 /// The player's keys, ported from jellyfin-desktop's
@@ -105,6 +108,8 @@ const playerKeyBindings = <(SingleActivator, PlayerAction)>[
   (SingleActivator(LogicalKeyboardKey.keyF), PlayerAction.fullscreen),
   // Not in keyboard.json: C for "contents" (episodes or chapters).
   (SingleActivator(LogicalKeyboardKey.keyC), PlayerAction.contents),
+  // Nor this: I for picture in picture, as in YouTube's miniplayer.
+  (SingleActivator(LogicalKeyboardKey.keyI), PlayerAction.floating),
   (
     SingleActivator(LogicalKeyboardKey.enter, alt: true),
     PlayerAction.fullscreen,

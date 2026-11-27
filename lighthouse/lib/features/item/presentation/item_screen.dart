@@ -69,7 +69,11 @@ class ItemScreen extends ConsumerWidget {
             onRetry: () => ref.invalidate(itemProvider(itemId)),
           ),
         ),
-        _ => const Center(child: CircularProgressIndicator()),
+        _ => ListView(
+          physics: const NeverScrollableScrollPhysics(),
+          padding: EdgeInsets.all(margin),
+          children: const [ItemHeaderSkeleton()],
+        ),
       },
     );
   }

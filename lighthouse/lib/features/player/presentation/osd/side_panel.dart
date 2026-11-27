@@ -11,6 +11,7 @@ import '../../../../core/ticks.dart';
 import '../../../../core/touch.dart';
 import '../../../../l10n/l10n.dart';
 import '../../../../widgets/error_retry.dart';
+import '../../../../widgets/skeleton.dart';
 import '../../../library/presentation/item_card.dart';
 import '../../application/play_queue.dart';
 import '../../application/player_controller.dart';
@@ -205,7 +206,7 @@ class _EpisodesState extends ConsumerState<_Episodes> {
           onRetry: () => ref.invalidate(provider),
         ),
       ),
-      _ => const Center(child: CircularProgressIndicator()),
+      _ => const _PanelSkeleton(),
     };
   }
 
@@ -359,6 +360,55 @@ class _Row extends StatelessWidget {
                 ),
               ),
               ?trailing,
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// The episodes while they load: rows shaped as [_Row]s, in the player's
+/// dark colours.
+class _PanelSkeleton extends StatelessWidget {
+  const _PanelSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    final text = Theme.of(context).textTheme;
+    return Skeleton(
+      onMedia: true,
+      child: ListView.builder(
+        physics: const NeverScrollableScrollPhysics(),
+        itemCount: 12,
+        itemBuilder: (_, i) => Padding(
+          // As a row: the 3 px of its "playing" border included.
+          padding: EdgeInsets.fromLTRB(
+            tokens.space(3) + 3,
+            tokens.space(2),
+            tokens.space(3),
+            tokens.space(2),
+          ),
+          child: Row(
+            children: [
+              Bone(
+                width: PlayerSidePanel.thumbWidth,
+                height: PlayerSidePanel.thumbWidth * 9 / 16,
+              ),
+              SizedBox(width: tokens.space(3)),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    FractionallySizedBox(
+                      widthFactor: i.isEven ? 0.8 : 0.6,
+                      child: Bone.text(context, text.bodyMedium),
+                    ),
+                    Bone.text(context, text.bodySmall, width: 48),
+                  ],
+                ),
+              ),
             ],
           ),
         ),

@@ -8,12 +8,14 @@ import '../../../api/models/culture_dto.dart';
 import '../../../api/models/user_configuration.dart';
 import '../../../core/failure.dart';
 import '../../../core/log.dart';
+import '../../../core/theme/app_tokens.dart';
 import '../../../core/theme/appearance.dart';
 import '../../../core/theme/theme_catalog.dart';
 import '../../../core/touch.dart';
 import '../../../core/window_size.dart';
 import '../../../l10n/l10n.dart';
 import '../../../widgets/error_retry.dart';
+import '../../../widgets/skeleton.dart';
 import '../../auth/application/auth_controller.dart';
 import '../application/settings_providers.dart';
 import '../data/settings_repository.dart';
@@ -75,10 +77,7 @@ class SettingsScreen extends ConsumerWidget {
                 error: error,
                 onRetry: () => ref.invalidate(userConfigurationProvider),
               ),
-              _ => const Padding(
-                padding: EdgeInsets.all(24),
-                child: Center(child: CircularProgressIndicator()),
-              ),
+              _ => const _UserSettingsSkeleton(),
             },
             if (isTouch(context)) const _SwipeSettings(),
             _Heading(context.l10n.appearance),
@@ -136,6 +135,37 @@ class _SwipeSettings extends ConsumerWidget {
 }
 
 /// The settings kept on the server for this user.
+/// The server's settings while they load: a label and a control per row.
+class _UserSettingsSkeleton extends StatelessWidget {
+  const _UserSettingsSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    final text = Theme.of(context).textTheme;
+    return Skeleton(
+      child: Column(
+        children: [
+          for (var i = 0; i < 4; i++)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              child: Row(
+                children: [
+                  Bone.text(
+                    context,
+                    text.bodyLarge,
+                    width: i.isEven ? 160 : 120,
+                  ),
+                  const Spacer(),
+                  Bone(width: 140, height: 32, radius: context.tokens.radiusMd),
+                ],
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
 class _UserSettings extends ConsumerWidget {
   const _UserSettings({required this.config});
 

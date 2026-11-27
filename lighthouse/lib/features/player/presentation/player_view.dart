@@ -6,6 +6,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../../../api/models/base_item_dto.dart';
+import '../../../api/models/media_stream.dart';
+import '../../../core/floating_window.dart';
 import '../../../core/theme/app_tokens.dart';
 import '../../../core/ticks.dart';
 import '../../../core/touch.dart';
@@ -16,6 +18,7 @@ import '../application/player_controller.dart';
 import '../application/trickplay.dart';
 import '../data/playback_repository.dart';
 import '../data/player_engine.dart';
+import 'osd/floating_controls.dart';
 import 'osd/player_osd.dart';
 import 'osd/seek_bar.dart';
 import 'osd/settings_menu.dart';
@@ -87,6 +90,9 @@ class _PlayerViewState extends ConsumerState<PlayerView> {
   bool _osdVisible = true;
   Timer? _hideTimer;
   StreamSubscription<bool>? _playing;
+  StreamSubscription<FloatingEvent>? _floatingEvents;
+
+  bool get _floating => ref.read(playerFloatingProvider);
 
   /// The settings panel, while open, and the page it opened on.
   SettingsPage? _menu;
@@ -106,11 +112,9 @@ class _PlayerViewState extends ConsumerState<PlayerView> {
   /// The "Up next" card was dismissed (for this item).
   bool _upNextHidden = false;
 
-  late final TrickplayThumbnails? _thumbnails = TrickplayThumbnails.of(
-    widget.session.item,
-    widget.session.plan.source.id,
-    ref.read(playbackRepositoryProvider),
-  );
+  /// Made at the start, not when first used: floating, the seek bar may
+  /// never ask, and dispose cannot read providers.
+  late final TrickplayThumbnails? _thumbnails;
 
   /// The seek bar's chapter marks.
   late final List<SeekChapter> _chapters = [
@@ -121,10 +125,20 @@ class _PlayerViewState extends ConsumerState<PlayerView> {
   @override
   void initState() {
     super.initState();
+    _thumbnails = TrickplayThumbnails.of(
+      widget.session.item,
+      widget.session.plan.source.id,
+      ref.read(playbackRepositoryProvider),
+    );
     // Paused: keep the OSD up. Playing: hide it after a while.
     _playing = engine.playingStream.listen((playing) {
       playing ? _scheduleHide() : _show(hide: false);
+      _offerFloating();
     });
+    _floatingEvents = ref
+        .read(floatingWindowProvider)
+        .events
+        .listen(_onFloatingEvent);
     _scheduleHide();
     // Not now: providers cannot change while the tree builds.
     scheduleMicrotask(() {
@@ -139,11 +153,13 @@ class _PlayerViewState extends ConsumerState<PlayerView> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    engine.setSubtitleLift(_osdVisible ? _subtitleLift : 0);
+    engine.setSubtitleLift(_osdVisible && !_floating ? _subtitleLift : 0);
+    _offerFloating();
   }
 
   @override
   void dispose() {
+    unawaited(_floatingEvents?.cancel());
     _focus.dispose();
     _hideTimer?.cancel();
     unawaited(_playing?.cancel());
@@ -151,13 +167,73 @@ class _PlayerViewState extends ConsumerState<PlayerView> {
     super.dispose();
   }
 
-  void _toggleFullscreen() =>
-      ref.read(playerFullscreenProvider.notifier).toggle();
+  /// Full screen; floating, back to the window it floated from.
+  void _toggleFullscreen() => _floating
+      ? unawaited(ref.read(playerFloatingProvider.notifier).expand())
+      : ref.read(playerFullscreenProvider.notifier).toggle();
+
+  /// The picture's width to its height, as the server describes the
+  /// stream (16:9 when it does not say).
+  double get _aspectRatio {
+    final video = widget.session.plan.source.mediaStreams
+        .where((s) => s.type == MediaStreamType.video)
+        .firstOrNull;
+    final (width, height) = (video?.width ?? 0, video?.height ?? 0);
+    return width > 0 && height > 0 ? width / height : 16 / 9;
+  }
+
+  /// What the window floats with: a video only, and on Android, while it
+  /// plays, it floats by itself when the user goes Home.
+  void _offerFloating() {
+    if (_isAudio || !mounted) return;
+    final l10n = context.l10n;
+    ref.read(floatingWindowProvider).offer((
+      aspectRatio: _aspectRatio,
+      playing: engine.playing,
+      play: l10n.play,
+      pause: l10n.pause,
+      back10: l10n.back10,
+      forward10: l10n.forward10,
+    ));
+  }
+
+  Future<void> _toggleFloating() async {
+    final floating = ref.read(playerFloatingProvider.notifier);
+    if (_floating) return floating.expand();
+    if (_isAudio || !(ref.read(floatingSupportedProvider).value ?? false)) {
+      return;
+    }
+    // Nothing of the controls fits in there.
+    setState(() {
+      _menu = null;
+      _panelOpen = false;
+    });
+    await floating.float(_aspectRatio);
+  }
+
+  /// The floating window's own buttons (Android's), and its X.
+  void _onFloatingEvent(FloatingEvent event) {
+    switch (event) {
+      case FloatingEvent.closed:
+        widget.onBack();
+      case FloatingEvent.playPause:
+        unawaited(engine.playOrPause());
+      case FloatingEvent.seekBack:
+        unawaited(_seekBy(-seekStep));
+      case FloatingEvent.seekForward:
+        unawaited(_seekBy(seekStep));
+      case FloatingEvent.entered || FloatingEvent.expanded:
+        // The subtitles sit low in the small window.
+        engine.setSubtitleLift(
+          event == FloatingEvent.expanded && _osdVisible ? _subtitleLift : 0,
+        );
+    }
+  }
 
   void _setOsd(bool visible) {
     if (_osdVisible == visible) return;
     setState(() => _osdVisible = visible);
-    engine.setSubtitleLift(visible ? _subtitleLift : 0);
+    engine.setSubtitleLift(visible && !_floating ? _subtitleLift : 0);
   }
 
   void _show({bool hide = true}) {
@@ -231,8 +307,12 @@ class _PlayerViewState extends ConsumerState<PlayerView> {
   }
 
   /// Esc or the system's Back: in the menu one level up, then closed (not
-  /// leaving the player); otherwise out of the player.
+  /// leaving the player); floating, back to the window; otherwise out of
+  /// the player.
   void _back() {
+    if (_floating) {
+      return unawaited(ref.read(playerFloatingProvider.notifier).expand());
+    }
     if (_panelOpen) return _closePanel();
     if (_menu == null) return widget.onBack();
     if (!(_menuKey.currentState?.back() ?? false)) _closeMenu();
@@ -258,7 +338,8 @@ class _PlayerViewState extends ConsumerState<PlayerView> {
     final done = switch (action) {
       PlayerAction.playPause => engine.playOrPause(),
       PlayerAction.pause => engine.pause(),
-      PlayerAction.stop || PlayerAction.back => Future.sync(widget.onBack),
+      PlayerAction.stop => Future.sync(widget.onBack),
+      PlayerAction.back => Future.sync(_floating ? _back : widget.onBack),
       PlayerAction.seekBack => _seekBy(-seekStep),
       PlayerAction.seekForward => _seekBy(seekStep),
       PlayerAction.seekBackLong => _seekBy(-longSeekStep),
@@ -274,7 +355,9 @@ class _PlayerViewState extends ConsumerState<PlayerView> {
       PlayerAction.fullscreen => Future.sync(_toggleFullscreen),
       PlayerAction.next => _next(),
       PlayerAction.previous => _previous(),
-      PlayerAction.contents => Future.sync(_togglePanel),
+      PlayerAction.contents =>
+        _floating ? Future<void>.value() : Future.sync(_togglePanel),
+      PlayerAction.floating => _toggleFloating(),
     };
     switch (action) {
       // A track that needs a new stream can fail: said, as from the menu.
@@ -296,6 +379,7 @@ class _PlayerViewState extends ConsumerState<PlayerView> {
     final session = widget.session;
     final c = widget.controller;
     final tokens = context.tokens;
+    final floating = ref.watch(playerFloatingProvider);
     // The system's Back (Android) does what Esc does; leaving saves the
     // resume point first (onBack), so the route is never popped directly.
     return PopScope(
@@ -308,8 +392,10 @@ class _PlayerViewState extends ConsumerState<PlayerView> {
         autofocus: true,
         onKeyEvent: _onKey,
         child: MouseRegion(
-          cursor: _osdVisible ? MouseCursor.defer : SystemMouseCursors.none,
-          onHover: (_) => _show(),
+          cursor: _osdVisible || floating
+              ? MouseCursor.defer
+              : SystemMouseCursors.none,
+          onHover: floating ? null : (_) => _show(),
           child: Stack(
             fit: StackFit.expand,
             children: [
@@ -351,86 +437,118 @@ class _PlayerViewState extends ConsumerState<PlayerView> {
                     onDoubleTap: _isAudio ? null : _toggleFullscreen,
                   ),
                 ),
-              if (session.interruptedAt case final Duration at)
-                InterruptedNotice(
-                  at: at,
-                  onResume: c.resumeAfterInterruption,
-                  onBack: widget.onBack,
-                ),
-              _Buffering(engine: engine),
-              AnimatedOpacity(
-                opacity: _osdVisible ? 1 : 0,
-                // In quickly, out slowly.
-                duration: Duration(milliseconds: _osdVisible ? 200 : 400),
-                child: IgnorePointer(
-                  ignoring: !_osdVisible,
-                  child: PlayerOsd(
-                    session: session,
-                    controller: c,
-                    chapters: _chapters,
-                    thumbnails: _thumbnails,
-                    fullscreen: ref.watch(playerFullscreenProvider),
-                    onFullscreen: _toggleFullscreen,
-                    onNext: widget.onNext == null ? null : _next,
-                    onPrevious: _previous,
+              // Android's floating window takes no touch: only the picture
+              // (its buttons are the system's). The desktop's has a few
+              // of its own, on hover.
+              if (floating) ...[
+                _Buffering(engine: engine),
+                if (!isTouch(context))
+                  FloatingControls(
+                    engine: engine,
+                    onExpand: () => unawaited(
+                      ref.read(playerFloatingProvider.notifier).expand(),
+                    ),
+                    onClose: widget.onBack,
                     onSeekBy: _seekBy,
-                    onBack: widget.onBack,
-                    onInteract: _show,
-                    onMenu: _openMenu,
-                    showCenterPlay: !_isAudio,
-                    panel: _panelContents,
-                    onPanel: _togglePanel,
+                    onDrag: ref.read(floatingWindowProvider).startDragging,
                   ),
-                ),
-              ),
-              if (widget.upNext case final BaseItemDto next
-                  // The panel lists what comes next anyway.
-                  when !_upNextHidden && !_panelOpen)
-                _UpNextLayer(
-                  engine: engine,
-                  next: next,
-                  raised: _osdVisible,
-                  onWatchNow: () => unawaited(_next()),
-                  onHide: () => setState(() => _upNextHidden = true),
-                ),
-              if (_panelContents case final PanelContents contents
-                  when _panelOpen) ...[
-                MenuBarrier(onDismiss: _closePanel),
-                PlayerSidePanel(
-                  contents: contents,
-                  session: session,
-                  chapters: _chapters,
-                  onClose: _closePanel,
-                  onSeek: (start) {
-                    unawaited(engine.seek(start));
-                    _show(hide: false);
-                  },
-                  onPlay: (episode) {
-                    _closePanel();
-                    widget.onPlay?.call(episode);
-                  },
-                ),
-              ],
-              if (_menu case final SettingsPage page) ...[
-                MenuBarrier(onDismiss: _closeMenu),
-                Positioned(
-                  right: tokens.space(6),
-                  bottom: 88,
-                  child: TrackMenu(
-                    menuKey: _menuKey,
-                    page: page,
-                    session: session,
-                    controller: c,
-                    onClose: _closeMenu,
-                  ),
-                ),
-              ],
+              ] else
+                ..._controls(session, c, tokens),
             ],
           ),
         ),
       ),
     );
   }
+
+  /// Over the picture in the full window: the notice of a lost
+  /// connection, the spinner, the controls, the "Up next" card, and the
+  /// side panel or the settings, when open.
+  List<Widget> _controls(
+    PlayerSession session,
+    PlayerController c,
+    AppTokens tokens,
+  ) => [
+    if (session.interruptedAt case final Duration at)
+      InterruptedNotice(
+        at: at,
+        onResume: c.resumeAfterInterruption,
+        onBack: widget.onBack,
+      ),
+    _Buffering(engine: engine),
+    AnimatedOpacity(
+      opacity: _osdVisible ? 1 : 0,
+      // In quickly, out slowly.
+      duration: Duration(milliseconds: _osdVisible ? 200 : 400),
+      child: IgnorePointer(
+        ignoring: !_osdVisible,
+        child: PlayerOsd(
+          session: session,
+          controller: c,
+          chapters: _chapters,
+          thumbnails: _thumbnails,
+          fullscreen: ref.watch(playerFullscreenProvider),
+          onFullscreen: _toggleFullscreen,
+          onNext: widget.onNext == null ? null : _next,
+          onPrevious: _previous,
+          onSeekBy: _seekBy,
+          onBack: widget.onBack,
+          onInteract: _show,
+          onMenu: _openMenu,
+          showCenterPlay: !_isAudio,
+          panel: _panelContents,
+          onPanel: _togglePanel,
+          onFloating:
+              !_isAudio && (ref.watch(floatingSupportedProvider).value ?? false)
+              ? () => unawaited(_toggleFloating())
+              : null,
+        ),
+      ),
+    ),
+    if (widget.upNext case final BaseItemDto next
+        // The panel lists what comes next anyway.
+        when !_upNextHidden && !_panelOpen)
+      _UpNextLayer(
+        engine: engine,
+        next: next,
+        raised: _osdVisible,
+        // Clear of the panel's tab on the right edge.
+        besideTab: _panelContents != null && _osdVisible,
+        onWatchNow: () => unawaited(_next()),
+        onHide: () => setState(() => _upNextHidden = true),
+      ),
+    if (_panelContents case final PanelContents contents when _panelOpen) ...[
+      MenuBarrier(onDismiss: _closePanel),
+      PlayerSidePanel(
+        contents: contents,
+        session: session,
+        chapters: _chapters,
+        onClose: _closePanel,
+        onSeek: (start) {
+          unawaited(engine.seek(start));
+          _show(hide: false);
+        },
+        onPlay: (episode) {
+          _closePanel();
+          widget.onPlay?.call(episode);
+        },
+      ),
+    ],
+    if (_menu case final SettingsPage page) ...[
+      MenuBarrier(onDismiss: _closeMenu),
+      Positioned(
+        right: tokens.space(6),
+        bottom: 88,
+        child: TrackMenu(
+          menuKey: _menuKey,
+          page: page,
+          session: session,
+          controller: c,
+          onClose: _closeMenu,
+        ),
+      ),
+    ],
+  ];
 }
 
 /// The video (or a song's cover), full size, and what a tap and a double
@@ -500,6 +618,7 @@ class _UpNextLayer extends StatelessWidget {
     required this.engine,
     required this.next,
     required this.raised,
+    required this.besideTab,
     required this.onWatchNow,
     required this.onHide,
   });
@@ -507,6 +626,9 @@ class _UpNextLayer extends StatelessWidget {
   final PlayerEngine engine;
   final BaseItemDto next;
   final bool raised;
+
+  /// The side panel's tab is on the right edge: the card leaves it room.
+  final bool besideTab;
   final VoidCallback onWatchNow;
   final VoidCallback onHide;
 
@@ -524,7 +646,7 @@ class _UpNextLayer extends StatelessWidget {
           return const SizedBox.shrink();
         }
         return Positioned(
-          right: tokens.space(6),
+          right: tokens.space(6) + (besideTab ? touchTarget : 0),
           // Above the controls while they are up: on a phone they have a
           // second row, on touch a taller seek bar.
           bottom: raised

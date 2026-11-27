@@ -93,7 +93,10 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                   onRetry: () => ref.invalidate(searchResultsProvider(_term)),
                 ),
               ),
-              _ => const Center(child: CircularProgressIndicator()),
+              _ => const RowsSkeleton(
+                padding: EdgeInsets.only(top: 16),
+                rows: 2,
+              ),
             },
     );
   }

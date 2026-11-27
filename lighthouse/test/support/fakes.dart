@@ -20,6 +20,7 @@ import 'package:lighthouse/api/models/user_item_data_dto.dart';
 import 'package:lighthouse/app.dart';
 import 'package:lighthouse/core/device_levels.dart';
 import 'package:lighthouse/core/failure.dart';
+import 'package:lighthouse/core/floating_window.dart';
 import 'package:lighthouse/core/storage.dart';
 import 'package:lighthouse/core/theme/appearance.dart';
 import 'package:lighthouse/core/theme/theme_catalog.dart';
@@ -269,7 +270,11 @@ class FakeLibraryRepository implements LibraryRepository {
   /// (startIndex, limit) of every children() call.
   final childrenCalls = <(int, int)>[];
 
+  /// Method name → a gate its answer waits for (a page still loading).
+  final held = <String, Completer<void>>{};
+
   Future<T> _answer<T>(String method, T Function() value) async {
+    if (held[method] case final gate?) await gate.future;
     if (failures[method] case final Failure f) throw f;
     return value();
   }
@@ -474,6 +479,9 @@ class FakePlaybackRepository implements PlaybackRepository {
   /// How high the video of every plan is, in pixels (null: not said).
   int? videoHeight;
 
+  /// And how wide (null: not said).
+  int? videoWidth;
+
   /// (start, audio, subtitle) of every prepare() call.
   final prepareCalls = <(Duration, int?, int?)>[];
 
@@ -494,8 +502,12 @@ class FakePlaybackRepository implements PlaybackRepository {
         supportsDirectPlay: method != PlayMethod.transcode,
         mediaStreams: [
           for (final s in streams)
-            s.type == MediaStreamType.video && videoHeight != null
-                ? s.copyWith(height: videoHeight)
+            s.type == MediaStreamType.video &&
+                    (videoHeight != null || videoWidth != null)
+                ? s.copyWith(
+                    height: videoHeight ?? s.height,
+                    width: videoWidth ?? s.width,
+                  )
                 : s,
         ],
         defaultAudioStreamIndex: 2,
@@ -915,6 +927,71 @@ class FakeAppWindow implements AppWindow {
   bool staysOn = false;
 }
 
+/// A floating window that floats when asked, and the system (Android)
+/// that the tests drive with [happen].
+class FakeFloatingWindow implements FloatingWindow {
+  /// The phone has picture in picture (a desktop always floats).
+  bool canFloat = true;
+
+  /// As Android: full screen stays, the system floats it by itself (Home)
+  /// and closes it (its X).
+  bool android = false;
+
+  bool floating = false;
+  double? aspectRatio;
+  FloatingOffer? offered;
+
+  /// Times the window was dragged.
+  int drags = 0;
+
+  final _events = StreamController<FloatingEvent>.broadcast();
+
+  @override
+  Future<bool> supported() async => canFloat;
+
+  @override
+  bool get leavesFullScreen => !android;
+
+  @override
+  Future<bool> enter(double aspectRatio) async {
+    if (!canFloat) return false;
+    this.aspectRatio = aspectRatio;
+    happen(FloatingEvent.entered);
+    return true;
+  }
+
+  @override
+  Future<void> leave() async {
+    if (!floating) return;
+    // Android sends the app to the background: as closing it.
+    happen(android ? FloatingEvent.closed : FloatingEvent.expanded);
+  }
+
+  @override
+  void offer(FloatingOffer? offer) => offered = offer;
+
+  @override
+  void startDragging() => drags++;
+
+  @override
+  Stream<FloatingEvent> get events => _events.stream;
+
+  /// What the system (or the user, on its window) does.
+  void happen(FloatingEvent event) {
+    switch (event) {
+      case FloatingEvent.entered:
+        floating = true;
+      case FloatingEvent.expanded || FloatingEvent.closed:
+        floating = false;
+      case _:
+    }
+    _events.add(event);
+  }
+
+  @override
+  void dispose() {}
+}
+
 /// A phone's media volume and window brightness, 0..1. [brightness] null:
 /// the window follows the screen's, [screenBrightness].
 class FakeDeviceLevels implements DeviceLevels {
@@ -1024,6 +1101,7 @@ class TestApp {
   final library = FakeLibraryRepository();
   final playback = FakePlaybackRepository();
   final window = FakeAppWindow();
+  final floating = FakeFloatingWindow();
   final levels = FakeDeviceLevels();
   final audioFocus = FakeAudioFocus();
   final mediaControls = FakeMediaControls();
@@ -1075,6 +1153,7 @@ class TestApp {
     libraryRepositoryProvider.overrideWithValue(library),
     playbackRepositoryProvider.overrideWithValue(playback),
     appWindowProvider.overrideWithValue(window),
+    floatingWindowProvider.overrideWithValue(floating),
     deviceLevelsProvider.overrideWithValue(levels),
     audioFocusProvider.overrideWithValue(audioFocus),
     mediaControlsProvider.overrideWithValue(mediaControls),
@@ -1104,6 +1183,7 @@ class TestApp {
   /// it only.
   void runOn(TestDevice device) {
     this.device = device;
+    floating.android = true;
     appFiles.values['appearance'] = '{"chosenTheme":"$prime"}';
   }
 

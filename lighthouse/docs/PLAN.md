@@ -190,6 +190,10 @@ media_kit; seleção de faixa de áudio/legenda (embutida e externa); OSD (seek,
 atalhos de teclado portados de `resources/inputmaps/keyboard.json`; `PlaybackReporter`
 (`/Sessions/Playing`, `/Progress`, `/Stopped`); retomar; marcar assistido; próximo episódio; player de áudio para música.
 Pronto: todos os fluxos de playback da camada 4 acima.
+Nitidez: no desktop o mpv desenha no tamanho que o vídeo ocupa na tela, em pixels físicos (`setSize` do
+`VideoController`), como o jellyfin-desktop; antes desenhava no tamanho do vídeo e o Flutter esticava a textura
+(bilinear, sem mipmaps), o que serrilhava ao reduzir. No Android não: o media_kit não tem tamanho a definir lá (o
+`mediacodec` desenha direto na surface), limite da plataforma.
 
 **F4 — Fechamento do MVP**
 Busca (`/Items?searchTerm=`), configurações (qualidade máxima/bitrate, idioma preferido de áudio/legenda),
@@ -571,6 +575,65 @@ Achados no código, que no Android quebram sem erro visível:
     player. Os controles ficam visíveis enquanto ele está aberto, e os gestos de deslizar param (o clique fora
     cobre o vídeo). No teclado, as setas percorrem a lista e Enter escolhe; ao fechar, as teclas voltam ao player.
   - Igual no desktop e no Android (no celular, sempre em paisagem); só muda a entrada.
+- **Bloqueio dos controles (planejado):** no modelo do app Android do Jellyfin, contra toques sem querer (bolso,
+  palma da mão, criança). Cenários em `test/scenarios/player/lock.feature`.
+  - Um cadeado aberto na barra de cima, à direita do título (a de baixo já está cheia no celular), no vídeo e na
+    música. Bloquear fecha o menu e o painel lateral e esconde os controles; na música ficam a capa, o título e o
+    tempo, só de olhar. O Próximo continua sozinho e o bloqueio continua no item seguinte (mesma tela,
+    `playInstead`); o cartão do Próximo fica escondido.
+  - Bloqueado, um toque no vídeo (ou mover o mouse, ou qualquer tecla) mostra só um cadeado fechado por uns 3 s,
+    no meio da borda esquerda: longe do botão que bloqueou, para um toque duplo não bloquear e desbloquear, e do
+    lado oposto à aba do painel.
+  - Desbloquear é segurar o cadeado: um anel em volta (`accent` sobre `osdSurface`) se completa em uns 1,5 s;
+    soltar antes faz o anel voltar e nada acontece; completo, desbloqueia (com uma vibração curta no Android) e os
+    controles voltam. No desktop, segurar o botão do mouse sobre o cadeado, ou Enter ou Espaço com ele focado
+    (qualquer tecla o mostra já focado).
+  - Bloqueado, nada responde:
+    - na tela: toques, toque duplo, deslizar (brilho, volume, avançar), clique e roda do mouse, e todas as teclas
+      do `PlayerKeys` (as de mídia do desktop incluídas);
+    - o voltar do Android e o Esc só mostram o cadeado, não saem do player;
+    - a sessão de mídia (`SystemMedia`) ignora os comandos: fone Bluetooth, teclas de mídia, notificação;
+    - a notificação da música mostra só o título e a capa, sem botões, e os devolve ao desbloquear;
+    - as teclas de volume do celular: o `MainActivity.kt` as segura enquanto estiver bloqueado
+      (`setLocked` no canal `lighthouse/device`), só com o app na frente.
+  - Limite da plataforma: a cortina de notificações, o botão liga/desliga e o gesto de início são do Android; com a
+    tela apagada, só a notificação e o fone agem, e por isso ela também bloqueia.
+  - O bloqueio vale para a tela do player: sair dele (o fim da fila) o desfaz. Não é guardado.
+  - Código: `_locked` em `_PlayerViewState`, com um timer próprio para o cadeado; `PlayerSwipes`, `_Picture`,
+    `PlayerKeys` e o `PopScope` recebem o estado; o botão e o cadeado com o anel em `osd/lock.dart`
+    (`PlayerScreen.lockButton`, `PlayerScreen.unlockButton`); `MediaControls` ganha um modo sem botões.
+  - Fica para depois: abrir a música já bloqueada (opção em Configurações).
+  - Conferir no aparelho: o voltar por gesto, a palma da mão sobre o vídeo, as teclas de volume, a notificação da
+    música com a tela apagada e o fone Bluetooth.
+- **Janela flutuante do player (código feito; falta conferir à mão):** o vídeo encolhe para uma janela pequena por
+  cima das outras, só com a imagem ("picture in picture"), e volta. Cenários em
+  `test/scenarios/player/floating.feature`.
+  - Entra pelo botão na barra de baixo (ao lado da tela cheia) ou pela tecla I (a do miniplayer do YouTube; não
+    existe no `keyboard.json`). Só vídeo: a música não tem. Continua no episódio seguinte, como a tela cheia
+    (`playerFloatingProvider`, que conta as telas do player como o `playerFullscreenProvider`); fechar o player
+    devolve a janela.
+  - `FloatingWindow` (`lib/core/floating_window.dart`), uma por plataforma; a janela diz quando flutua e quando
+    para (eventos), porque no Android o sistema decide também. Formato: largura / altura do stream de vídeo que o
+    servidor descreve (16:9 se não diz).
+  - Desktop: a própria janela, sem barra de título, sempre no topo, 480 px de largura, no canto de baixo à
+    direita de onde estava (`window_manager`). Sai da tela cheia para flutuar e volta a ela depois. Por cima da
+    imagem, ao passar o mouse (ou pausado): voltar à janela e fechar em cima, −10 s, play/pausa e +10 s no meio.
+    Arrastar move a janela, um clique pausa, um clique duplo, I ou Esc devolvem a janela; o resto das teclas
+    continua (espaço, setas).
+  - Android: o PiP do sistema (`supportsPictureInPicture` no manifesto; `MainActivity.kt`, canal
+    `lighthouse/floating`). Flutua sozinho ao ir para o início enquanto o vídeo toca (`setAutoEnterEnabled` no
+    Android 12+, `onUserLeaveHint` antes). Os botões são do sistema (`RemoteAction`: −10 s, play/pausa, +10 s),
+    com os textos do app. Expandir volta aos controles; o X do PiP sai do player (salva onde parou). Aparelho sem
+    PiP: sem botão.
+  - Limites da plataforma:
+    - Wayland: o compositor decide onde a janela fica e se fica por cima. O GNOME ignora as duas coisas (o KDE tem
+      "Manter acima" no menu da janela); lá ela só fica menor. Arrastar funciona. No X11 funciona tudo.
+    - Android: o app não consegue aumentar o PiP sozinho. Se o player fecha com ele flutuando (fim da fila), o app
+      vai para o fundo (`moveTaskToBack`). No PiP não chega toque ao app, por isso nada além da imagem é
+      desenhado nele.
+  - Os testes de integração não flutuam (`TestFloatingWindow`): o Xvfb não tem gerenciador de janelas.
+  - Conferir à mão: X11 e Wayland (GNOME e KDE), a volta da tela cheia e da janela maximizada; no Android 8, 11 e
+    12+, o início com o vídeo tocando e pausado, os botões do PiP, o X e o expandir.
 - **A2d, build, testes e release:**
   - `tool/build_apk.sh`: release, um APK por ABI, assinado com uma chave fora do repo (secrets na CI). Smoke test
     do APK no emulador, como o AppImage.

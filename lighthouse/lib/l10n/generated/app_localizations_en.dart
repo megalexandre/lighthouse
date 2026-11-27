@@ -283,6 +283,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get details => 'Details';
 
   @override
+  String get loading => 'Loading';
+
+  @override
   String get nothingHere => 'Nothing here yet.';
 
   @override
@@ -514,6 +517,12 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get exitFullScreen => 'Exit full screen';
+
+  @override
+  String get floatingWindow => 'Floating window';
+
+  @override
+  String get backToWindow => 'Back to the window';
 
   @override
   String get mute => 'Mute';

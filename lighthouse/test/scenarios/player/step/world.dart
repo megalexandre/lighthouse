@@ -39,6 +39,7 @@ const keys = {
   'M': LogicalKeyboardKey.keyM,
   'S': LogicalKeyboardKey.keyS,
   'C': LogicalKeyboardKey.keyC,
+  'I': LogicalKeyboardKey.keyI,
   'F11': LogicalKeyboardKey.f11,
   'Next track': LogicalKeyboardKey.mediaTrackNext,
 };
@@ -62,7 +63,11 @@ const buttons = <String, Key>{
   'episodes': PlayerScreen.sidePanelButton,
   'chapters': PlayerScreen.sidePanelButton,
   'close panel': PlayerScreen.sidePanelClose,
+  'panel tab': PlayerScreen.sidePanelTab,
   'resume after break': PlayerScreen.resumeAfterBreak,
+  'floating window': PlayerScreen.floatingButton,
+  'back to the window': PlayerScreen.floatingExpand,
+  'close floating window': PlayerScreen.floatingClose,
 };
 
 /// The fake movie's tracks (FakePlaybackRepository.streams), by the

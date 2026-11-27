@@ -1,7 +1,7 @@
 {
   // Tasks for lighthouse/. Run with "Tasks: Run Task", or as a
   // preLaunchTask from launch.json. Ctrl+Shift+B lists the build tasks
-  // (release build, AppImage, generated code).
+  // (release build, AppImage, APK, generated code).
   "version": "2.0.0",
   "options": { "cwd": "${workspaceFolder}/lighthouse" },
   "tasks": [
@@ -21,6 +21,17 @@
       "label": "lighthouse: AppImage",
       "type": "shell",
       "command": "tool/build_appimage.sh",
+      "group": "build",
+      "problemMatcher": [],
+      "presentation": { "reveal": "always", "panel": "dedicated", "clear": true }
+    },
+    {
+      // The phone app (arm64): build/app/outputs/flutter-apk/app-release.apk,
+      // signed with Flutter's debug key for now (see lighthouse/README.md,
+      // "Android"). No build lock: it does not touch linux/flutter/ephemeral/.
+      "label": "lighthouse: APK (release)",
+      "type": "shell",
+      "command": "flutter build apk --release --target-platform android-arm64",
       "group": "build",
       "problemMatcher": [],
       "presentation": { "reveal": "always", "panel": "dedicated", "clear": true }

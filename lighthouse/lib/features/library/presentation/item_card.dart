@@ -14,6 +14,7 @@ import '../../../core/touch.dart';
 import '../../../core/window_size.dart';
 import '../../../l10n/l10n.dart';
 import '../../../router.dart';
+import '../../../widgets/skeleton.dart';
 import '../data/library_repository.dart';
 import 'card_actions.dart';
 import 'card_popover.dart';
@@ -496,6 +497,42 @@ class _Caption extends StatelessWidget {
               ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// An [ItemCard] still loading, inside a [Skeleton]: its picture and its
+/// two lines, at the card's size.
+class CardSkeleton extends StatelessWidget {
+  const CardSkeleton({
+    super.key,
+    required this.width,
+    this.aspectRatio = 2 / 3,
+  });
+
+  final double width;
+  final double aspectRatio;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    final text = Theme.of(context).textTheme;
+    return SizedBox(
+      width: width,
+      height: ItemCard.heightFor(context, width, aspectRatio),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Bone(
+            width: width,
+            height: width / aspectRatio,
+            radius: aspectRatio < 1 ? tokens.radiusSm : tokens.radiusMd,
+          ),
+          SizedBox(height: tokens.space(2)),
+          Bone.text(context, text.titleSmall, width: width * 0.8),
+          Bone.text(context, text.bodySmall, width: width * 0.45),
+        ],
       ),
     );
   }

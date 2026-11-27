@@ -19,12 +19,12 @@ import './step/the_series_has_a_second_season_with.dart';
 import './step/has_a_chapter_from_minute.dart';
 import './step/it_is_at_seconds.dart';
 import './step/there_is_no_button.dart';
-import './step/i_press.dart';
+import './step/the_app_runs_on_a.dart';
 import './step/the_side_panel_is_open.dart';
 import './step/the_side_panel_is_closed.dart';
+import './step/i_press.dart';
 import './step/the_player_is_still_open.dart';
 import './step/it_is_paused.dart';
-import './step/the_app_runs_on_a.dart';
 import './step/i_use_the_phones_back.dart';
 import './step/the_player_is_closed.dart';
 
@@ -130,12 +130,34 @@ void main() {
         await bddSetUp(tester);
         await iPlay(tester, 'movie-1');
         await thereIsNoButton(tester, 'chapters');
+        await thereIsNoButton(tester, 'panel tab');
       } catch (_) {
         success = false;
         rethrow;
       } finally {
         await afterEach(
           '''A movie without chapters has no panel''',
+          success,
+        );
+      }
+    });
+    testWidgets('''The tab on the right edge opens it''', (tester) async {
+      var success = true;
+      try {
+        await beforeEach('''The tab on the right edge opens it''');
+        await bddSetUp(tester);
+        await theAppRunsOnA(tester, 'phone');
+        await iPlay(tester, 'episode-1');
+        await iTapTheButton(tester, 'panel tab');
+        await theSidePanelIsOpen(tester);
+        await iTapTheButton(tester, 'close panel');
+        await theSidePanelIsClosed(tester);
+      } catch (_) {
+        success = false;
+        rethrow;
+      } finally {
+        await afterEach(
+          '''The tab on the right edge opens it''',
           success,
         );
       }

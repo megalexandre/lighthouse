@@ -3,8 +3,8 @@ Feature: The player's side panel
   As Stremio's: on an episode, the series' episodes by season, the one
   playing marked, and a tap plays another (where it was left off is
   saved first, as with Next); on a movie with chapters, its chapters, the
-  one playing marked, and a tap goes there. It opens from its button or
-  C, over the picture, and closes with its X, a click beside it, Esc or
+  one playing marked, and a tap goes there. It opens from its button, the
+  tab on the right edge (while the controls show) or C, over the picture, and closes with its X, a click beside it, Esc or
   the phone's Back, before they leave the player.
 
   Background:
@@ -42,6 +42,15 @@ Feature: The player's side panel
   Scenario: A movie without chapters has no panel
     When I play {'movie-1'}
     Then there is no {'chapters'} button
+    And there is no {'panel tab'} button
+
+  Scenario: The tab on the right edge opens it
+    Given the app runs on a {'phone'}
+    When I play {'episode-1'}
+    And I tap the {'panel tab'} button
+    Then the side panel is open
+    When I tap the {'close panel'} button
+    Then the side panel is closed
 
   Scenario: C opens it, Esc closes it and not the player
     When I play {'episode-1'}

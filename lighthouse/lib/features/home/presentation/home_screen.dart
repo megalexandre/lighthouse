@@ -12,6 +12,7 @@ import '../../../l10n/l10n.dart';
 import '../../../router.dart';
 import '../../../widgets/error_retry.dart';
 import '../../../widgets/row_arrows.dart';
+import '../../../widgets/skeleton.dart';
 import '../../auth/application/auth_controller.dart';
 import '../../auth/data/session.dart';
 import '../../library/application/library_providers.dart';
@@ -126,7 +127,18 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   onRetry: () => ref.invalidate(userViewsProvider),
                 ),
               ),
-              _ => const Center(child: CircularProgressIndicator()),
+              _ => RowsSkeleton(
+                hero:
+                    context.tokens.components.homeHero ==
+                    HomeHeroStyle.carousel,
+                padding: EdgeInsets.only(
+                  top:
+                      context.tokens.components.homeHero ==
+                          HomeHeroStyle.carousel
+                      ? 0
+                      : barExtent + 16,
+                ),
+              ),
             },
             Positioned(
               top: 0,
@@ -254,7 +266,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             onRetry: () => ref.invalidate(userViewsProvider),
           ),
         ),
-        _ => const Center(child: CircularProgressIndicator()),
+        _ => const RowsSkeleton(padding: EdgeInsets.only(top: 16)),
       },
     );
   }
@@ -289,17 +301,17 @@ class ItemRow extends StatelessWidget {
     final size = WindowSize.of(context);
     final compact = size == WindowSize.compact;
     final margin = size.margin;
+    final cardWidth = compact
+        ? (this.cardWidth * compactScale).roundToDouble()
+        : this.cardWidth;
+    // Room above and below: a card grows on hover (none on touch).
+    final room = isTouch(context) ? 0.0 : ItemCard.hoverRoom;
     final Widget body;
     switch (items) {
       case AsyncData(value: final items) when items.isEmpty:
         return const SizedBox.shrink();
       case AsyncData(value: final items):
         final aspect = aspectRatio ?? cardAspectRatio(items.first.type);
-        final cardWidth = compact
-            ? (this.cardWidth * compactScale).roundToDouble()
-            : this.cardWidth;
-        // Room above and below: a card grows on hover (none on touch).
-        final room = isTouch(context) ? 0.0 : ItemCard.hoverRoom;
         body = SizedBox(
           height: ItemCard.heightFor(context, cardWidth, aspect) + 2 * room,
           // Arrows at the ends, when the theme has them.
@@ -330,9 +342,12 @@ class ItemRow extends StatelessWidget {
           ),
         );
       default:
-        body = const SizedBox(
-          height: 48,
-          child: Center(child: CircularProgressIndicator()),
+        body = _CardsSkeleton(
+          cardWidth: cardWidth,
+          aspectRatio: aspectRatio ?? 2 / 3,
+          room: room,
+          gap: compact ? 12 : 16,
+          padding: EdgeInsets.symmetric(horizontal: margin) + _sides(context),
         );
     }
 
@@ -349,6 +364,106 @@ class ItemRow extends StatelessWidget {
           body,
         ],
       ),
+    );
+  }
+}
+
+/// A row's cards while they load: as many as fit, not scrolling.
+class _CardsSkeleton extends StatelessWidget {
+  const _CardsSkeleton({
+    required this.cardWidth,
+    required this.aspectRatio,
+    required this.room,
+    required this.gap,
+    required this.padding,
+  });
+
+  final double cardWidth;
+  final double aspectRatio;
+  final double room;
+  final double gap;
+  final EdgeInsets padding;
+
+  @override
+  Widget build(BuildContext context) => SizedBox(
+    height: ItemCard.heightFor(context, cardWidth, aspectRatio) + 2 * room,
+    child: Skeleton(
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        physics: const NeverScrollableScrollPhysics(),
+        padding: padding.copyWith(top: room, bottom: room),
+        // Built lazily: only those in view exist.
+        itemCount: 30,
+        separatorBuilder: (_, _) => SizedBox(width: gap),
+        itemBuilder: (_, _) =>
+            CardSkeleton(width: cardWidth, aspectRatio: aspectRatio),
+      ),
+    ),
+  );
+}
+
+/// Rows of [ItemRow]s not known yet (the home, search results): cards, a
+/// bone for each title.
+class RowsSkeleton extends StatelessWidget {
+  const RowsSkeleton({
+    super.key,
+    required this.padding,
+    this.rows = 3,
+    this.hero = false,
+  });
+
+  final EdgeInsets padding;
+  final int rows;
+
+  /// The theme's carousel comes first.
+  final bool hero;
+
+  @override
+  Widget build(BuildContext context) {
+    final size = WindowSize.of(context);
+    final compact = size == WindowSize.compact;
+    final margin = size.margin;
+    final room = isTouch(context) ? 0.0 : ItemCard.hoverRoom;
+    final cardWidth = compact
+        ? (140 * ItemRow.compactScale).roundToDouble()
+        : 140.0;
+    final title = Theme.of(context).textTheme.titleLarge;
+    return ListView(
+      physics: const NeverScrollableScrollPhysics(),
+      padding: padding,
+      children: [
+        if (hero)
+          Skeleton(
+            child: Bone(
+              height: HeroCarousel.heightFor(MediaQuery.sizeOf(context)),
+              radius: 0,
+            ),
+          ),
+        for (var i = 0; i < rows; i++)
+          Padding(
+            padding: EdgeInsets.only(top: hero || i > 0 ? 24 : 0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Padding(
+                  padding:
+                      EdgeInsets.fromLTRB(margin, 0, margin, 8) +
+                      _sides(context),
+                  child: Skeleton(child: Bone.text(context, title, width: 180)),
+                ),
+                _CardsSkeleton(
+                  cardWidth: cardWidth,
+                  aspectRatio: 2 / 3,
+                  room: room,
+                  gap: compact ? 12 : 16,
+                  padding:
+                      EdgeInsets.symmetric(horizontal: margin) +
+                      _sides(context),
+                ),
+              ],
+            ),
+          ),
+      ],
     );
   }
 }

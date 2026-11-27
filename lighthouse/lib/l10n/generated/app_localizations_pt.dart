@@ -284,6 +284,9 @@ class AppLocalizationsPt extends AppLocalizations {
   String get details => 'Detalhes';
 
   @override
+  String get loading => 'Carregando';
+
+  @override
   String get nothingHere => 'Nada por aqui ainda.';
 
   @override
@@ -515,6 +518,12 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get exitFullScreen => 'Sair da tela cheia';
+
+  @override
+  String get floatingWindow => 'Janela flutuante';
+
+  @override
+  String get backToWindow => 'Voltar à janela';
 
   @override
   String get mute => 'Silenciar';

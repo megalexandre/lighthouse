@@ -10,3 +10,8 @@ Feature: Player controls
     And I press {'M'} in the player
     And I pick the speed {1.5}
     Then mpv plays at volume {90}, muted, at {1.5} times the speed
+
+  Scenario: mpv draws the picture at its size on screen
+    Given I am signed in as a new user
+    When I play {'Test Movie (2020)'} from {'Movies'}
+    Then mpv draws at the size the video takes on screen

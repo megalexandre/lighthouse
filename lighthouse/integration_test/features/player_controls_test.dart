@@ -11,6 +11,7 @@ import './step/i_play_from.dart';
 import './step/i_press_in_the_player.dart';
 import './step/i_pick_the_speed.dart';
 import './step/mpv_plays_at_volume_muted_at_times_the_speed.dart';
+import './step/mpv_draws_at_the_size_the_video_takes_on_screen.dart';
 
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
@@ -49,6 +50,24 @@ void main() {
       } finally {
         await afterEach(
           '''Volume, mute and speed reach mpv''',
+          success,
+        );
+      }
+    });
+    testWidgets('''mpv draws the picture at its size on screen''',
+        (tester) async {
+      var success = true;
+      try {
+        await beforeEach('''mpv draws the picture at its size on screen''');
+        await iAmSignedInAsANewUser(tester);
+        await iPlayFrom(tester, 'Test Movie (2020)', 'Movies');
+        await mpvDrawsAtTheSizeTheVideoTakesOnScreen(tester);
+      } catch (_) {
+        success = false;
+        rethrow;
+      } finally {
+        await afterEach(
+          '''mpv draws the picture at its size on screen''',
           success,
         );
       }

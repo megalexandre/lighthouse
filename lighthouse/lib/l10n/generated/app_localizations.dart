@@ -549,6 +549,12 @@ abstract class AppLocalizations {
   /// **'Details'**
   String get details;
 
+  /// Read by a screen reader over the grey shapes shown while a page loads.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading'**
+  String get loading;
+
   /// An empty library or section.
   ///
   /// In en, this message translates to:
@@ -950,6 +956,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Exit full screen'**
   String get exitFullScreen;
+
+  /// Player button: shrinks the player to a small window kept over the others (picture in picture).
+  ///
+  /// In en, this message translates to:
+  /// **'Floating window'**
+  String get floatingWindow;
+
+  /// Floating player button: gives the player its window back.
+  ///
+  /// In en, this message translates to:
+  /// **'Back to the window'**
+  String get backToWindow;
 
   /// Player button.
   ///

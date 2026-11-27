@@ -400,6 +400,10 @@
   "@details": {
     "description": "Card panel: open the item's page."
   },
+  "loading": "Loading",
+  "@loading": {
+    "description": "Read by a screen reader over the grey shapes shown while a page loads."
+  },
   "nothingHere": "Nothing here yet.",
   "@nothingHere": {
     "description": "An empty library or section."
@@ -708,6 +712,14 @@
   "exitFullScreen": "Exit full screen",
   "@exitFullScreen": {
     "description": "Player and reader button."
+  },
+  "floatingWindow": "Floating window",
+  "@floatingWindow": {
+    "description": "Player button: shrinks the player to a small window kept over the others (picture in picture)."
+  },
+  "backToWindow": "Back to the window",
+  "@backToWindow": {
+    "description": "Floating player button: gives the player its window back."
   },
   "mute": "Mute",
   "@mute": {

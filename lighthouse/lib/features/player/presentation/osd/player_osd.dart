@@ -42,6 +42,7 @@ class PlayerOsd extends StatelessWidget {
     required this.showCenterPlay,
     this.panel,
     this.onPanel,
+    this.onFloating,
   });
 
   final PlayerSession session;
@@ -62,6 +63,10 @@ class PlayerOsd extends StatelessWidget {
   /// none, and no button.
   final PanelContents? panel;
   final VoidCallback? onPanel;
+
+  /// Into a small window over the others; null: it cannot float (music,
+  /// a phone without picture in picture), and no button.
+  final VoidCallback? onFloating;
 
   @override
   Widget build(BuildContext context) {
@@ -86,7 +91,55 @@ class PlayerOsd extends StatelessWidget {
         ),
         if (showCenterPlay)
           _CenterPlay(engine: session.engine, onInteract: onInteract),
+        if ((panel, onPanel) case (
+          final PanelContents panel,
+          final VoidCallback onPanel,
+        ))
+          _PanelTab(panel: panel, onPressed: onPanel),
       ],
+    );
+  }
+}
+
+/// A tab on the right edge, half way down, that opens the side panel
+/// (as Stremio's): the panel's way in where the eye already is, besides
+/// its button in the bar.
+class _PanelTab extends StatelessWidget {
+  const _PanelTab({required this.panel, required this.onPressed});
+
+  final PanelContents panel;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    const radius = Radius.circular(48);
+    return SafeArea(
+      left: false,
+      top: false,
+      bottom: false,
+      child: Align(
+        alignment: Alignment.centerRight,
+        child: Tooltip(
+          message: panel == PanelContents.episodes
+              ? context.l10n.episodes
+              : context.l10n.chapters,
+          child: Material(
+            color: tokens.osdSurface,
+            borderRadius: const BorderRadius.horizontal(left: radius),
+            clipBehavior: Clip.antiAlias,
+            child: InkWell(
+              key: PlayerScreen.sidePanelTab,
+              onTap: onPressed,
+              child: SizedBox(
+                width: touchTarget,
+                height: 96,
+                child: Icon(Icons.chevron_left, color: tokens.osdInk),
+              ),
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
@@ -370,6 +423,14 @@ class _Extras extends StatelessWidget {
           label: context.l10n.settings,
           onPressed: () => osd.onMenu(SettingsPage.root),
         ),
+        if (osd.onFloating case final onFloating?)
+          ControlButton(
+            key: PlayerScreen.floatingButton,
+            icon: Icons.picture_in_picture_alt,
+            label: context.l10n.floatingWindow,
+            shortcut: 'I',
+            onPressed: onFloating,
+          ),
         ControlButton(
           key: PlayerScreen.fullscreenButton,
           icon: osd.fullscreen ? Icons.fullscreen_exit : Icons.fullscreen,

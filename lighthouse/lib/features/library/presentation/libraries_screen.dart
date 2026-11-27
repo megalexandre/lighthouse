@@ -6,6 +6,7 @@ import '../../../core/theme/app_tokens.dart';
 import '../../../core/theme/design_tokens.dart';
 import '../../../l10n/l10n.dart';
 import '../../../widgets/error_retry.dart';
+import '../../../widgets/skeleton.dart';
 import '../../home/presentation/browse_navigation.dart';
 import '../../home/presentation/floating_top_bar.dart';
 import '../application/library_providers.dart';
@@ -37,7 +38,7 @@ class LibrariesScreen extends ConsumerWidget {
           onRetry: () => ref.invalidate(userViewsProvider),
         ),
       ),
-      _ => const Center(child: CircularProgressIndicator()),
+      _ => const SafeArea(top: false, bottom: false, child: _Grid(views: null)),
     };
     if (context.tokens.components.topBar != TopBarStyle.floating) {
       return Scaffold(
@@ -70,7 +71,8 @@ class LibrariesScreen extends ConsumerWidget {
 class _Grid extends StatelessWidget {
   const _Grid({required this.views});
 
-  final List<BaseItemDto> views;
+  /// Null while they load: the cards as a [Skeleton].
+  final List<BaseItemDto>? views;
 
   static const minCardWidth = 140.0;
   static const spacing = 16.0;
@@ -85,6 +87,25 @@ class _Grid extends StatelessWidget {
           .clamp(1, 6);
       final cardWidth = (usable - (columns - 1) * spacing) / columns;
       const aspect = 16 / 9;
+      final views = this.views;
+      if (views == null) {
+        return Skeleton(
+          child: GridView.builder(
+            physics: const NeverScrollableScrollPhysics(),
+            padding: const EdgeInsets.all(margin),
+            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: columns,
+              mainAxisSpacing: spacing,
+              crossAxisSpacing: spacing,
+              mainAxisExtent: ItemCard.heightFor(context, cardWidth, aspect),
+            ),
+            // A few libraries: most servers have two to six.
+            itemCount: columns.clamp(2, 4),
+            itemBuilder: (_, _) =>
+                CardSkeleton(width: cardWidth, aspectRatio: aspect),
+          ),
+        );
+      }
       return GridView.builder(
         key: LibrariesScreen.grid,
         // Scrolls past the gesture bar.

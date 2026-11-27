@@ -49,6 +49,13 @@ class PlayerScreen extends ConsumerWidget {
   static const centerPlayButton = Key('player.centerPlay');
   static const subtitleOff = Key('player.subtitle.off');
   static const fullscreenButton = Key('player.fullscreen');
+
+  /// Floating: the OSD's button, then the small window's own.
+  static const floatingButton = Key('player.floating');
+  static const floatingWindow = Key('player.floating.window');
+  static const floatingExpand = Key('player.floating.expand');
+  static const floatingClose = Key('player.floating.close');
+  static const floatingPlayPause = Key('player.floating.playPause');
   static const nextButton = Key('player.next');
   static const previousButton = Key('player.previous');
   static const cover = Key('player.cover');
@@ -57,6 +64,7 @@ class PlayerScreen extends ConsumerWidget {
   /// The side panel (episodes or chapters), its button and its close.
   static const sidePanel = Key('player.panel');
   static const sidePanelButton = Key('player.panelButton');
+  static const sidePanelTab = Key('player.panelTab');
   static const sidePanelClose = Key('player.panel.close');
   static Key panelSeason(String season) => Key('player.panel.season.$season');
   static Key panelEpisode(String id) => Key('player.panel.episode.$id');
@@ -194,9 +202,9 @@ class _PlayerTheme extends ConsumerWidget {
   }
 }
 
-/// Counts this screen among the player screens open, so full screen
-/// lasts from one item to the next and ends when the player closes (see
-/// playerFullscreenProvider).
+/// Counts this screen among the player screens open, so full screen and
+/// the floating window last from one item to the next and end when the
+/// player closes (see playerFullscreenProvider, playerFloatingProvider).
 class _FullscreenScope extends ConsumerStatefulWidget {
   const _FullscreenScope({required this.child});
 
@@ -210,15 +218,20 @@ class _FullscreenScopeState extends ConsumerState<_FullscreenScope> {
   late final PlayerFullscreenNotifier _fullscreen = ref.read(
     playerFullscreenProvider.notifier,
   );
+  late final PlayerFloatingNotifier _floating = ref.read(
+    playerFloatingProvider.notifier,
+  );
 
   @override
   void initState() {
     super.initState();
     _fullscreen.enter();
+    _floating.enter();
   }
 
   @override
   void dispose() {
+    _floating.leave();
     _fullscreen.leave();
     super.dispose();
   }

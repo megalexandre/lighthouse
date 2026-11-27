@@ -11,6 +11,7 @@ import '../../../core/window_size.dart';
 import '../../../l10n/l10n.dart';
 import '../../../router.dart';
 import '../../../widgets/media_badge.dart';
+import '../../../widgets/skeleton.dart';
 import '../../library/presentation/item_card.dart';
 import 'item_screen.dart';
 
@@ -228,4 +229,75 @@ class _HeaderText extends StatelessWidget {
       ],
     );
   }
+}
+
+/// The [ItemHeader] while the item loads, laid out as it will be: the
+/// poster beside the name, the facts and a few lines of overview, then
+/// where the buttons go.
+class ItemHeaderSkeleton extends StatelessWidget {
+  const ItemHeaderSkeleton({super.key});
+
+  @override
+  Widget build(BuildContext context) => LayoutBuilder(
+    builder: (context, constraints) {
+      final text = Theme.of(context).textTheme;
+      final radius = context.tokens.radiusSm;
+      final wide =
+          WindowSize.ofWidth(constraints.maxWidth).atLeast(WindowSize.medium) &&
+          !WindowSize.isShort(context);
+      final posterWidth = wide
+          ? 240.0
+          : math.min(
+              WindowSize.isShort(context)
+                  ? ItemHeader.shortPosterWidth
+                  : ItemHeader.compactPosterWidth,
+              constraints.maxWidth / 3,
+            );
+      Widget overview() => Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          for (final f in const [1.0, 1.0, 0.94, 0.6])
+            FractionallySizedBox(
+              widthFactor: f,
+              child: Bone.text(context, text.bodyLarge),
+            ),
+        ],
+      );
+      final name = Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Bone.text(
+            context,
+            wide ? text.headlineLarge : text.headlineSmall,
+            width: math.min(360, constraints.maxWidth * 0.5),
+          ),
+          const SizedBox(height: 8),
+          Bone.text(context, text.bodyMedium, width: 160),
+          if (wide) ...[const SizedBox(height: 16), overview()],
+        ],
+      );
+      return Skeleton(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Bone(
+                  width: posterWidth,
+                  height: posterWidth * 3 / 2,
+                  radius: radius,
+                ),
+                SizedBox(width: wide ? 32 : 16),
+                Expanded(child: name),
+              ],
+            ),
+            if (!wide) ...[const SizedBox(height: 16), overview()],
+            const SizedBox(height: 24),
+            Bone(width: 140, height: 40, radius: context.tokens.radiusMd),
+          ],
+        ),
+      );
+    },
+  );
 }

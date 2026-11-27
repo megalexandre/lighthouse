@@ -9,6 +9,7 @@ import '../../../l10n/l10n.dart';
 import '../../../router.dart';
 import '../../../widgets/app_button.dart';
 import '../../../widgets/error_retry.dart';
+import '../../../widgets/skeleton.dart';
 import '../../library/application/library_providers.dart';
 import '../../library/presentation/item_card.dart';
 import 'item_screen.dart';
@@ -20,12 +21,16 @@ class _Section extends StatelessWidget {
     required this.items,
     required this.onRetry,
     required this.builder,
+    required this.skeleton,
   });
 
   final String title;
   final AsyncValue<List<BaseItemDto>> items;
   final VoidCallback onRetry;
   final Widget Function(List<BaseItemDto> items) builder;
+
+  /// The list's shape while it loads (inside a [Skeleton]).
+  final Widget skeleton;
 
   @override
   Widget build(BuildContext context) => Column(
@@ -39,7 +44,7 @@ class _Section extends StatelessWidget {
         ),
         AsyncData(value: final items) => builder(items),
         AsyncError(:final error) => ErrorRetry(error: error, onRetry: onRetry),
-        _ => const Center(child: CircularProgressIndicator()),
+        _ => Skeleton(child: skeleton),
       },
     ],
   );
@@ -55,6 +60,11 @@ class SeasonList extends ConsumerWidget {
     title: context.l10n.seasons,
     items: ref.watch(seasonsProvider(seriesId)),
     onRetry: () => ref.invalidate(seasonsProvider(seriesId)),
+    skeleton: Wrap(
+      spacing: 16,
+      runSpacing: 16,
+      children: [for (var i = 0; i < 3; i++) const CardSkeleton(width: 150)],
+    ),
     builder: (seasons) => Wrap(
       spacing: 16,
       runSpacing: 16,
@@ -82,6 +92,9 @@ class EpisodeList extends ConsumerWidget {
       title: context.l10n.episodes,
       items: ref.watch(provider),
       onRetry: () => ref.invalidate(provider),
+      skeleton: Column(
+        children: [for (var i = 0; i < 4; i++) const _EpisodeSkeleton()],
+      ),
       builder: (episodes) => Column(
         children: [
           for (final episode in episodes) _EpisodeTile(episode: episode),
@@ -175,6 +188,47 @@ class _EpisodeTile extends StatelessWidget {
   }
 }
 
+/// An [_EpisodeTile] while the season loads.
+class _EpisodeSkeleton extends StatelessWidget {
+  const _EpisodeSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    final text = Theme.of(context).textTheme;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Bone(
+            width: 200,
+            height: 200 * 9 / 16,
+            radius: context.tokens.radiusMd,
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                FractionallySizedBox(
+                  widthFactor: 0.5,
+                  child: Bone.text(context, text.titleMedium),
+                ),
+                Bone.text(context, text.bodySmall, width: 60),
+                Bone.text(context, text.bodyMedium),
+                FractionallySizedBox(
+                  widthFactor: 0.7,
+                  child: Bone.text(context, text.bodyMedium),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class TrackList extends ConsumerWidget {
   const TrackList({super.key, required this.albumId});
 
@@ -185,6 +239,33 @@ class TrackList extends ConsumerWidget {
     title: context.l10n.tracks,
     items: ref.watch(tracksProvider(albumId)),
     onRetry: () => ref.invalidate(tracksProvider(albumId)),
+    skeleton: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Bone(width: 120, height: 40, radius: context.tokens.radiusMd),
+        const SizedBox(height: 8),
+        for (var i = 0; i < 6; i++)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 14),
+            child: Row(
+              children: [
+                const SizedBox(width: 48),
+                Expanded(
+                  child: FractionallySizedBox(
+                    alignment: Alignment.centerLeft,
+                    widthFactor: i.isEven ? 0.5 : 0.35,
+                    child: Bone.text(
+                      context,
+                      Theme.of(context).textTheme.bodyLarge,
+                    ),
+                  ),
+                ),
+                const Bone(width: 40, height: 12),
+              ],
+            ),
+          ),
+      ],
+    ),
     builder: (tracks) => Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [

@@ -2,6 +2,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lighthouse/app.dart';
+import 'package:lighthouse/core/floating_window.dart';
 import 'package:lighthouse/core/storage.dart';
 import 'package:lighthouse/core/theme/appearance.dart';
 import 'package:lighthouse/core/theme/theme_catalog.dart';
@@ -23,6 +24,27 @@ class TestWindow implements AppWindow {
 }
 
 final window = TestWindow();
+
+/// Nor one to float with: the player offers no floating window here
+/// (test/scenarios/player/floating.feature covers it with fakes).
+class TestFloatingWindow implements FloatingWindow {
+  @override
+  Future<bool> supported() async => false;
+  @override
+  bool get leavesFullScreen => true;
+  @override
+  Future<bool> enter(double aspectRatio) async => false;
+  @override
+  Future<void> leave() async {}
+  @override
+  void offer(FloatingOffer? offer) {}
+  @override
+  void startDragging() {}
+  @override
+  Stream<FloatingEvent> get events => const Stream.empty();
+  @override
+  void dispose() {}
+}
 
 /// Starts the app (or restarts it: new providers, same [store]). Only the
 /// keyring is swapped for [store] (and the reader's files for
@@ -71,6 +93,7 @@ Future<void> launch(
           const PlayerOptions(hardwareDecoding: false, audio: false),
         ),
         appWindowProvider.overrideWithValue(window),
+        floatingWindowProvider.overrideWithValue(TestFloatingWindow()),
       ],
       child: const LighthouseApp(),
     ),

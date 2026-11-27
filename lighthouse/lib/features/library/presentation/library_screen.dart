@@ -7,6 +7,7 @@ import '../../../core/theme/design_tokens.dart';
 import '../../../core/window_size.dart';
 import '../../../l10n/l10n.dart';
 import '../../../widgets/error_retry.dart';
+import '../../../widgets/skeleton.dart';
 import '../../home/presentation/browse_navigation.dart';
 import '../../home/presentation/floating_top_bar.dart';
 import '../application/library_providers.dart';
@@ -55,7 +56,7 @@ class LibraryScreen extends ConsumerWidget {
           onRetry: () => ref.invalidate(provider),
         ),
       ),
-      _ => const Center(child: CircularProgressIndicator()),
+      _ => const SafeArea(top: false, bottom: false, child: _Grid.skeleton()),
     };
     if (!isTab) {
       return Scaffold(
@@ -86,9 +87,14 @@ class LibraryScreen extends ConsumerWidget {
 }
 
 class _Grid extends StatelessWidget {
-  const _Grid({required this.page, required this.loadMore});
+  const _Grid({required LibraryPage this.page, required this.loadMore});
 
-  final LibraryPage page;
+  /// The first page still loading: the grid's cards as a [Skeleton].
+  const _Grid.skeleton() : page = null, loadMore = _none;
+
+  static void _none() {}
+
+  final LibraryPage? page;
   final VoidCallback loadMore;
 
   static const maxCardWidth = 180.0;
@@ -102,14 +108,18 @@ class _Grid extends StatelessWidget {
 
   /// Asks for the next page after this frame (not during build: loading
   /// changes provider state). After a failure, only Retry asks again.
-  void _requestMore() {
+  void _requestMore(LibraryPage page) {
     if (!page.hasMore || page.loadingMore || page.moreError != null) return;
     WidgetsBinding.instance.addPostFrameCallback((_) => loadMore());
   }
 
   @override
   Widget build(BuildContext context) {
-    final aspect = cardAspectRatio(page.items.first.type);
+    final page = this.page;
+    // Not known before the first page: posters, the most common.
+    final aspect = page == null
+        ? 2 / 3
+        : cardAspectRatio(page.items.first.type);
     return LayoutBuilder(
       builder: (context, constraints) {
         final size = WindowSize.ofWidth(constraints.maxWidth);
@@ -122,6 +132,34 @@ class _Grid extends StatelessWidget {
             .ceil()
             .clamp(2, 12);
         final cardWidth = (usable - (columns - 1) * spacing) / columns;
+        final cardHeight = ItemCard.heightFor(context, cardWidth, aspect);
+        Widget skeletonRow() => Skeleton(
+          child: Row(
+            spacing: spacing,
+            children: [
+              for (var i = 0; i < columns; i++)
+                CardSkeleton(width: cardWidth, aspectRatio: aspect),
+            ],
+          ),
+        );
+
+        if (page == null) {
+          // Enough rows to fill the window, not scrolling.
+          final rows = (constraints.maxHeight / (cardHeight + spacing)).ceil();
+          return ClipRect(
+            child: OverflowBox(
+              alignment: Alignment.topLeft,
+              maxHeight: double.infinity,
+              child: Padding(
+                padding: EdgeInsets.all(margin),
+                child: Column(
+                  spacing: spacing,
+                  children: [for (var i = 0; i < rows; i++) skeletonRow()],
+                ),
+              ),
+            ),
+          );
+        }
 
         return CustomScrollView(
           slivers: [
@@ -134,17 +172,13 @@ class _Grid extends StatelessWidget {
                   crossAxisCount: columns,
                   mainAxisSpacing: spacing,
                   crossAxisSpacing: spacing,
-                  mainAxisExtent: ItemCard.heightFor(
-                    context,
-                    cardWidth,
-                    aspect,
-                  ),
+                  mainAxisExtent: cardHeight,
                 ),
                 itemCount: page.items.length,
                 itemBuilder: (_, i) {
                   // The grid only builds cards near the viewport: building
                   // one of the last ones means the end is in sight.
-                  if (i >= page.items.length - prefetch) _requestMore();
+                  if (i >= page.items.length - prefetch) _requestMore(page);
                   return ItemCard(
                     item: page.items[i],
                     width: cardWidth,
@@ -153,7 +187,7 @@ class _Grid extends StatelessWidget {
                 },
               ),
             ),
-            // Not lazy (always built), so the spinner only exists while a
+            // Not lazy (always built), so the skeleton only exists while a
             // page loads: an idle one would animate off screen forever.
             if (page.moreError case final Failure error)
               SliverToBoxAdapter(
@@ -162,11 +196,11 @@ class _Grid extends StatelessWidget {
                 ),
               )
             else if (page.loadingMore)
-              const SliverToBoxAdapter(
-                child: Padding(
-                  padding: EdgeInsets.only(bottom: 24),
-                  child: Center(child: CircularProgressIndicator()),
+              SliverPadding(
+                padding: EdgeInsets.symmetric(horizontal: margin).copyWith(
+                  bottom: margin + MediaQuery.paddingOf(context).bottom,
                 ),
+                sliver: SliverToBoxAdapter(child: skeletonRow()),
               ),
           ],
         );

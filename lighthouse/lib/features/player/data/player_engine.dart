@@ -356,14 +356,17 @@ class MediaKitEngine implements PlayerEngine {
   @override
   Widget buildVideo() => switch (_video) {
     null => const SizedBox.shrink(),
-    // Also pauses when the app goes to the background.
-    final video => Video(
-      key: _videoKey,
+    final video => _ScreenSizedVideo(
       controller: video,
-      controls: null,
-      fill: Colors.black,
-      subtitleViewConfiguration: SubtitleViewConfiguration(
-        padding: _subtitlePadding(0),
+      // Also pauses when the app goes to the background.
+      child: Video(
+        key: _videoKey,
+        controller: video,
+        controls: null,
+        fill: Colors.black,
+        subtitleViewConfiguration: SubtitleViewConfiguration(
+          padding: _subtitlePadding(0),
+        ),
       ),
     ),
   };
@@ -380,5 +383,69 @@ class MediaKitEngine implements PlayerEngine {
     await _mpvLog.cancel();
     await _mutedController.close();
     await _player.dispose();
+  }
+}
+
+/// Has mpv draw the picture at the size it takes on screen, in physical
+/// pixels, as jellyfin-desktop does. Left alone, media_kit draws it at the
+/// video's own size and Flutter stretches that texture with a bilinear
+/// filter and no mipmaps: shrinking (4K on a 1080p screen, a small window)
+/// came out jagged, and mpv's own scalers never ran. mpv letterboxes inside
+/// the area itself.
+///
+/// Not on Android: media_kit has no size to set there (the decoder draws
+/// straight to its surface).
+class _ScreenSizedVideo extends StatefulWidget {
+  const _ScreenSizedVideo({required this.controller, required this.child});
+
+  final VideoController controller;
+  final Widget child;
+
+  @override
+  State<_ScreenSizedVideo> createState() => _ScreenSizedVideoState();
+}
+
+class _ScreenSizedVideoState extends State<_ScreenSizedVideo> {
+  /// Each new size reallocates the texture: while the window is being
+  /// dragged, only once it rests.
+  static const _settle = Duration(milliseconds: 150);
+
+  Timer? _timer;
+  (int, int)? _sent;
+
+  void _resize(Size logical, double ratio) {
+    if (!logical.isFinite || logical.isEmpty) return;
+    final size = (
+      (logical.width * ratio).round(),
+      (logical.height * ratio).round(),
+    );
+    if (size == _sent) return;
+    _timer?.cancel();
+    void send() {
+      _sent = size;
+      unawaited(widget.controller.setSize(width: size.$1, height: size.$2));
+    }
+
+    // The first size at once: no frame at the video's size first.
+    if (_sent == null) return send();
+    _timer = Timer(_settle, send);
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (Platform.isAndroid) return widget.child;
+    final ratio = MediaQuery.devicePixelRatioOf(context);
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        _resize(constraints.biggest, ratio);
+        return widget.child;
+      },
+    );
   }
 }

@@ -109,15 +109,15 @@ Os nomes são os do Lanterna. Um tema novo usa os mesmos nomes; os que ele não 
 | --- | --- |
 | `bg-000` | Fundo mais profundo (`surfaceContainerLowest`) |
 | `bg-100` | Fundo das telas, AppBar (`surface`) |
-| `bg-200` | Cards, campos, diálogos, menus, gaveta, painel inferior (`surfaceContainer`) |
-| `bg-300` | Hover, snackbar, tooltip (`surfaceContainerHigh`) |
+| `bg-200` | Cards, campos, diálogos, menus, gaveta, painel inferior, as formas do carregamento (skeleton) (`surfaceContainer`) |
+| `bg-300` | Hover, snackbar, tooltip, o brilho que passa pelo skeleton (`surfaceContainerHigh`) |
 | `line` | Divisores e bordas (`outline`) |
 | `ink` / `ink-muted` | Texto principal / metadados (`onSurface` / `onSurfaceVariant`) |
 | `accent` / `accent-ink` | Cor de ação: botão primário, progresso, seleção, foco (`primary` / `onPrimary`) |
 | `accent-hover` | `inversePrimary` |
 | `accent-2` | Acento secundário (`secondary`, `tertiary`) |
 | `danger` | Erros (`error`); `success`, `warning` em `context.tokens` |
-| `osd-*` | Sobre o vídeo e sobre a página do leitor: ícones (`osd-ink`), textos secundários (`osd-ink-muted`), degradê dos controles (`osd-scrim`), barras (`osd-surface`), trilho, buffer e progresso do player (`osd-track`, `osd-buffer`, `osd-accent`). Também sobre imagens: o carrossel da home e a top bar flutuante (texto, botões, degradês a partir de `osd-scrim` opaco, a barra sólida em `osd-surface`, o botão branco com tinta `osd-accent-ink`). Iguais nos dois modos: o player e o que fica sobre imagens são sempre escuros. |
+| `osd-*` | Sobre o vídeo e sobre a página do leitor: ícones (`osd-ink`), textos secundários (`osd-ink-muted`), degradê dos controles (`osd-scrim`), barras (`osd-surface`), trilho, buffer e progresso do player (`osd-track`, `osd-buffer`, `osd-accent`); o skeleton do painel lateral (`osd-surface`, brilho `osd-hover`). Também sobre imagens: o carrossel da home e a top bar flutuante (texto, botões, degradês a partir de `osd-scrim` opaco, a barra sólida em `osd-surface`, o botão branco com tinta `osd-accent-ink`). Iguais nos dois modos: o player e o que fica sobre imagens são sempre escuros. |
 | `hero-title` | `headlineLarge`, `display*` |
 | `section-title` | `titleLarge`, `headlineMedium/Small`, títulos da AppBar |
 | `title` | `titleMedium/Small` |

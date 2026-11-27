@@ -1,15 +1,27 @@
 package io.github.megalexandre.lighthouse
 
+import android.app.PendingIntent
+import android.app.PictureInPictureParams
+import android.app.RemoteAction
+import android.content.BroadcastReceiver
 import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
+import android.content.pm.PackageManager
+import android.content.res.Configuration
+import android.graphics.drawable.Icon
 import android.media.AudioManager
 import android.os.Build
+import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.provider.Settings
 import android.util.Base64
+import android.util.Rational
 import android.view.WindowManager
 import com.ryanheise.audioservice.AudioServiceActivity
 import io.flutter.embedding.engine.FlutterEngine
+import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 import java.io.File
 import java.security.KeyStore
@@ -18,9 +30,15 @@ import kotlin.concurrent.thread
 // AudioServiceActivity: the engine it gives is the one audio_service plays
 // music with, which must outlive the activity. With a plain FlutterActivity
 // the plugin would start a second one.
+private const val FLOATING_ACTION = "io.github.megalexandre.lighthouse.FLOATING"
+
 class MainActivity : AudioServiceActivity() {
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
+        // The player's floating window (lib/core/floating_window.dart):
+        // picture in picture.
+        floating = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "lighthouse/floating")
+            .apply { setMethodCallHandler(::onFloatingCall) }
         // "name": the name the server shows for this device
         // (lib/api/client_info.dart). "certificates": the file mpv checks
         // HTTPS servers with (lib/core/system_certificates.dart). The
@@ -85,6 +103,162 @@ class MainActivity : AudioServiceActivity() {
         attributes.screenBrightness = level?.coerceIn(0.0, 1.0)?.toFloat()
             ?: WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_NONE
         window.attributes = attributes
+    }
+
+    // ---- Picture in picture ------------------------------------------------
+
+    private var floating: MethodChannel? = null
+
+    // What the player offers while a video is open (null: none): the
+    // picture's shape, whether it plays, and the buttons' labels.
+    private var offer: Map<*, *>? = null
+
+    // Between onStop and onStart: closing the floating window stops the
+    // activity before it says it left picture in picture.
+    private var stopped = false
+
+    private val pipSupported: Boolean
+        get() = Build.VERSION.SDK_INT >= Build.VERSION_CODES.O &&
+            packageManager.hasSystemFeature(PackageManager.FEATURE_PICTURE_IN_PICTURE)
+
+    private fun onFloatingCall(call: MethodCall, result: MethodChannel.Result) {
+        when (call.method) {
+            "supported" -> result.success(pipSupported)
+            "enter" -> result.success(enterFloating((call.arguments as Number).toDouble()))
+            "leave" -> {
+                // An app cannot grow its PiP window back: it goes away,
+                // the app to the background, as when the user closes it.
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N && isInPictureInPictureMode) {
+                    moveTaskToBack(false)
+                }
+                result.success(null)
+            }
+            "offer" -> {
+                offer = call.arguments as Map<*, *>?
+                updateFloating()
+                result.success(null)
+            }
+            else -> result.notImplemented()
+        }
+    }
+
+    private fun send(event: String) {
+        floating?.invokeMethod("event", event)
+    }
+
+    private fun enterFloating(aspectRatio: Double? = null): Boolean {
+        if (!pipSupported || Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return false
+        return try {
+            enterPictureInPictureMode(floatingParams(aspectRatio))
+        } catch (e: IllegalStateException) {
+            // The user turned picture in picture off for the app.
+            false
+        } catch (e: IllegalArgumentException) {
+            false
+        }
+    }
+
+    // The system's buttons: −10 s, play / pause, +10 s; on Android 12+ it
+    // floats by itself when the user goes Home while the video plays.
+    @androidx.annotation.RequiresApi(Build.VERSION_CODES.O)
+    private fun floatingParams(aspectRatio: Double? = null): PictureInPictureParams {
+        val offer = offer
+        val ratio = aspectRatio ?: (offer?.get("aspectRatio") as Number?)?.toDouble() ?: (16.0 / 9)
+        // Android takes from 1:2.39 to 2.39:1, and nothing else.
+        val clamped = ratio.coerceIn(1 / 2.39 + 0.001, 2.39 - 0.001)
+        val builder = PictureInPictureParams.Builder()
+            .setAspectRatio(Rational((clamped * 10000).toInt(), 10000))
+        if (offer != null) {
+            val playing = offer["playing"] == true
+            builder.setActions(
+                listOf(
+                    action("seekBack", android.R.drawable.ic_media_rew, offer["back10"]),
+                    if (playing) action("playPause", android.R.drawable.ic_media_pause, offer["pause"])
+                    else action("playPause", android.R.drawable.ic_media_play, offer["play"]),
+                    action("seekForward", android.R.drawable.ic_media_ff, offer["forward10"]),
+                ),
+            )
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                builder.setAutoEnterEnabled(playing)
+            }
+        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            builder.setAutoEnterEnabled(false)
+        }
+        return builder.build()
+    }
+
+    @androidx.annotation.RequiresApi(Build.VERSION_CODES.O)
+    private fun action(name: String, icon: Int, label: Any?): RemoteAction {
+        val intent = Intent(FLOATING_ACTION).setPackage(packageName).putExtra("action", name)
+        val pending = PendingIntent.getBroadcast(
+            this,
+            name.hashCode(),
+            intent,
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+        )
+        val text = label as String? ?: name
+        return RemoteAction(Icon.createWithResource(this, icon), text, text, pending)
+    }
+
+    private fun updateFloating() {
+        if (!pipSupported || Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
+        try {
+            setPictureInPictureParams(floatingParams())
+        } catch (e: IllegalArgumentException) {
+            // A shape Android refuses: it floats as it did.
+        } catch (e: IllegalStateException) {
+        }
+    }
+
+    // Before Android 12 there is no auto-enter: the user leaving is the cue.
+    override fun onUserLeaveHint() {
+        super.onUserLeaveHint()
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S && offer?.get("playing") == true) {
+            enterFloating()
+        }
+    }
+
+    override fun onPictureInPictureModeChanged(isInPictureInPictureMode: Boolean, newConfig: Configuration) {
+        super.onPictureInPictureModeChanged(isInPictureInPictureMode, newConfig)
+        send(
+            when {
+                isInPictureInPictureMode -> "entered"
+                stopped -> "closed"
+                else -> "expanded"
+            },
+        )
+    }
+
+    private val floatingActions = object : BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) {
+            intent.getStringExtra("action")?.let(::send)
+        }
+    }
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        val filter = IntentFilter(FLOATING_ACTION)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            registerReceiver(floatingActions, filter, Context.RECEIVER_NOT_EXPORTED)
+        } else {
+            @Suppress("UnspecifiedRegisterReceiverFlag")
+            registerReceiver(floatingActions, filter)
+        }
+    }
+
+    override fun onDestroy() {
+        unregisterReceiver(floatingActions)
+        super.onDestroy()
+    }
+
+    override fun onStart() {
+        super.onStart()
+        stopped = false
+    }
+
+    override fun onStop() {
+        stopped = true
+        super.onStop()
     }
 
     // The name the user gave the phone (Settings > About), else its model.
