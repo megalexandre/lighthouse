@@ -39,6 +39,7 @@ import 'package:lighthouse/features/reader/data/book_document.dart';
 import 'package:lighthouse/features/reader/data/book_format.dart';
 import 'package:lighthouse/features/reader/data/book_repository.dart';
 import 'package:lighthouse/features/reader/data/epub/epub_document.dart';
+import 'package:lighthouse/features/reader/data/highlight.dart';
 import 'package:lighthouse/features/server/application/connection_controller.dart';
 import 'package:lighthouse/features/server/data/server_info.dart';
 import 'package:lighthouse/features/server/data/server_repository.dart';
@@ -871,6 +872,21 @@ class FakeBookRepository implements BookRepository {
     if (failures['saveBookmarks'] case final Failure f) throw f;
     bookmarksOf[itemId] = [...bookmarks];
   }
+
+  /// itemId → highlights, as saved.
+  final highlightsOf = <String, List<Highlight>>{};
+
+  @override
+  Future<List<Highlight>> highlights(String itemId) async {
+    if (failures['highlights'] case final Failure f) throw f;
+    return highlightsOf[itemId] ?? const [];
+  }
+
+  @override
+  Future<void> saveHighlights(String itemId, List<Highlight> highlights) async {
+    if (failures['saveHighlights'] case final Failure f) throw f;
+    highlightsOf[itemId] = [...highlights];
+  }
 }
 
 /// Opens a fixture book the way the app does, but reading the file
@@ -895,7 +911,11 @@ class _BlankDocument with FixedPages implements BookDocument {
   final int pageCount;
 
   @override
-  Widget buildPage(int index, PageColors colors) => ColoredBox(
+  Widget buildPage(
+    int index,
+    PageColors colors, {
+    List<PageMark> marks = const [],
+  }) => ColoredBox(
     color: const Color(0xFFFFFFFF),
     child: Center(child: Text('PDF page ${index + 1}')),
   );
@@ -904,7 +924,12 @@ class _BlankDocument with FixedPages implements BookDocument {
   double pageAspectRatio(int index) => 2 / 3;
 
   @override
-  Future<ui.Image> pageImage(int index, Size maxSize, PageColors colors) async {
+  Future<ui.Image> pageImage(
+    int index,
+    Size maxSize,
+    PageColors colors, {
+    List<PageMark> marks = const [],
+  }) async {
     final recorder = ui.PictureRecorder();
     Canvas(recorder).drawColor(const Color(0xFFFFFFFF), BlendMode.src);
     return recorder.endRecording().toImageSync(

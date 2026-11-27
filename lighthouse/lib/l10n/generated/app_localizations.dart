@@ -1310,6 +1310,90 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Playback'**
   String get mediaNotificationChannel;
+
+  /// Reader tab: the highlights and their notes.
+  ///
+  /// In en, this message translates to:
+  /// **'Notes'**
+  String get notes;
+
+  /// Notes tab, empty.
+  ///
+  /// In en, this message translates to:
+  /// **'No highlights yet. Select some text on a page (drag over it, or hold it on a touch screen) to highlight it or add a note.'**
+  String get noNotes;
+
+  /// Highlight menu.
+  ///
+  /// In en, this message translates to:
+  /// **'Add note'**
+  String get addNote;
+
+  /// Highlight menu: the highlight has a note.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit note'**
+  String get editNote;
+
+  /// Highlight menu: copy the selected text.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy'**
+  String get copyText;
+
+  /// Snackbar after copying text from a book.
+  ///
+  /// In en, this message translates to:
+  /// **'Text copied'**
+  String get textCopied;
+
+  /// Highlight menu, and the notes list.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove highlight'**
+  String get removeHighlight;
+
+  /// Highlight colour.
+  ///
+  /// In en, this message translates to:
+  /// **'Yellow'**
+  String get highlightYellow;
+
+  /// Highlight colour.
+  ///
+  /// In en, this message translates to:
+  /// **'Red'**
+  String get highlightRed;
+
+  /// Highlight colour.
+  ///
+  /// In en, this message translates to:
+  /// **'Blue'**
+  String get highlightBlue;
+
+  /// Title of the dialog that writes a highlight's note.
+  ///
+  /// In en, this message translates to:
+  /// **'Note'**
+  String get note;
+
+  /// Hint in the note field.
+  ///
+  /// In en, this message translates to:
+  /// **'Write what you think of this passage'**
+  String get noteHint;
+
+  /// Dialog button.
+  ///
+  /// In en, this message translates to:
+  /// **'Save'**
+  String get save;
+
+  /// Dialog button.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get cancel;
 }
 
 class _AppLocalizationsDelegate

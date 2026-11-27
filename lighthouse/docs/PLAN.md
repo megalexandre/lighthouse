@@ -262,6 +262,19 @@ bordas, teclado), progresso no servidor.
   - Preferências e marcadores ficam só neste aparelho, num arquivo JSON em
     `~/.local/share/<app>/reader/` (`FileKeyValueStore`); marcadores por servidor e livro. O Jellyfin não tem onde
     guardá-los.
+- **Roda do mouse (feita):** no computador, rolar para baixo avança a página e para cima volta, em todos os
+  formatos. Cada entalhe (~40 px de rolagem) vira uma página, e depois de virar a rolagem é ignorada por 250 ms:
+  o touchpad manda muitos eventos pequenos, e um giro rápido da roda vários entalhes, para uma única virada.
+  No toque não há roda (limite da entrada, não da plataforma: um mouse no Android funciona igual).
+- **Destaques e anotações (feita, EPUB):** selecionar um trecho (com o mouse, arrastando sobre o texto; no toque,
+  segurando uma palavra e arrastando) abre um menu sobre ele: destacar em amarelo, vermelho ou azul, adicionar uma
+  observação (o trecho vira destaque amarelo) ou copiar. Tocar num destaque traz o menu de volta para trocar a cor,
+  editar a observação ou removê-lo. Esc fecha o menu; Ctrl+C copia. No mouse, arrastar sobre o texto seleciona em
+  vez de virar a página (arrastar na margem ainda vira); no toque, arrastar continua virando. Os destaques são
+  listados na aba "Anotações" do sumário. Guardados em caracteres do livro (`EpubBook.offsetOf`), então continuam
+  nas mesmas palavras depois de repaginar; só neste aparelho, como os marcadores (`highlights-*` no
+  `FileKeyValueStore`), sem enviar ao servidor. PDF e quadrinhos ficam de fora: o texto do PDF é desenhado pelo
+  PDFium (seleção exigiria o texto do pdfrx) e quadrinhos são imagens.
 - PDFium vem de `bblanchon/pdfium-binaries` (versão fixa `chromium/8125`), baixado no build pelo hook do
   `pdfium_dart`, sem conferência de hash.
 

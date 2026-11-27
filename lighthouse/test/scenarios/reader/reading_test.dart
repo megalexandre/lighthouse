@@ -21,6 +21,8 @@ import './step/i_turn_the_page_with_the_right_arrow_key.dart';
 import './step/the_server_has_not_been_told_the_place.dart';
 import './step/i_press.dart';
 import './step/i_tap_the_edge.dart';
+import './step/i_scroll_the_mouse_wheel.dart';
+import './step/i_scroll_the_touchpad_in_a_burst.dart';
 import './step/i_drag_the_page_bar_to_the_end.dart';
 import './step/the_bars_are_shown.dart';
 import './step/i_tap_the_middle.dart';
@@ -195,6 +197,49 @@ void main() {
       } finally {
         await afterEach(
           '''Keys and the screen's edges turn pages; Home and End jump''',
+          success,
+        );
+      }
+    });
+    testWidgets('''The mouse wheel turns pages, one per notch''',
+        (tester) async {
+      var success = true;
+      try {
+        await beforeEach('''The mouse wheel turns pages, one per notch''');
+        await bddSetUp(tester);
+        await iRead(tester, 'book-comic');
+        await iScrollTheMouseWheel(tester, 'down');
+        await theReaderShows(tester, 'Page 2 of 5');
+        await iScrollTheMouseWheel(tester, 'down');
+        await theReaderShows(tester, 'Page 3 of 5');
+        await iScrollTheMouseWheel(tester, 'up');
+        await theReaderShows(tester, 'Page 2 of 5');
+      } catch (_) {
+        success = false;
+        rethrow;
+      } finally {
+        await afterEach(
+          '''The mouse wheel turns pages, one per notch''',
+          success,
+        );
+      }
+    });
+    testWidgets('''A burst of scrolls from a touchpad turns a single page''',
+        (tester) async {
+      var success = true;
+      try {
+        await beforeEach(
+            '''A burst of scrolls from a touchpad turns a single page''');
+        await bddSetUp(tester);
+        await iRead(tester, 'book-comic');
+        await iScrollTheTouchpadInABurst(tester, 'down');
+        await theReaderShows(tester, 'Page 2 of 5');
+      } catch (_) {
+        success = false;
+        rethrow;
+      } finally {
+        await afterEach(
+          '''A burst of scrolls from a touchpad turns a single page''',
           success,
         );
       }

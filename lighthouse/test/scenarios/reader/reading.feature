@@ -60,6 +60,20 @@ Feature: Reading
     When I tap the {'left'} edge
     Then the reader shows {'Page 1 of 5'}
 
+  Scenario: The mouse wheel turns pages, one per notch
+    When I read {'book-comic'}
+    And I scroll the mouse wheel {'down'}
+    Then the reader shows {'Page 2 of 5'}
+    When I scroll the mouse wheel {'down'}
+    Then the reader shows {'Page 3 of 5'}
+    When I scroll the mouse wheel {'up'}
+    Then the reader shows {'Page 2 of 5'}
+
+  Scenario: A burst of scrolls from a touchpad turns a single page
+    When I read {'book-comic'}
+    And I scroll the touchpad {'down'} in a burst
+    Then the reader shows {'Page 2 of 5'}
+
   Scenario: The page bar goes to a page
     When I read {'book-comic'}
     And I drag the page bar to the end

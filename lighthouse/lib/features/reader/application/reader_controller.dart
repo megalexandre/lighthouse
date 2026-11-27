@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 import 'dart:math' as math;
-import 'dart:ui' show Offset, Size;
+import 'dart:ui' show Offset, Size, TextRange;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/painting.dart' show EdgeInsets;
@@ -15,6 +15,7 @@ import '../../library/data/library_repository.dart';
 import '../data/book_document.dart';
 import '../data/book_repository.dart';
 import '../data/epub/epub_layout.dart';
+import '../data/highlight.dart';
 import '../data/reading_position.dart';
 import 'pending_reading.dart';
 import 'reader_preferences.dart';
@@ -32,6 +33,7 @@ class ReaderSession {
     required this.document,
     required this.page,
     this.bookmarks = const [],
+    this.highlights = const [],
     this.linkedFrom,
   });
 
@@ -42,6 +44,10 @@ class ReaderSession {
   /// The user's bookmarks, as fractions of the book (see
   /// [BookRepository.bookmarks]).
   final List<double> bookmarks;
+
+  /// The user's highlights and notes, in the book's order (see
+  /// [BookRepository.highlights]).
+  final List<Highlight> highlights;
 
   /// Where the reader was when they followed a link (a fraction of the
   /// book), until they go back there.
@@ -56,12 +62,14 @@ class ReaderSession {
   ReaderSession copyWith({
     int? page,
     List<double>? bookmarks,
+    List<Highlight>? highlights,
     double? Function()? linkedFrom,
   }) => ReaderSession(
     item: item,
     document: document,
     page: page ?? this.page,
     bookmarks: bookmarks ?? this.bookmarks,
+    highlights: highlights ?? this.highlights,
     linkedFrom: linkedFrom == null ? this.linkedFrom : linkedFrom(),
   );
 }
@@ -127,6 +135,14 @@ class ReaderController extends AsyncNotifier<ReaderSession> {
     } on Object catch (e) {
       log.warning('reader', 'bookmarks not read', e);
     }
+    var highlights = const <Highlight>[];
+    if (document.selectable) {
+      try {
+        highlights = await _books.highlights(itemId);
+      } on Object catch (e) {
+        log.warning('reader', 'highlights not read', e);
+      }
+    }
     if (!ref.mounted) {
       await document.dispose();
       throw const NotReadable('a book closed while opening');
@@ -162,6 +178,7 @@ class ReaderController extends AsyncNotifier<ReaderSession> {
       document: document,
       page: start,
       bookmarks: bookmarks,
+      highlights: highlights,
     );
   }
 
@@ -270,6 +287,67 @@ class ReaderController extends AsyncNotifier<ReaderSession> {
       await _books.saveBookmarks(itemId, bookmarks);
     } on Failure catch (e) {
       log.warning('reader', 'could not save the bookmarks', e);
+    }
+  }
+
+  /// Highlights [range] of the book in [color]. A highlight of exactly
+  /// that range takes the new colour. Kept on this device (see
+  /// [BookRepository.highlights]).
+  Future<Highlight?> highlight(TextRange range, HighlightColor color) async {
+    final session = _session;
+    if (session == null || range.isCollapsed || !range.isValid) return null;
+    final existing = session.highlights
+        .where((h) => h.start == range.start && h.end == range.end)
+        .firstOrNull;
+    if (existing != null) return updateHighlight(existing, color: color);
+    final added = Highlight(
+      start: range.start,
+      end: range.end,
+      color: color,
+      text: session.document.textOf(range),
+      created: DateTime.now(),
+    );
+    await _saveHighlights(
+      [...session.highlights, added]
+        ..sort((a, b) => a.start.compareTo(b.start)),
+    );
+    return added;
+  }
+
+  /// Gives [highlight] another colour or note.
+  Future<Highlight?> updateHighlight(
+    Highlight highlight, {
+    HighlightColor? color,
+    String? note,
+  }) async {
+    final session = _session;
+    if (session == null) return null;
+    final updated = highlight.copyWith(color: color, note: note?.trim());
+    await _saveHighlights([
+      for (final h in session.highlights) h == highlight ? updated : h,
+    ]);
+    return updated;
+  }
+
+  Future<void> removeHighlight(Highlight highlight) async {
+    final session = _session;
+    if (session == null) return;
+    await _saveHighlights([
+      for (final h in session.highlights)
+        if (h != highlight) h,
+    ]);
+  }
+
+  /// Shows [highlights] at once; a failure to save them is only logged, as
+  /// for bookmarks.
+  Future<void> _saveHighlights(List<Highlight> highlights) async {
+    final session = _session;
+    if (session == null) return;
+    _set(session.copyWith(highlights: highlights));
+    try {
+      await _books.saveHighlights(itemId, highlights);
+    } on Failure catch (e) {
+      log.warning('reader', 'could not save the highlights', e);
     }
   }
 

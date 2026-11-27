@@ -739,4 +739,47 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get mediaNotificationChannel => 'Playback';
+
+  @override
+  String get notes => 'Notes';
+
+  @override
+  String get noNotes =>
+      'No highlights yet. Select some text on a page (drag over it, or hold it on a touch screen) to highlight it or add a note.';
+
+  @override
+  String get addNote => 'Add note';
+
+  @override
+  String get editNote => 'Edit note';
+
+  @override
+  String get copyText => 'Copy';
+
+  @override
+  String get textCopied => 'Text copied';
+
+  @override
+  String get removeHighlight => 'Remove highlight';
+
+  @override
+  String get highlightYellow => 'Yellow';
+
+  @override
+  String get highlightRed => 'Red';
+
+  @override
+  String get highlightBlue => 'Blue';
+
+  @override
+  String get note => 'Note';
+
+  @override
+  String get noteHint => 'Write what you think of this passage';
+
+  @override
+  String get save => 'Save';
+
+  @override
+  String get cancel => 'Cancel';
 }

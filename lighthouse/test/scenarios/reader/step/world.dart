@@ -3,7 +3,9 @@ import 'dart:convert';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lighthouse/api/models/base_item_dto.dart';
 import 'package:lighthouse/features/reader/application/reader_controller.dart';
+import 'package:lighthouse/features/reader/data/epub/epub_book.dart';
 import 'package:lighthouse/features/reader/data/epub/epub_document.dart';
+import 'package:lighthouse/features/reader/presentation/reader_screen.dart';
 
 import 'package:material_ui/material_ui.dart';
 
@@ -40,6 +42,40 @@ EpubBookDocument epubShown(WidgetTester tester, String itemId) =>
             .value!
             .document
         as EpubBookDocument;
+
+/// What the last copy put on the clipboard (see `I copy it`).
+String? clipboard;
+
+/// Where [word] (its first occurrence in the book) is on the page shown,
+/// in the window.
+Rect wordOnPage(WidgetTester tester, String word) {
+  final screen = tester.widget<ReaderScreen>(find.byType(ReaderScreen));
+  final session = app
+      .containerOf(tester)
+      .read(readerControllerProvider(screen.itemId))
+      .value!;
+  final document = session.document as EpubBookDocument;
+  final text = [
+    for (final chapter in document.book.chapters)
+      for (final block in chapter.blocks)
+        block is TextBlock ? block.text : ' ' * block.length,
+  ].join();
+  final start = text.indexOf(word);
+  expect(start, isNot(-1), reason: '"$word" is not in the book');
+  final rects = document.rectsOf(
+    session.page,
+    TextRange(start: start, end: start + word.length),
+  );
+  expect(rects, isNotEmpty, reason: '"$word" is not on the page shown');
+  final page = tester.getRect(find.byKey(ReaderScreen.pages));
+  final unit = rects.reduce((a, b) => a.expandToInclude(b));
+  return Rect.fromLTRB(
+    page.left + unit.left * page.width,
+    page.top + unit.top * page.height,
+    page.left + unit.right * page.width,
+    page.top + unit.bottom * page.height,
+  );
+}
 
 /// Adds [values] to the reader preferences stored on this device, as an
 /// earlier run would have left them.

@@ -5,15 +5,18 @@ import 'package:material_ui/material_ui.dart';
 import '../../../l10n/l10n.dart';
 import '../application/reader_controller.dart';
 import '../data/book_document.dart';
+import '../data/highlight.dart';
 import 'reader_screen.dart';
 
-/// The book's contents and the user's bookmarks, side by side in tabs.
+/// The book's contents, the user's bookmarks and (in a book whose text can
+/// be selected) their highlights and notes, side by side in tabs.
 class ContentsDrawer extends StatefulWidget {
   const ContentsDrawer({
     super.key,
     required this.session,
     required this.onGoTo,
     required this.onRemoveBookmark,
+    required this.onRemoveHighlight,
   });
 
   final ReaderSession session;
@@ -21,6 +24,7 @@ class ContentsDrawer extends StatefulWidget {
   /// Go to a fraction of the book.
   final ValueChanged<double> onGoTo;
   final ValueChanged<double> onRemoveBookmark;
+  final ValueChanged<Highlight> onRemoveHighlight;
 
   @override
   State<ContentsDrawer> createState() => _ContentsDrawerState();
@@ -36,11 +40,12 @@ class _ContentsDrawerState extends State<ContentsDrawer> {
   @override
   Widget build(BuildContext context) {
     final session = widget.session;
+    final notes = session.document.selectable;
     return Drawer(
       width: (MediaQuery.sizeOf(context).width * 0.85).clamp(0, 360),
       child: SafeArea(
         child: DefaultTabController(
-          length: 2,
+          length: notes ? 3 : 2,
           child: Column(
             children: [
               TabBar(
@@ -53,6 +58,8 @@ class _ContentsDrawerState extends State<ContentsDrawer> {
                     key: ReaderScreen.bookmarksTab,
                     text: context.l10n.bookmarks,
                   ),
+                  if (notes)
+                    Tab(key: ReaderScreen.notesTab, text: context.l10n.notes),
                 ],
               ),
               Expanded(
@@ -67,6 +74,7 @@ class _ContentsDrawerState extends State<ContentsDrawer> {
                       children: [
                         _contentsList(context, session, toc),
                         _bookmarksList(context, session, toc),
+                        if (notes) _notesList(context, session),
                       ],
                     );
                   },
@@ -147,6 +155,58 @@ class _ContentsDrawerState extends State<ContentsDrawer> {
               onPressed: () => widget.onRemoveBookmark(fraction),
             ),
             onTap: () => widget.onGoTo(fraction),
+          ),
+      ],
+    );
+  }
+}
+
+extension on _ContentsDrawerState {
+  Widget _notesList(BuildContext context, ReaderSession session) {
+    if (session.highlights.isEmpty) {
+      return _Empty(context.l10n.noNotes);
+    }
+    final document = session.document;
+    final theme = Theme.of(context);
+    return ListView(
+      children: [
+        for (final h in session.highlights)
+          ListTile(
+            leading: Container(
+              width: 6,
+              height: 40,
+              decoration: BoxDecoration(
+                color: h.color.color,
+                borderRadius: BorderRadius.circular(3),
+              ),
+            ),
+            title: Text(h.text, maxLines: 3, overflow: TextOverflow.ellipsis),
+            subtitle: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (h.note.isNotEmpty)
+                  Text(
+                    h.note,
+                    maxLines: 3,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      fontStyle: FontStyle.italic,
+                    ),
+                  ),
+                if (document.pageCount > 0)
+                  Text(
+                    context.l10n.page(
+                      document.pageAt(document.fractionAt(h.start)) + 1,
+                    ),
+                  ),
+              ],
+            ),
+            trailing: IconButton(
+              tooltip: context.l10n.removeHighlight,
+              icon: const Icon(Icons.delete_outline),
+              onPressed: () => widget.onRemoveHighlight(h),
+            ),
+            onTap: () => widget.onGoTo(document.fractionAt(h.start)),
           ),
       ],
     );

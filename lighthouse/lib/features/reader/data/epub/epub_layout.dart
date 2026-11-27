@@ -3,6 +3,7 @@ import 'dart:ui' as ui;
 
 import 'package:material_ui/material_ui.dart';
 
+import '../book_document.dart' show PageMark;
 import '../image_size.dart';
 import 'epub_book.dart';
 
@@ -278,7 +279,16 @@ class EpubLayout {
         j = i + 1; // A line taller than the page: shown cut.
       }
       _add(
-        TextPiece(painter, Offset(indent, _y), tops[i], tops[j], links: links),
+        TextPiece(
+          painter,
+          Offset(indent, _y),
+          tops[i],
+          tops[j],
+          links: links,
+          textStart: start,
+          textLength: textLength,
+          markerLength: markerLength,
+        ),
         start + math.min(lineStart(i), textLength),
       );
       _y += tops[j] - tops[i];
@@ -333,11 +343,19 @@ class EpubLayout {
     int index,
     Map<String, ui.Image> images, {
     Color ink = const Color(0xFF202124),
+    List<PageMark> marks = const [],
   }) {
     final pieces = pages[index].pieces;
     canvas
       ..save()
       ..translate(margins.left, margins.top);
+    // Under the text, as a marker on paper.
+    for (final mark in marks) {
+      final paint = Paint()..color = mark.color;
+      for (final rect in _rects(index, mark.start, mark.end)) {
+        canvas.drawRect(rect, paint);
+      }
+    }
     for (final piece in pieces.whereType<ImagePiece>()) {
       final image = images[piece.path];
       if (image == null) continue;
@@ -379,6 +397,102 @@ class EpubLayout {
     canvas
       ..restore()
       ..restore();
+  }
+
+  // --- Selecting text -------------------------------------------------------
+
+  /// The paragraph band on page [index] nearest [p] (on the content area),
+  /// and how far [p] is from it.
+  (TextPiece, double)? _nearest(int index, Offset p) {
+    (TextPiece, double)? best;
+    for (final piece in pages[index].pieces.whereType<TextPiece>()) {
+      final r = piece.shown;
+      final dx = math.max(math.max(r.left - p.dx, p.dx - r.right), 0.0);
+      final dy = math.max(math.max(r.top - p.dy, p.dy - r.bottom), 0.0);
+      final distance = math.sqrt(dx * dx + dy * dy);
+      if (best == null || distance < best.$2) best = (piece, distance);
+    }
+    return best;
+  }
+
+  /// The text under [point] (on page [index], at this layout's size): its
+  /// band, and the position in its painter. [near]: the nearest text on
+  /// the page when there is none right there (to drag a selection past
+  /// the last line).
+  (TextPiece, int)? _hit(int index, Offset point, {required bool near}) {
+    final p = point - Offset(margins.left, margins.top);
+    final (piece, distance) = _nearest(index, p) ?? (null, 0.0);
+    if (piece == null || (!near && distance > 4)) return null;
+    final shown = piece.shown;
+    // Kept inside the band: a point above it would be in the paragraph's
+    // lines on the page before.
+    final inside = Offset(
+      p.dx.clamp(shown.left, shown.right),
+      p.dy.clamp(
+        shown.top + 0.5,
+        math.max(shown.top + 0.5, shown.bottom - 0.5),
+      ),
+    );
+    final local = inside - piece.at + Offset(0, piece.top);
+    return (piece, piece.painter.getPositionForOffset(local).offset);
+  }
+
+  /// The book character at [point] on page [index] (the caret's place
+  /// before it); null off the text, unless [near].
+  int? offsetAt(int index, Offset point, {bool near = false}) {
+    final (piece, position) = _hit(index, point, near: near) ?? (null, 0);
+    return piece?.toBook(position);
+  }
+
+  /// The word at [point] on page [index], in book characters; null off the
+  /// text or between words.
+  TextRange? wordAt(int index, Offset point) {
+    final (piece, position) = _hit(index, point, near: false) ?? (null, 0);
+    if (piece == null) return null;
+    final text = piece.painter.plainText;
+    // The character under the point, not the caret after it.
+    var at = position;
+    if (at >= text.length || (at > 0 && text[at].trim().isEmpty)) at--;
+    if (at < piece.markerLength || text[at].trim().isEmpty) return null;
+    final word = piece.painter.getWordBoundary(TextPosition(offset: at));
+    final range = TextRange(
+      start: piece.toBook(word.start),
+      end: piece.toBook(word.end),
+    );
+    return range.isCollapsed ? null : range;
+  }
+
+  /// Where book characters [start] to [end] are drawn on page [index], one
+  /// box per line, on the whole page (margins included).
+  List<Rect> rectsOf(int index, int start, int end) => [
+    for (final r in _rects(index, start, end))
+      r.shift(Offset(margins.left, margins.top)),
+  ];
+
+  /// As [rectsOf], on the content area.
+  List<Rect> _rects(int index, int start, int end) {
+    final rects = <Rect>[];
+    if (index < 0 || index >= pages.length || end <= start) return rects;
+    for (final piece in pages[index].pieces.whereType<TextPiece>()) {
+      final from = math.max(start, piece.textStart);
+      final to = math.min(end, piece.textStart + piece.textLength);
+      if (to <= from) continue;
+      final boxes = piece.painter.getBoxesForSelection(
+        TextSelection(
+          baseOffset: piece.toPainter(from),
+          extentOffset: piece.toPainter(to),
+        ),
+      );
+      for (final box in boxes) {
+        final r = box.toRect();
+        // Only the lines on this page.
+        if (r.bottom <= piece.top + 0.5 || r.top >= piece.bottom - 0.5) {
+          continue;
+        }
+        rects.add(r.shift(piece.at - Offset(0, piece.top)));
+      }
+    }
+    return rects;
   }
 
   /// The link under [point] (on page [index], at this layout's size): its
@@ -433,12 +547,34 @@ final class TextPiece extends PagePiece {
     this.top,
     this.bottom, {
     this.links = const [],
+    this.textStart = 0,
+    this.textLength = 0,
+    this.markerLength = 0,
   });
 
   final TextPainter painter;
   final Offset at;
   final double top;
   final double bottom;
+
+  /// The book character the paragraph starts at, and how many it has.
+  final int textStart;
+  final int textLength;
+
+  /// The list marker before the text in [painter] ("• "), not part of the
+  /// book's characters.
+  final int markerLength;
+
+  /// The band of the paragraph shown, on the page's content area.
+  Rect get shown => at & Size(painter.width, bottom - top);
+
+  /// [book] (a book character) as a position in [painter]'s text.
+  int toPainter(int book) =>
+      (book - textStart).clamp(0, textLength) + markerLength;
+
+  /// [position] in [painter]'s text as a book character.
+  int toBook(int position) =>
+      textStart + (position - markerLength).clamp(0, textLength);
 
   /// The paragraph's links (all of them, on this page or not).
   final List<PieceLink> links;

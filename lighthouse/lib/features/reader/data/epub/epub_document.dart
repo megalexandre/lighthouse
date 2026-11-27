@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math' as math;
 import 'dart:ui' as ui;
 
+import 'package:flutter/foundation.dart' show listEquals;
 import 'package:material_ui/material_ui.dart';
 
 import '../book_document.dart';
@@ -128,16 +129,96 @@ class EpubBookDocument implements BookDocument {
   }
 
   @override
-  Widget buildPage(int index, PageColors colors) => _EpubPageView(
+  bool get selectable => true;
+
+  /// [at] in the unit square, at the current layout's size.
+  Offset? _point(int index, Offset at) {
+    final layout = _layout;
+    if (layout == null || index < 0 || index >= layout.pages.length) {
+      return null;
+    }
+    return Offset(at.dx * layout.size.width, at.dy * layout.size.height);
+  }
+
+  @override
+  int? offsetAt(int index, Offset at, {bool near = false}) {
+    final point = _point(index, at);
+    return point == null ? null : _layout!.offsetAt(index, point, near: near);
+  }
+
+  @override
+  TextRange? wordAt(int index, Offset at) {
+    final point = _point(index, at);
+    return point == null ? null : _layout!.wordAt(index, point);
+  }
+
+  @override
+  List<Rect> rectsOf(int index, TextRange range) {
+    final layout = _layout;
+    if (layout == null) return const [];
+    final size = layout.size;
+    return [
+      for (final r in layout.rectsOf(index, range.start, range.end))
+        Rect.fromLTRB(
+          r.left / size.width,
+          r.top / size.height,
+          r.right / size.width,
+          r.bottom / size.height,
+        ),
+    ];
+  }
+
+  @override
+  double fractionAt(int offset) =>
+      book.length == 0 ? 0 : (offset / book.length).clamp(0.0, 1.0);
+
+  @override
+  String textOf(TextRange range) {
+    final parts = <String>[];
+    var start = 0;
+    for (final chapter in book.chapters) {
+      if (start >= range.end) break;
+      if (start + chapter.length <= range.start) {
+        start += chapter.length;
+        continue;
+      }
+      for (final block in chapter.blocks) {
+        final end = start + block.length;
+        if (block is TextBlock && end > range.start && start < range.end) {
+          parts.add(
+            block.text.substring(
+              math.max(0, range.start - start),
+              math.min(block.length, range.end - start),
+            ),
+          );
+        }
+        start = end;
+      }
+    }
+    return parts.join('\n').trim();
+  }
+
+  @override
+  Widget buildPage(
+    int index,
+    PageColors colors, {
+    List<PageMark> marks = const [],
+  }) => _EpubPageView(
     key: ValueKey((_version, index)),
     document: this,
     layout: _current,
     index: index,
     ink: colors.ink,
+    marks: marks,
   );
 
   @override
-  Future<ui.Image> pageImage(int index, Size maxSize, PageColors colors) async {
+  Future<ui.Image> pageImage(
+    int index,
+    Size maxSize,
+    PageColors colors, {
+    List<PageMark> marks = const [],
+  }) async {
     final layout = _current;
     final images = await _imagesFor(layout.pages[index]);
     try {
@@ -147,7 +228,7 @@ class EpubBookDocument implements BookDocument {
       );
       final recorder = ui.PictureRecorder();
       final canvas = Canvas(recorder)..scale(scale);
-      layout.paint(canvas, index, images, ink: colors.ink);
+      layout.paint(canvas, index, images, ink: colors.ink, marks: marks);
       final picture = recorder.endRecording();
       try {
         return await picture.toImage(
@@ -244,12 +325,14 @@ class _EpubPageView extends StatefulWidget {
     required this.layout,
     required this.index,
     required this.ink,
+    this.marks = const [],
   });
 
   final EpubBookDocument document;
   final EpubLayout layout;
   final int index;
   final Color ink;
+  final List<PageMark> marks;
 
   @override
   State<_EpubPageView> createState() => _EpubPageViewState();
@@ -287,18 +370,25 @@ class _EpubPageViewState extends State<_EpubPageView> {
   @override
   Widget build(BuildContext context) => SizedBox.expand(
     child: CustomPaint(
-      painter: _PagePainter(widget.layout, widget.index, _images, widget.ink),
+      painter: _PagePainter(
+        widget.layout,
+        widget.index,
+        _images,
+        widget.ink,
+        widget.marks,
+      ),
     ),
   );
 }
 
 class _PagePainter extends CustomPainter {
-  _PagePainter(this.layout, this.index, this.images, this.ink);
+  _PagePainter(this.layout, this.index, this.images, this.ink, this.marks);
 
   final EpubLayout layout;
   final int index;
   final Map<String, ui.Image> images;
   final Color ink;
+  final List<PageMark> marks;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -311,7 +401,7 @@ class _PagePainter extends CustomPainter {
     canvas
       ..save()
       ..scale(scale);
-    layout.paint(canvas, index, images, ink: ink);
+    layout.paint(canvas, index, images, ink: ink, marks: marks);
     canvas.restore();
   }
 
@@ -320,5 +410,6 @@ class _PagePainter extends CustomPainter {
       old.layout != layout ||
       old.index != index ||
       old.images != images ||
-      old.ink != ink;
+      old.ink != ink ||
+      !listEquals(old.marks, marks);
 }

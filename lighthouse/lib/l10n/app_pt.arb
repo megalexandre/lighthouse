@@ -201,5 +201,19 @@
   "trackForced": "Forçada",
   "libraries": "Bibliotecas",
   "navSearch": "Buscar",
-  "mediaNotificationChannel": "Reprodução"
+  "mediaNotificationChannel": "Reprodução",
+  "notes": "Anotações",
+  "noNotes": "Nenhum destaque ainda. Selecione um trecho numa página (arraste sobre ele, ou toque e segure numa tela de toque) para destacá-lo ou fazer uma anotação.",
+  "addNote": "Adicionar observação",
+  "editNote": "Editar observação",
+  "copyText": "Copiar",
+  "textCopied": "Texto copiado",
+  "removeHighlight": "Remover destaque",
+  "highlightYellow": "Amarelo",
+  "highlightRed": "Vermelho",
+  "highlightBlue": "Azul",
+  "note": "Observação",
+  "noteHint": "Escreva o que achou deste trecho",
+  "save": "Salvar",
+  "cancel": "Cancelar"
 }

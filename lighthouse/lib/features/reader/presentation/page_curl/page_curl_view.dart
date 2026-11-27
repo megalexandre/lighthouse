@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:ui' as ui;
 
+import 'package:flutter/gestures.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -50,6 +51,7 @@ class PageCurlView extends ConsumerStatefulWidget {
     this.layoutVersion = 0,
     this.leftBuilder,
     this.leftImage,
+    this.turnsOnDrag,
   }) : assert(
          (leftBuilder == null) == (leftImage == null),
          'two pages need both the left page and its image',
@@ -75,6 +77,11 @@ class PageCurlView extends ConsumerStatefulWidget {
 
   /// Two pages: the left page of spread [index] as an image.
   final LeftImageBuilder? leftImage;
+
+  /// Whether a drag that starts with [event] turns the page; null: every
+  /// one does. One that does not is left to the widgets around (a mouse
+  /// selecting text).
+  final bool Function(PointerDownEvent event)? turnsOnDrag;
 
   @override
   PageCurlViewState createState() => PageCurlViewState();
@@ -427,15 +434,22 @@ class PageCurlViewState extends ConsumerState<PageCurlView>
             if (mounted) _prefetch();
           });
         }
-        return GestureDetector(
+        return RawGestureDetector(
           behavior: HitTestBehavior.translucent,
-          onPanStart: _onPanStart,
-          onPanUpdate: _onPanUpdate,
-          onPanEnd: _onPanEnd,
-          onPanCancel: () {
-            if (_turn != null && !_settle.isAnimating) {
-              _onPanEnd(DragEndDetails());
-            }
+          gestures: {
+            FilteredPan: GestureRecognizerFactoryWithHandlers<FilteredPan>(
+              () => FilteredPan(debugOwner: this),
+              (drag) => drag
+                ..allows = widget.turnsOnDrag
+                ..onStart = _onPanStart
+                ..onUpdate = _onPanUpdate
+                ..onEnd = _onPanEnd
+                ..onCancel = () {
+                  if (_turn != null && !_settle.isAnimating) {
+                    _onPanEnd(DragEndDetails());
+                  }
+                },
+            ),
           },
           child: _sheets(program, size),
         );
@@ -524,6 +538,18 @@ class PageCurlViewState extends ConsumerState<PageCurlView>
       if (mounted) _prefetch();
     });
   }
+}
+
+/// A pan that only takes the pointers [allows] lets it (all, when null).
+class FilteredPan extends PanGestureRecognizer {
+  FilteredPan({super.debugOwner});
+
+  bool Function(PointerDownEvent event)? allows;
+
+  @override
+  bool isPointerAllowed(PointerEvent event) =>
+      (event is! PointerDownEvent || (allows?.call(event) ?? true)) &&
+      super.isPointerAllowed(event);
 }
 
 /// The part of the sheet still lying flat: the page's rectangle cut by

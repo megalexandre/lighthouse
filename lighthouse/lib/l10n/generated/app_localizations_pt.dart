@@ -740,6 +740,49 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get mediaNotificationChannel => 'Reprodução';
+
+  @override
+  String get notes => 'Anotações';
+
+  @override
+  String get noNotes =>
+      'Nenhum destaque ainda. Selecione um trecho numa página (arraste sobre ele, ou toque e segure numa tela de toque) para destacá-lo ou fazer uma anotação.';
+
+  @override
+  String get addNote => 'Adicionar observação';
+
+  @override
+  String get editNote => 'Editar observação';
+
+  @override
+  String get copyText => 'Copiar';
+
+  @override
+  String get textCopied => 'Texto copiado';
+
+  @override
+  String get removeHighlight => 'Remover destaque';
+
+  @override
+  String get highlightYellow => 'Amarelo';
+
+  @override
+  String get highlightRed => 'Vermelho';
+
+  @override
+  String get highlightBlue => 'Azul';
+
+  @override
+  String get note => 'Observação';
+
+  @override
+  String get noteHint => 'Escreva o que achou deste trecho';
+
+  @override
+  String get save => 'Salvar';
+
+  @override
+  String get cancel => 'Cancelar';
 }
 
 /// The translations for Portuguese, as used in Brazil (`pt_BR`).

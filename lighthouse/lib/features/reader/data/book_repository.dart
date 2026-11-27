@@ -16,6 +16,7 @@ import '../../auth/application/auth_controller.dart';
 import '../../auth/data/session.dart';
 import '../../auth/data/session_client.dart';
 import '../../server/application/connection_controller.dart';
+import 'highlight.dart';
 
 /// Books for the reader: their files (downloaded once, then read from a
 /// local cache) and the user's place in them, kept on the server.
@@ -35,6 +36,12 @@ abstract interface class BookRepository {
   Future<List<double>> bookmarks(String itemId);
 
   Future<void> saveBookmarks(String itemId, List<double> bookmarks);
+
+  /// The user's highlights and notes in the book, in the book's order.
+  /// Kept on this device, as the bookmarks are.
+  Future<List<Highlight>> highlights(String itemId);
+
+  Future<void> saveHighlights(String itemId, List<Highlight> highlights);
 }
 
 /// The reader's own files (preferences, bookmarks): small, not secret, in
@@ -235,6 +242,30 @@ class JellyfinBookRepository implements BookRepository {
       bookmarks.isEmpty
       ? _store.delete(_bookmarksKey(itemId))
       : _store.write(_bookmarksKey(itemId), jsonEncode(bookmarks));
+
+  String _highlightsKey(String itemId) =>
+      'highlights-${base64Url.encode(utf8.encode('${_client.session.server.id}\n$itemId'))}';
+
+  @override
+  Future<List<Highlight>> highlights(String itemId) async {
+    final raw = await _store.read(_highlightsKey(itemId));
+    if (raw == null) return const [];
+    try {
+      return [
+        for (final value in jsonDecode(raw) as List<dynamic>)
+          ?Highlight.fromJson(value),
+      ]..sort((a, b) => a.start.compareTo(b.start));
+    } on Object catch (e) {
+      log.warning('reader', 'highlights of $itemId unreadable', e);
+      return const [];
+    }
+  }
+
+  @override
+  Future<void> saveHighlights(String itemId, List<Highlight> highlights) =>
+      highlights.isEmpty
+      ? _store.delete(_highlightsKey(itemId))
+      : _store.write(_highlightsKey(itemId), jsonEncode(highlights));
 }
 
 /// A downloaded book: its file, its size, and when it was last opened.
@@ -298,5 +329,13 @@ class SignedOutBookRepository implements BookRepository {
 
   @override
   Future<void> saveBookmarks(String itemId, List<double> bookmarks) =>
+      Future.error(const Unauthorized());
+
+  @override
+  Future<List<Highlight>> highlights(String itemId) =>
+      Future.error(const Unauthorized());
+
+  @override
+  Future<void> saveHighlights(String itemId, List<Highlight> highlights) =>
       Future.error(const Unauthorized());
 }

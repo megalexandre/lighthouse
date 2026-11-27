@@ -1024,5 +1024,61 @@
   "mediaNotificationChannel": "Playback",
   "@mediaNotificationChannel": {
     "description": "Android: the name of the music notification, in the system's notification settings."
+  },
+  "notes": "Notes",
+  "@notes": {
+    "description": "Reader tab: the highlights and their notes."
+  },
+  "noNotes": "No highlights yet. Select some text on a page (drag over it, or hold it on a touch screen) to highlight it or add a note.",
+  "@noNotes": {
+    "description": "Notes tab, empty."
+  },
+  "addNote": "Add note",
+  "@addNote": {
+    "description": "Highlight menu."
+  },
+  "editNote": "Edit note",
+  "@editNote": {
+    "description": "Highlight menu: the highlight has a note."
+  },
+  "copyText": "Copy",
+  "@copyText": {
+    "description": "Highlight menu: copy the selected text."
+  },
+  "textCopied": "Text copied",
+  "@textCopied": {
+    "description": "Snackbar after copying text from a book."
+  },
+  "removeHighlight": "Remove highlight",
+  "@removeHighlight": {
+    "description": "Highlight menu, and the notes list."
+  },
+  "highlightYellow": "Yellow",
+  "@highlightYellow": {
+    "description": "Highlight colour."
+  },
+  "highlightRed": "Red",
+  "@highlightRed": {
+    "description": "Highlight colour."
+  },
+  "highlightBlue": "Blue",
+  "@highlightBlue": {
+    "description": "Highlight colour."
+  },
+  "note": "Note",
+  "@note": {
+    "description": "Title of the dialog that writes a highlight's note."
+  },
+  "noteHint": "Write what you think of this passage",
+  "@noteHint": {
+    "description": "Hint in the note field."
+  },
+  "save": "Save",
+  "@save": {
+    "description": "Dialog button."
+  },
+  "cancel": "Cancel",
+  "@cancel": {
+    "description": "Dialog button."
   }
 }

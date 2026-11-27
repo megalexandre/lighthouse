@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math' as math;
 import 'dart:ui' as ui;
 
+import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -16,8 +17,10 @@ import '../../../widgets/error_retry.dart';
 import '../application/reader_controller.dart';
 import '../application/reader_preferences.dart';
 import '../data/book_document.dart';
+import '../data/highlight.dart';
 import 'contents_drawer.dart';
 import 'display_sheet.dart';
+import 'highlight_menu.dart';
 import 'page_curl/page_curl_view.dart';
 import 'reader_chrome.dart';
 import 'spreads.dart';
@@ -32,15 +35,22 @@ import 'spreads.dart';
 /// bookmarks, bookmarks the page, and sets the theme (and an EPUB's type);
 /// a tap on a link in an EPUB follows it, with a button to come back.
 ///
+/// An EPUB's text can be selected: dragged over with a mouse, or held
+/// (then dragged) on touch. A menu over it highlights it in a colour, adds
+/// a note, or copies it; a tap on a highlight brings the same menu back.
+/// Highlights are listed under Notes in the contents.
+///
 /// On touch (a phone, a tablet) the page is laid out for the whole screen
 /// and the bars come over it. The book opens without them; they are hidden
 /// and shown together with the system's bars (full screen). With a mouse,
 /// full screen (F11, F or its button; Esc leaves it) is the same page over
-/// the whole screen, and the bars come and go with a click. On a phone it is always one page at a time ([showsTwoPages]).
+/// the whole screen, and the bars come and go with a click; the mouse wheel
+/// turns pages (down: the next one). On a phone it is always one page at a
+/// time ([showsTwoPages]).
 ///
 /// Keys: ← → PgUp PgDn turn pages, Space the next one, Home / End the
-/// first / last, F11 or F full screen, Esc out of full screen or back,
-/// Backspace back.
+/// first / last, F11 or F full screen, Esc out of the selection, out of
+/// full screen or back, Backspace back, Ctrl+C copies the selection.
 class ReaderScreen extends ConsumerStatefulWidget {
   const ReaderScreen({super.key, required this.itemId});
 
@@ -75,6 +85,14 @@ class ReaderScreen extends ConsumerStatefulWidget {
       Key('reader.justify.$justify');
   static Key layoutChoice(PageLayout layout) =>
       Key('reader.layout.${layout.name}');
+  static const notesTab = Key('reader.notesTab');
+  static const highlightMenu = Key('reader.highlightMenu');
+  static Key highlightColor(HighlightColor color) =>
+      Key('reader.highlight.${color.name}');
+  static const noteButton = Key('reader.note');
+  static const copyButton = Key('reader.copy');
+  static const removeHighlightButton = Key('reader.removeHighlight');
+  static const noteField = Key('reader.noteField');
 
   /// Part of the width, at each side, where a tap turns the page.
   static const edge = 0.25;
@@ -176,6 +194,7 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
     _window.staysOn = false;
     if (_fullScreen) _window.isFullScreen = false;
     _focus.dispose();
+    _wheelRest?.cancel();
     super.dispose();
   }
 
@@ -191,11 +210,48 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
   void _next() => _curl.currentState?.turnNext();
   void _previous() => _curl.currentState?.turnPrevious();
 
+  /// Wheel travel not yet turned into a page, in logical pixels.
+  double _wheel = 0;
+
+  /// Set right after the wheel turns a page: a touchpad sends many small
+  /// scrolls, and one flick of a wheel several notches, for a single turn.
+  Timer? _wheelRest;
+
+  /// How far the wheel goes for one page: about one notch.
+  static const _wheelStep = 40.0;
+  static const _wheelPause = Duration(milliseconds: 250);
+
+  /// The wheel turns pages: down (or right) the next, up the previous.
+  void _onPointerSignal(PointerSignalEvent event) {
+    if (event is! PointerScrollEvent) return;
+    GestureBinding.instance.pointerSignalResolver.register(event, (event) {
+      if (_wheelRest?.isActive ?? false) return;
+      final delta = (event as PointerScrollEvent).scrollDelta;
+      _wheel += delta.dy != 0 ? delta.dy : delta.dx;
+      if (_wheel.abs() < _wheelStep) return;
+      final forward = _wheel > 0;
+      _wheel = 0;
+      _wheelRest = Timer(_wheelPause, () {});
+      forward ? _next() : _previous();
+    });
+  }
+
   KeyEventResult _onKey(ReaderSession session, KeyEvent event) {
     if (event is! KeyDownEvent && event is! KeyRepeatEvent) {
       return KeyEventResult.ignored;
     }
     final key = event.logicalKey;
+    if (_menuRange != null) {
+      if (key == LogicalKeyboardKey.escape) {
+        setState(_clearSelection);
+        return KeyEventResult.handled;
+      }
+      if (key == LogicalKeyboardKey.keyC &&
+          HardwareKeyboard.instance.isControlPressed) {
+        if (event is KeyDownEvent) unawaited(_copy());
+        return KeyEventResult.handled;
+      }
+    }
     if (key == LogicalKeyboardKey.arrowRight ||
         key == LogicalKeyboardKey.pageDown ||
         key == LogicalKeyboardKey.space) {
@@ -256,6 +312,7 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
               _controller.goToFraction(fraction);
             },
             onRemoveBookmark: (f) => unawaited(_controller.removeBookmark(f)),
+            onRemoveHighlight: (h) => unawaited(_controller.removeHighlight(h)),
           ),
           _ => null,
         },
@@ -297,31 +354,294 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
         color: colors.paper,
         child: index == null
             ? const SizedBox.expand()
-            : Center(child: session.document.buildPage(index, colors)),
+            : Center(
+                child: session.document.buildPage(
+                  index,
+                  colors,
+                  marks: _marks(session, index),
+                ),
+              ),
       );
 
   final _left = GlobalKey();
   final _right = GlobalKey();
+  final _stack = GlobalKey();
 
-  /// A tap on a link in a page follows it. True when there was one.
-  bool _followLink(Offset global, Spreads spreads, int spread) {
-    bool on(GlobalKey key, int? page) {
-      final box = key.currentContext?.findRenderObject();
-      if (page == null ||
-          box is! RenderBox ||
-          !box.hasSize ||
-          box.size.isEmpty) {
-        return false;
-      }
+  /// The spread shown, as last built.
+  Spreads? _spreads;
+  int _spread = 0;
+  ReaderSession? _shown;
+
+  /// The page shown at rest that holds [page], if it is one.
+  RenderBox? _pageBox(int page) {
+    final spreads = _spreads;
+    if (spreads == null) return null;
+    final key = spreads.left(_spread) == page
+        ? _left
+        : spreads.right(_spread) == page
+        ? _right
+        : null;
+    final box = key?.currentContext?.findRenderObject();
+    return box is RenderBox && box.hasSize && !box.size.isEmpty ? box : null;
+  }
+
+  /// The page under [global], and where on it in its unit square. With
+  /// [page]: that page, wherever the point is.
+  (int, Offset)? _pagePoint(Offset global, {int? page}) {
+    final spreads = _spreads;
+    if (spreads == null) return null;
+    for (final index in [spreads.left(_spread), spreads.right(_spread)]) {
+      if (index == null || (page != null && index != page)) continue;
+      final box = _pageBox(index);
+      if (box == null) continue;
       final local = box.globalToLocal(global);
-      if (!(Offset.zero & box.size).contains(local)) return false;
-      return _controller.followLink(
+      if (page == null && !(Offset.zero & box.size).contains(local)) continue;
+      return (
+        index,
         Offset(local.dx / box.size.width, local.dy / box.size.height),
-        page: page,
       );
     }
+    return null;
+  }
 
-    return on(_left, spreads.left(spread)) || on(_right, spreads.right(spread));
+  /// A tap on a link in a page follows it. True when there was one.
+  bool _followLink(Offset global) {
+    final (page, at) = _pagePoint(global) ?? (null, Offset.zero);
+    return page != null && _controller.followLink(at, page: page);
+  }
+
+  // --- Selecting and highlighting -------------------------------------------
+
+  /// The text selected, in book characters, on page [_selectionPage];
+  /// [_anchor] is where it began (a word on touch), [_selecting] while the
+  /// pointer is still down.
+  TextRange? _selection;
+  TextRange? _anchor;
+  int? _selectionPage;
+  bool _selecting = false;
+
+  /// The highlight tapped, whose menu is open (on [_selectionPage]).
+  Highlight? _openHighlight;
+
+  /// A pointer came down while the menu was open: it only closes it.
+  bool _dismissing = false;
+
+  void _clearSelection() {
+    _selection = _anchor = _selectionPage = _openHighlight = null;
+    _selecting = false;
+  }
+
+  /// What the menu is for, once the pointer is up.
+  TextRange? get _menuRange =>
+      _openHighlight?.range ?? (_selecting ? null : _selection);
+
+  BookDocument? get _document => _shown?.document;
+
+  bool _onText(Offset global) {
+    final document = _document;
+    if (document == null || !document.selectable) return false;
+    final (page, at) = _pagePoint(global) ?? (null, Offset.zero);
+    return page != null && document.offsetAt(page, at) != null;
+  }
+
+  /// Starts a selection at [global]: the word there ([word], touch), or
+  /// the place between two letters (a mouse).
+  void _startSelection(Offset global, {required bool word}) {
+    final document = _document;
+    final (page, at) = _pagePoint(global) ?? (null, Offset.zero);
+    if (document == null || page == null) return;
+    final TextRange? anchor;
+    if (word) {
+      anchor = document.wordAt(page, at);
+    } else {
+      final offset = document.offsetAt(page, at);
+      anchor = offset == null ? null : TextRange.collapsed(offset);
+    }
+    if (anchor == null) return;
+    setState(() {
+      _clearSelection();
+      _selectionPage = page;
+      _anchor = _selection = anchor;
+      _selecting = true;
+    });
+  }
+
+  /// Takes the selection from where it began to [global] (on its page).
+  void _extendSelection(Offset global) {
+    final document = _document;
+    final page = _selectionPage;
+    final anchor = _anchor;
+    if (document == null || page == null || anchor == null) return;
+    final (_, at) = _pagePoint(global, page: page) ?? (null, Offset.zero);
+    final offset = document.offsetAt(page, at, near: true);
+    if (offset == null) return;
+    final range = offset < anchor.start
+        ? TextRange(start: offset, end: anchor.end)
+        : TextRange(start: anchor.start, end: math.max(offset, anchor.end));
+    if (range != _selection) setState(() => _selection = range);
+  }
+
+  bool _selectsOnDrag(PointerDownEvent event) =>
+      event.kind == PointerDeviceKind.mouse && _onText(event.position);
+
+  /// A mouse dragged over text selects it, from where it went down.
+  void _setUpSelectDrag(FilteredPan drag) {
+    drag
+      ..allows = _selectsOnDrag
+      ..dragStartBehavior = DragStartBehavior.down
+      ..onStart = (d) {
+        _startSelection(d.globalPosition, word: false);
+      }
+      ..onUpdate = (d) {
+        _extendSelection(d.globalPosition);
+      }
+      ..onEnd = (_) {
+        _endSelection();
+      }
+      ..onCancel = _endSelection;
+  }
+
+  /// A finger held on a word selects it; moved, it takes in more.
+  void _setUpSelectPress(LongPressGestureRecognizer press) {
+    press
+      ..onLongPressStart = (d) {
+        _startSelection(d.globalPosition, word: true);
+      }
+      ..onLongPressMoveUpdate = (d) {
+        _extendSelection(d.globalPosition);
+      }
+      ..onLongPressEnd = (_) {
+        _endSelection();
+      };
+  }
+
+  void _endSelection() {
+    if (!_selecting) return;
+    setState(() {
+      _selecting = false;
+      if (_selection?.isCollapsed ?? true) _clearSelection();
+    });
+  }
+
+  /// The highlight drawn under [global], the last one made on top.
+  (int, Highlight)? _highlightAt(Offset global) {
+    final session = _shown;
+    final (page, at) = _pagePoint(global) ?? (null, Offset.zero);
+    if (session == null || page == null || !session.document.selectable) {
+      return null;
+    }
+    for (final h in session.highlights.reversed) {
+      final rects = session.document.rectsOf(page, h.range);
+      if (rects.any((r) => r.inflate(0.002).contains(at))) return (page, h);
+    }
+    return null;
+  }
+
+  /// What page [page] draws under its text: the highlights, and the
+  /// selection (or the highlight whose menu is open).
+  List<PageMark> _marks(ReaderSession session, int page) {
+    final selected = _openHighlight?.range ?? _selection;
+    return [
+      ..._highlightMarks(session),
+      if (selected != null && !selected.isCollapsed && _selectionPage == page)
+        PageMark(
+          selected.start,
+          selected.end,
+          Theme.of(context).colorScheme.primary.withValues(alpha: 0.3),
+        ),
+    ];
+  }
+
+  static List<PageMark> _highlightMarks(ReaderSession session) => [
+    for (final h in session.highlights) PageMark(h.start, h.end, h.color.fill),
+  ];
+
+  Future<void> _color(HighlightColor color) async {
+    final open = _openHighlight;
+    final selection = _selection;
+    setState(_clearSelection);
+    _focus.requestFocus();
+    if (open != null) {
+      await _controller.updateHighlight(open, color: color);
+    } else if (selection != null) {
+      await _controller.highlight(selection, color);
+    }
+  }
+
+  /// Writes the note of the highlight open, or of the selection (which
+  /// then becomes a yellow highlight, once the note is saved).
+  Future<void> _note() async {
+    final open = _openHighlight;
+    final selection = _selection;
+    setState(_clearSelection);
+    final note = await showDialog<String>(
+      context: context,
+      builder: (_) => _NoteDialog(initial: open?.note ?? ''),
+    );
+    _focus.requestFocus();
+    if (note == null) return;
+    var target = open;
+    if (target == null && selection != null) {
+      target = await _controller.highlight(selection, HighlightColor.yellow);
+    }
+    if (target != null) {
+      await _controller.updateHighlight(target, note: note);
+    }
+  }
+
+  Future<void> _copy() async {
+    final range = _menuRange;
+    final document = _document;
+    setState(_clearSelection);
+    _focus.requestFocus();
+    if (range == null || document == null) return;
+    await Clipboard.setData(ClipboardData(text: document.textOf(range)));
+    if (!mounted) return;
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text(context.l10n.textCopied)));
+  }
+
+  Future<void> _remove() async {
+    final open = _openHighlight;
+    setState(_clearSelection);
+    _focus.requestFocus();
+    if (open != null) await _controller.removeHighlight(open);
+  }
+
+  /// Where [range] is on page [page], in the stack's coordinates.
+  Rect? _rectOf(BookDocument document, int page, TextRange range) {
+    final box = _pageBox(page);
+    final stack = _stack.currentContext?.findRenderObject();
+    if (box == null || stack is! RenderBox) return null;
+    final rects = document.rectsOf(page, range);
+    if (rects.isEmpty) return null;
+    final unit = rects.reduce((a, b) => a.expandToInclude(b));
+    Offset place(Offset p) => stack.globalToLocal(
+      box.localToGlobal(Offset(p.dx * box.size.width, p.dy * box.size.height)),
+    );
+    return Rect.fromPoints(place(unit.topLeft), place(unit.bottomRight));
+  }
+
+  /// The menu, over (or under) the text it is for.
+  Widget? _menu(ReaderSession session) {
+    final range = _menuRange;
+    final page = _selectionPage;
+    if (range == null || page == null) return null;
+    final anchor = _rectOf(session.document, page, range);
+    if (anchor == null) return null;
+    final open = _openHighlight;
+    return CustomSingleChildLayout(
+      delegate: _MenuLayout(anchor),
+      child: HighlightMenu(
+        color: open?.color,
+        note: open?.note ?? '',
+        onColor: (c) => unawaited(_color(c)),
+        onNote: () => unawaited(_note()),
+        onCopy: () => unawaited(_copy()),
+        onRemove: open == null ? null : () => unawaited(_remove()),
+      ),
+    );
   }
 
   Future<void> _showDisplaySettings(ReaderSession session) async {
@@ -421,6 +741,14 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
               );
           final spreads = Spreads(session.pageCount, twoPages: twoPages);
           final spread = spreads.of(session.page);
+          _spreads = spreads;
+          _spread = spread;
+          _shown = session;
+          // Turned away from the selection: it is gone.
+          if (_selectionPage case final p?
+              when p != spreads.left(spread) && p != spreads.right(spread)) {
+            _clearSelection();
+          }
           // One page: the sheet is the whole screen, no desk.
           final fills = bleed && !twoPages;
           final margin = fills ? EdgeInsets.zero : around;
@@ -462,7 +790,10 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
                     document.layoutVersion,
                     colors,
                     spreads,
+                    Object.hashAll(session.highlights),
                   ),
+                  // A mouse dragged over text selects it.
+                  turnsOnDrag: (event) => !_selectsOnDrag(event),
                   sheetBuilder: (index) => KeyedSubtree(
                     key: index == spread ? ReaderScreen.pages : null,
                     child: KeyedSubtree(
@@ -494,6 +825,7 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
                                 size,
                                 ratio,
                                 colors,
+                                _highlightMarks(session),
                               ),
                               null => null,
                             },
@@ -505,6 +837,7 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
                           size,
                           ratio,
                           colors,
+                          _highlightMarks(session),
                         ),
                         null => blankSheetImage(size, ratio, colors.paper),
                       },
@@ -513,18 +846,59 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
                     through: spreads.last(index),
                   ),
                 );
+          // Text is selected with a mouse drag (a drag on the margin still
+          // turns the page), or held and dragged on touch.
+          final pages = !document.selectable
+              ? curl
+              : RawGestureDetector(
+                  behavior: HitTestBehavior.translucent,
+                  gestures: {
+                    FilteredPan:
+                        GestureRecognizerFactoryWithHandlers<FilteredPan>(
+                          () => FilteredPan(debugOwner: this),
+                          _setUpSelectDrag,
+                        ),
+                    LongPressGestureRecognizer:
+                        GestureRecognizerFactoryWithHandlers<
+                          LongPressGestureRecognizer
+                        >(
+                          () => LongPressGestureRecognizer(debugOwner: this),
+                          _setUpSelectPress,
+                        ),
+                  },
+                  child: curl,
+                );
+          final menu = _menu(session);
           return Stack(
+            key: _stack,
             fit: StackFit.expand,
             children: [
               // Sees every touch without taking part in deciding what it is
               // (a tap, a page turn).
               Listener(
-                onPointerDown: (_) => _focus.requestFocus(),
+                onPointerSignal: _onPointerSignal,
+                onPointerDown: (_) {
+                  _focus.requestFocus();
+                  _dismissing = _menuRange != null;
+                  if (_dismissing) setState(_clearSelection);
+                },
                 child: GestureDetector(
                   behavior: HitTestBehavior.opaque,
                   onTapUp: (details) {
+                    if (_dismissing) return;
                     if (document.reflowable &&
-                        _followLink(details.globalPosition, spreads, spread)) {
+                        _followLink(details.globalPosition)) {
+                      return;
+                    }
+                    if (_highlightAt(details.globalPosition) case (
+                      final page,
+                      final highlight,
+                    )) {
+                      setState(() {
+                        _clearSelection();
+                        _selectionPage = page;
+                        _openHighlight = highlight;
+                      });
                       return;
                     }
                     final x = details.localPosition.dx / constraints.maxWidth;
@@ -541,7 +915,7 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
                   // large as fits, on the desk; with two, side by side as an
                   // open book.
                   child: fills
-                      ? curl
+                      ? pages
                       : Padding(
                           padding: margin,
                           child: Center(
@@ -549,7 +923,7 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
                               aspectRatio: twoPages
                                   ? pageAspect * 2
                                   : pageAspect,
-                              child: curl,
+                              child: pages,
                             ),
                           ),
                         ),
@@ -601,6 +975,7 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
                     ),
                   ),
                 ),
+              ?menu,
             ],
           );
         },
@@ -632,12 +1007,14 @@ Future<ui.Image> sheetImage(
   Size size,
   double pixelRatio, [
   PageColors colors = PageColors.plain,
+  List<PageMark> marks = const [],
 ]) async {
   final area = Offset.zero & size;
   final page = await session.document.pageImage(
     index,
     Size(area.width * pixelRatio, area.height * pixelRatio),
     colors,
+    marks: marks,
   );
   final natural = Size(page.width.toDouble(), page.height.toDouble());
   final fitted = applyBoxFit(BoxFit.contain, natural, area.size);
@@ -662,5 +1039,88 @@ Future<ui.Image> sheetImage(
     );
   } finally {
     picture.dispose();
+  }
+}
+
+/// Puts the highlight menu over [anchor] (the text it is for), or under it
+/// when there is no room above, always inside the screen.
+class _MenuLayout extends SingleChildLayoutDelegate {
+  _MenuLayout(this.anchor);
+
+  final Rect anchor;
+  static const _gap = 8.0;
+
+  @override
+  BoxConstraints getConstraintsForChild(BoxConstraints constraints) =>
+      constraints.loosen().deflate(const EdgeInsets.all(_gap));
+
+  @override
+  Offset getPositionForChild(Size size, Size child) {
+    final x = (anchor.center.dx - child.width / 2)
+        .clamp(_gap, math.max(_gap, size.width - child.width - _gap))
+        .toDouble();
+    final above = anchor.top - child.height - _gap;
+    final below = anchor.bottom + _gap;
+    final y = above >= _gap
+        ? above
+        : below + child.height <= size.height - _gap
+        ? below
+        : (size.height - child.height) / 2;
+    return Offset(x, y);
+  }
+
+  @override
+  bool shouldRelayout(_MenuLayout old) => old.anchor != anchor;
+}
+
+/// Writes a highlight's note: the text on Save, null on Cancel.
+class _NoteDialog extends StatefulWidget {
+  const _NoteDialog({required this.initial});
+
+  final String initial;
+
+  @override
+  State<_NoteDialog> createState() => _NoteDialogState();
+}
+
+class _NoteDialogState extends State<_NoteDialog> {
+  late final _text = TextEditingController(text: widget.initial);
+
+  @override
+  void dispose() {
+    _text.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    return AlertDialog(
+      title: Text(l10n.note),
+      content: SizedBox(
+        width: 400,
+        child: TextField(
+          key: ReaderScreen.noteField,
+          controller: _text,
+          autofocus: true,
+          minLines: 3,
+          maxLines: 8,
+          decoration: InputDecoration(
+            hintText: l10n.noteHint,
+            border: const OutlineInputBorder(),
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: Text(l10n.cancel),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.of(context).pop(_text.text),
+          child: Text(l10n.save),
+        ),
+      ],
+    );
   }
 }

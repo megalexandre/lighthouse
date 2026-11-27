@@ -55,6 +55,27 @@ class PageColors {
   int get hashCode => Object.hash(paper, ink);
 }
 
+/// Book characters [start] to [end] drawn over [color] (a highlight, the
+/// selection); see [BookDocument.selectable].
+@immutable
+class PageMark {
+  const PageMark(this.start, this.end, this.color);
+
+  final int start;
+  final int end;
+  final Color color;
+
+  @override
+  bool operator ==(Object other) =>
+      other is PageMark &&
+      other.start == start &&
+      other.end == end &&
+      other.color == color;
+
+  @override
+  int get hashCode => Object.hash(start, end, color);
+}
+
 /// A line of a book's table of contents: [title], going to [fraction] of
 /// the book (see [BookDocument.pageAt]); [depth] 0 for the top level.
 @immutable
@@ -73,14 +94,47 @@ class TocEntry {
 abstract interface class BookDocument {
   int get pageCount;
 
-  /// Page [index] (0-based) in [colors], fitted to the space it gets.
-  Widget buildPage(int index, PageColors colors);
+  /// Page [index] (0-based) in [colors], fitted to the space it gets, with
+  /// [marks] under its text.
+  Widget buildPage(
+    int index,
+    PageColors colors, {
+    List<PageMark> marks = const [],
+  });
 
   /// Page [index] in [colors] as an image about [maxSize] pixels (aspect
   /// kept), for the page-turn animation, which bends pictures, not
   /// widgets. Where the page is empty it may be transparent (the paper
   /// shows through).
-  Future<ui.Image> pageImage(int index, Size maxSize, PageColors colors);
+  Future<ui.Image> pageImage(
+    int index,
+    Size maxSize,
+    PageColors colors, {
+    List<PageMark> marks = const [],
+  });
+
+  /// Whether its text can be selected and highlighted (an EPUB, whose text
+  /// the reader lays out itself). The places below count characters of
+  /// the book, as [PageMark] does; points are in the page's unit square,
+  /// as for [linkAt].
+  bool get selectable;
+
+  /// The character at [at] on page [index] (the caret's place before it);
+  /// null off the text, unless [near] (then the nearest text on the page).
+  int? offsetAt(int index, Offset at, {bool near = false});
+
+  /// The word at [at] on page [index]; null off the text.
+  TextRange? wordAt(int index, Offset at);
+
+  /// Where [range] is drawn on page [index], one box per line (none when
+  /// it is not on that page).
+  List<Rect> rectsOf(int index, TextRange range);
+
+  /// The book's text in [range] (paragraphs on their own lines).
+  String textOf(TextRange range);
+
+  /// Where character [offset] is in the book, from 0 to 1 (see [pageAt]).
+  double fractionAt(int offset);
 
   /// Width ÷ height of page [index]: the sheet that turns has its shape.
   double pageAspectRatio(int index);
@@ -144,6 +198,24 @@ mixin FixedPages implements BookDocument {
 
   @override
   double? linkAt(int index, Offset at) => null;
+
+  @override
+  bool get selectable => false;
+
+  @override
+  int? offsetAt(int index, Offset at, {bool near = false}) => null;
+
+  @override
+  TextRange? wordAt(int index, Offset at) => null;
+
+  @override
+  List<Rect> rectsOf(int index, TextRange range) => const [];
+
+  @override
+  String textOf(TextRange range) => '';
+
+  @override
+  double fractionAt(int offset) => 0;
 }
 
 /// The book [file] opened for reading. Throws [NotReadable] for a format
@@ -203,7 +275,11 @@ class ComicBookDocument with FixedPages implements BookDocument {
   /// Drawings keep their colours, whatever the theme. A small one grows to
   /// the space it gets, as [pageImage] does.
   @override
-  Widget buildPage(int index, PageColors colors) => SizedBox.expand(
+  Widget buildPage(
+    int index,
+    PageColors colors, {
+    List<PageMark> marks = const [],
+  }) => SizedBox.expand(
     child: Image.memory(
       _pages[index],
       fit: BoxFit.contain,
@@ -212,7 +288,12 @@ class ComicBookDocument with FixedPages implements BookDocument {
   );
 
   @override
-  Future<ui.Image> pageImage(int index, Size maxSize, PageColors colors) async {
+  Future<ui.Image> pageImage(
+    int index,
+    Size maxSize,
+    PageColors colors, {
+    List<PageMark> marks = const [],
+  }) async {
     // The size from the header (ImageDescriptor does not decode), then one
     // decode straight at the size needed, not at full scan resolution.
     final buffer = await ui.ImmutableBuffer.fromUint8List(_pages[index]);
@@ -276,7 +357,11 @@ class PdfBookDocument with FixedPages implements BookDocument {
   /// The page is drawn black on white, then recoloured (see
   /// [PageColors.recolor]): in the dark theme a PDF reads light on dark.
   @override
-  Widget buildPage(int index, PageColors colors) {
+  Widget buildPage(
+    int index,
+    PageColors colors, {
+    List<PageMark> marks = const [],
+  }) {
     final page = PdfPageView(
       document: _document,
       pageNumber: index + 1,
@@ -289,7 +374,12 @@ class PdfBookDocument with FixedPages implements BookDocument {
   }
 
   @override
-  Future<ui.Image> pageImage(int index, Size maxSize, PageColors colors) async {
+  Future<ui.Image> pageImage(
+    int index,
+    Size maxSize,
+    PageColors colors, {
+    List<PageMark> marks = const [],
+  }) async {
     final page = _document.pages[index];
     final fit = _fit(Size(page.width, page.height), maxSize);
     final rendered = await page.render(
