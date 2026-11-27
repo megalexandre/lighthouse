@@ -5,17 +5,23 @@ import '../data/highlight.dart';
 import 'reader_screen.dart';
 
 /// What can be done with the text selected, or with a highlight tapped:
-/// write a note, copy, remove the highlight, and a colour for it (picking
-/// one is what highlights a selection).
+/// write a note, record a voice note (or play and delete the one it has),
+/// copy, remove the highlight, and a colour for it (picking one is what
+/// highlights a selection).
 class HighlightMenu extends StatelessWidget {
   const HighlightMenu({
     super.key,
     required this.onColor,
     required this.onNote,
     required this.onCopy,
+    required this.onRecord,
     this.color,
     this.note = '',
     this.onRemove,
+    this.voiceLength,
+    this.voicePlaying = false,
+    this.onPlayVoice,
+    this.onDeleteVoice,
   });
 
   /// The highlight's colour; null for a selection not highlighted yet.
@@ -29,6 +35,13 @@ class HighlightMenu extends StatelessWidget {
 
   /// Null for a selection.
   final VoidCallback? onRemove;
+  final VoidCallback onRecord;
+
+  /// How long the highlight's voice note is; null when it has none.
+  final Duration? voiceLength;
+  final bool voicePlaying;
+  final VoidCallback? onPlayVoice;
+  final VoidCallback? onDeleteVoice;
 
   static String colorName(BuildContext context, HighlightColor color) =>
       switch (color) {
@@ -87,6 +100,43 @@ class HighlightMenu extends StatelessWidget {
               note.isEmpty ? l10n.addNote : l10n.editNote,
               onNote,
             ),
+            if (voiceLength case final length?)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 4),
+                child: Row(
+                  children: [
+                    IconButton(
+                      key: ReaderScreen.playVoiceButton,
+                      tooltip: voicePlaying ? l10n.stopVoice : l10n.playVoice,
+                      icon: Icon(
+                        voicePlaying
+                            ? Icons.stop_circle_outlined
+                            : Icons.play_circle_outline,
+                      ),
+                      onPressed: onPlayVoice,
+                    ),
+                    Expanded(
+                      child: Text(
+                        l10n.voiceNote(clockText(length)),
+                        style: theme.textTheme.bodyLarge,
+                      ),
+                    ),
+                    IconButton(
+                      key: ReaderScreen.deleteVoiceButton,
+                      tooltip: l10n.deleteVoice,
+                      icon: const Icon(Icons.delete_outline),
+                      onPressed: onDeleteVoice,
+                    ),
+                  ],
+                ),
+              )
+            else
+              action(
+                ReaderScreen.recordVoiceButton,
+                Icons.mic_none,
+                l10n.recordVoice,
+                onRecord,
+              ),
             action(
               ReaderScreen.copyButton,
               Icons.copy_outlined,
@@ -124,6 +174,15 @@ class HighlightMenu extends StatelessWidget {
   }
 
   static const width = 260.0;
+}
+
+/// [length] as m:ss (h:mm:ss past an hour).
+String clockText(Duration length) {
+  final s = length.inSeconds;
+  String two(int n) => n.toString().padLeft(2, '0');
+  return s >= 3600
+      ? '${s ~/ 3600}:${two(s ~/ 60 % 60)}:${two(s % 60)}'
+      : '${s ~/ 60}:${two(s % 60)}';
 }
 
 class _Swatch extends StatelessWidget {

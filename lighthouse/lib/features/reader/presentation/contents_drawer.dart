@@ -1,11 +1,13 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart' show ValueListenable;
 import 'package:material_ui/material_ui.dart';
 
 import '../../../l10n/l10n.dart';
 import '../application/reader_controller.dart';
 import '../data/book_document.dart';
 import '../data/highlight.dart';
+import 'highlight_menu.dart';
 import 'reader_screen.dart';
 
 /// The book's contents, the user's bookmarks and (in a book whose text can
@@ -17,6 +19,8 @@ class ContentsDrawer extends StatefulWidget {
     required this.onGoTo,
     required this.onRemoveBookmark,
     required this.onRemoveHighlight,
+    required this.voicePlaying,
+    required this.onPlayVoice,
   });
 
   final ReaderSession session;
@@ -25,6 +29,10 @@ class ContentsDrawer extends StatefulWidget {
   final ValueChanged<double> onGoTo;
   final ValueChanged<double> onRemoveBookmark;
   final ValueChanged<Highlight> onRemoveHighlight;
+
+  /// The voice note playing (its path), and how to play or stop one.
+  final ValueListenable<String?> voicePlaying;
+  final ValueChanged<Highlight> onPlayVoice;
 
   @override
   State<ContentsDrawer> createState() => _ContentsDrawerState();
@@ -192,6 +200,36 @@ extension on _ContentsDrawerState {
                     style: theme.textTheme.bodyMedium?.copyWith(
                       fontStyle: FontStyle.italic,
                     ),
+                  ),
+                if (h.hasVoice)
+                  ValueListenableBuilder(
+                    valueListenable: widget.voicePlaying,
+                    builder: (context, playing, _) {
+                      final on = playing?.endsWith('/${h.voice}') ?? false;
+                      return Row(
+                        children: [
+                          IconButton(
+                            visualDensity: VisualDensity.compact,
+                            padding: EdgeInsets.zero,
+                            tooltip: on
+                                ? context.l10n.stopVoice
+                                : context.l10n.playVoice,
+                            icon: Icon(
+                              on
+                                  ? Icons.stop_circle_outlined
+                                  : Icons.play_circle_outline,
+                            ),
+                            onPressed: () => widget.onPlayVoice(h),
+                          ),
+                          Flexible(
+                            child: Text(
+                              context.l10n.voiceNote(clockText(h.voiceLength)),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      );
+                    },
                   ),
                 if (document.pageCount > 0)
                   Text(

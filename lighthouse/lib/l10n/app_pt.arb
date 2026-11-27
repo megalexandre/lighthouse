@@ -215,5 +215,12 @@
   "note": "Observação",
   "noteHint": "Escreva o que achou deste trecho",
   "save": "Salvar",
-  "cancel": "Cancelar"
+  "cancel": "Cancelar",
+  "recordVoice": "Gravar áudio",
+  "voiceNote": "Nota de voz · {length}",
+  "playVoice": "Ouvir nota de voz",
+  "stopVoice": "Parar nota de voz",
+  "deleteVoice": "Apagar nota de voz",
+  "recording": "Gravando…",
+  "recordingFailed": "Não foi possível gravar. Verifique se há um microfone conectado e se o app tem permissão para usá-lo."
 }

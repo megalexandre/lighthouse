@@ -9,6 +9,9 @@
     <uses-permission android:name="android.permission.WAKE_LOCK"/>
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK"/>
+    <!-- Voice notes on a book's highlights (record). Asked for when the
+         first one is recorded. -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO"/>
     <!-- networkSecurityConfig: Jellyfin servers on a home network are often
          plain http://, which Android 9+ blocks by default.
          Backup: the secure storage (session, DeviceId) stays out. Restored on

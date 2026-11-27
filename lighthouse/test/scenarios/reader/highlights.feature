@@ -2,8 +2,9 @@ Feature: Highlights and notes
 
   An EPUB's text can be selected: held (then dragged) on touch, dragged
   over with a mouse. A menu over the selection highlights it in yellow,
-  red or blue, writes a note on it, or copies it. A tap on a highlight
-  brings the menu back, to change its colour or note, or remove it.
+  red or blue, writes a note on it, records a voice note, or copies it. A tap on a highlight
+  brings the menu back, to change its colour or note, play or delete its
+  voice note, or remove it.
   Highlights are listed under Notes, beside the contents, and kept on this
   device only.
 
@@ -76,3 +77,64 @@ Feature: Highlights and notes
     When I read {'book-comic'}
     And I open the contents
     Then I do not see {'Notes'}
+
+  Scenario: A voice note is recorded on a selection, and played
+    When I read {'book-epub'}
+    And I hold the word {'first'}
+    And I tap {'Record voice note'}
+    Then I see {'Recording…'}
+    When I wait {3} seconds
+    Then I see {'0:03'}
+    When I save the recording
+    Then {'first'} is highlighted {'yellow'}
+    And {'first'} has a voice note of {7} seconds
+    And the file of {'voice-1.wav'} is kept
+    When I tap the word {'first'}
+    Then I see {'Voice note · 0:07'}
+    When I tap the button {'Play voice note'}
+    Then the voice note {'voice-1.wav'} plays
+    When I tap the button {'Stop voice note'}
+    Then no voice note plays
+
+  Scenario: A voice note deleted is gone, file and all; the highlight stays
+    When I read {'book-epub'}
+    And I hold the word {'first'}
+    And I highlight it {'red'}
+    And I tap the word {'first'}
+    And I tap {'Record voice note'}
+    And I save the recording
+    And I tap the word {'first'}
+    And I tap the button {'Delete voice note'}
+    Then {'first'} has no voice note
+    And {'first'} is highlighted {'red'}
+    And the file of {'voice-1.wav'} is deleted
+    And I see {'Record voice note'}
+
+  Scenario: A recording cancelled leaves nothing
+    When I read {'book-epub'}
+    And I hold the word {'first'}
+    And I tap {'Record voice note'}
+    And I tap {'Cancel'}
+    Then {'book-epub'} has no highlights
+
+  Scenario: Without a microphone, the reader says so
+    Given the microphone cannot be used
+    When I read {'book-epub'}
+    And I hold the word {'first'}
+    And I tap {'Record voice note'}
+    Then I see a line {'Could not record'}
+    And {'book-epub'} has no highlights
+
+  Scenario: The notes play their voice notes; a highlight removed takes its voice note along
+    When I read {'book-epub'}
+    And I hold the word {'first'}
+    And I tap {'Record voice note'}
+    And I save the recording
+    And I open the notes
+    Then I see {'Voice note · 0:07'}
+    When I tap the button {'Play voice note'}
+    Then the voice note {'voice-1.wav'} plays
+    When I tap the button {'Remove highlight'}
+    Then {'book-epub'} has no highlights
+    And no voice note plays
+    And the file of {'voice-1.wav'} is deleted

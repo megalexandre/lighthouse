@@ -1,3 +1,4 @@
+import 'dart:typed_data';
 import 'dart:ui' as ui;
 
 import 'package:flutter_test/flutter_test.dart';
@@ -9,6 +10,7 @@ import 'package:lighthouse/features/reader/data/epub/epub_book.dart';
 import 'package:lighthouse/features/reader/data/epub/epub_document.dart';
 import 'package:lighthouse/features/reader/data/epub/epub_layout.dart';
 import 'package:lighthouse/features/reader/data/highlight.dart';
+import 'package:lighthouse/features/reader/data/voice_note.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../../support/epub.dart';
@@ -128,6 +130,46 @@ void main() {
     expect(Highlight.fromJson(h.toJson()), h);
     expect(Highlight.fromJson({'start': 9, 'end': 3}), isNull);
     expect(Highlight.fromJson('nonsense'), isNull);
+  });
+
+  test('a voice note survives JSON; a path instead of a name does not', () {
+    final h = Highlight(
+      start: 1,
+      end: 4,
+      color: HighlightColor.yellow,
+      text: 'w',
+      created: DateTime.utc(2026),
+      voice: '1764000000000.wav',
+      voiceLength: const Duration(milliseconds: 7250),
+    );
+    expect(Highlight.fromJson(h.toJson()), h);
+    for (final bad in ['../secret', '/etc/passwd', '..', '.hidden', 'a/b']) {
+      final json = h.toJson()..['voice'] = bad;
+      expect(Highlight.fromJson(json)!.hasVoice, isFalse, reason: bad);
+    }
+    expect(h.copyWith(voice: '').voiceLength, Duration.zero);
+  });
+
+  test('raw sound becomes a WAV file that says how it is made', () {
+    final pcm = Uint8List(32000); // One second at 16 kHz, 16-bit mono.
+    final wav = wavFile(pcm, sampleRate: 16000);
+    final data = ByteData.sublistView(wav);
+    String ascii(int at) => String.fromCharCodes(wav.sublist(at, at + 4));
+    expect(wav.length, 44 + pcm.length);
+    expect(ascii(0), 'RIFF');
+    expect(data.getUint32(4, Endian.little), 36 + pcm.length);
+    expect(ascii(8), 'WAVE');
+    expect(data.getUint16(20, Endian.little), 1); // PCM
+    expect(data.getUint16(22, Endian.little), 1); // mono
+    expect(data.getUint32(24, Endian.little), 16000);
+    expect(data.getUint32(28, Endian.little), 32000); // bytes per second
+    expect(data.getUint16(34, Endian.little), 16);
+    expect(ascii(36), 'data');
+    expect(data.getUint32(40, Endian.little), pcm.length);
+    expect(
+      pcmLength(pcm.length, sampleRate: 16000),
+      const Duration(seconds: 1),
+    );
   });
 
   test('highlights are kept per book on this device, in order', () async {

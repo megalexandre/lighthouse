@@ -783,6 +783,30 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get cancel => 'Cancelar';
+
+  @override
+  String get recordVoice => 'Gravar áudio';
+
+  @override
+  String voiceNote(String length) {
+    return 'Nota de voz · $length';
+  }
+
+  @override
+  String get playVoice => 'Ouvir nota de voz';
+
+  @override
+  String get stopVoice => 'Parar nota de voz';
+
+  @override
+  String get deleteVoice => 'Apagar nota de voz';
+
+  @override
+  String get recording => 'Gravando…';
+
+  @override
+  String get recordingFailed =>
+      'Não foi possível gravar. Verifique se há um microfone conectado e se o app tem permissão para usá-lo.';
 }
 
 /// The translations for Portuguese, as used in Brazil (`pt_BR`).

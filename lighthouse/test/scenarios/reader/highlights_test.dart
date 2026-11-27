@@ -30,6 +30,15 @@ import './step/the_book_is_still_open.dart';
 import './step/i_tap_the_button.dart';
 import './step/i_see_a_line.dart';
 import './step/i_open_the_contents.dart';
+import './step/i_wait_seconds.dart';
+import './step/i_save_the_recording.dart';
+import './step/has_a_voice_note_of_seconds.dart';
+import './step/the_file_of_is_kept.dart';
+import './step/the_voice_note_plays.dart';
+import './step/no_voice_note_plays.dart';
+import './step/has_no_voice_note.dart';
+import './step/the_file_of_is_deleted.dart';
+import './step/the_microphone_cannot_be_used.dart';
 
 void main() {
   setUpAll(() async {
@@ -221,6 +230,140 @@ void main() {
       } finally {
         await afterEach(
           '''A comic's pages have no text to select, so no notes''',
+          success,
+        );
+      }
+    });
+    testWidgets('''A voice note is recorded on a selection, and played''',
+        (tester) async {
+      var success = true;
+      try {
+        await beforeEach(
+            '''A voice note is recorded on a selection, and played''');
+        await bddSetUp(tester);
+        await iRead(tester, 'book-epub');
+        await iHoldTheWord(tester, 'first');
+        await iTap(tester, 'Record voice note');
+        await iSee(tester, 'Recording…');
+        await iWaitSeconds(tester, 3);
+        await iSee(tester, '0:03');
+        await iSaveTheRecording(tester);
+        await isHighlighted(tester, 'first', 'yellow');
+        await hasAVoiceNoteOfSeconds(tester, 'first', 7);
+        await theFileOfIsKept(tester, 'voice-1.wav');
+        await iTapTheWord(tester, 'first');
+        await iSee(tester, 'Voice note · 0:07');
+        await iTapTheButton(tester, 'Play voice note');
+        await theVoiceNotePlays(tester, 'voice-1.wav');
+        await iTapTheButton(tester, 'Stop voice note');
+        await noVoiceNotePlays(tester);
+      } catch (_) {
+        success = false;
+        rethrow;
+      } finally {
+        await afterEach(
+          '''A voice note is recorded on a selection, and played''',
+          success,
+        );
+      }
+    });
+    testWidgets(
+        '''A voice note deleted is gone, file and all; the highlight stays''',
+        (tester) async {
+      var success = true;
+      try {
+        await beforeEach(
+            '''A voice note deleted is gone, file and all; the highlight stays''');
+        await bddSetUp(tester);
+        await iRead(tester, 'book-epub');
+        await iHoldTheWord(tester, 'first');
+        await iHighlightIt(tester, 'red');
+        await iTapTheWord(tester, 'first');
+        await iTap(tester, 'Record voice note');
+        await iSaveTheRecording(tester);
+        await iTapTheWord(tester, 'first');
+        await iTapTheButton(tester, 'Delete voice note');
+        await hasNoVoiceNote(tester, 'first');
+        await isHighlighted(tester, 'first', 'red');
+        await theFileOfIsDeleted(tester, 'voice-1.wav');
+        await iSee(tester, 'Record voice note');
+      } catch (_) {
+        success = false;
+        rethrow;
+      } finally {
+        await afterEach(
+          '''A voice note deleted is gone, file and all; the highlight stays''',
+          success,
+        );
+      }
+    });
+    testWidgets('''A recording cancelled leaves nothing''', (tester) async {
+      var success = true;
+      try {
+        await beforeEach('''A recording cancelled leaves nothing''');
+        await bddSetUp(tester);
+        await iRead(tester, 'book-epub');
+        await iHoldTheWord(tester, 'first');
+        await iTap(tester, 'Record voice note');
+        await iTap(tester, 'Cancel');
+        await hasNoHighlights(tester, 'book-epub');
+      } catch (_) {
+        success = false;
+        rethrow;
+      } finally {
+        await afterEach(
+          '''A recording cancelled leaves nothing''',
+          success,
+        );
+      }
+    });
+    testWidgets('''Without a microphone, the reader says so''', (tester) async {
+      var success = true;
+      try {
+        await beforeEach('''Without a microphone, the reader says so''');
+        await bddSetUp(tester);
+        await theMicrophoneCannotBeUsed(tester);
+        await iRead(tester, 'book-epub');
+        await iHoldTheWord(tester, 'first');
+        await iTap(tester, 'Record voice note');
+        await iSeeALine(tester, 'Could not record');
+        await hasNoHighlights(tester, 'book-epub');
+      } catch (_) {
+        success = false;
+        rethrow;
+      } finally {
+        await afterEach(
+          '''Without a microphone, the reader says so''',
+          success,
+        );
+      }
+    });
+    testWidgets(
+        '''The notes play their voice notes; a highlight removed takes its voice note along''',
+        (tester) async {
+      var success = true;
+      try {
+        await beforeEach(
+            '''The notes play their voice notes; a highlight removed takes its voice note along''');
+        await bddSetUp(tester);
+        await iRead(tester, 'book-epub');
+        await iHoldTheWord(tester, 'first');
+        await iTap(tester, 'Record voice note');
+        await iSaveTheRecording(tester);
+        await iOpenTheNotes(tester);
+        await iSee(tester, 'Voice note · 0:07');
+        await iTapTheButton(tester, 'Play voice note');
+        await theVoiceNotePlays(tester, 'voice-1.wav');
+        await iTapTheButton(tester, 'Remove highlight');
+        await hasNoHighlights(tester, 'book-epub');
+        await noVoiceNotePlays(tester);
+        await theFileOfIsDeleted(tester, 'voice-1.wav');
+      } catch (_) {
+        success = false;
+        rethrow;
+      } finally {
+        await afterEach(
+          '''The notes play their voice notes; a highlight removed takes its voice note along''',
           success,
         );
       }

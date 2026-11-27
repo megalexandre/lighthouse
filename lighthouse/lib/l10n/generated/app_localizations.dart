@@ -1394,6 +1394,48 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Cancel'**
   String get cancel;
+
+  /// Highlight menu: record a voice note on the passage.
+  ///
+  /// In en, this message translates to:
+  /// **'Record voice note'**
+  String get recordVoice;
+
+  /// A highlight's voice note, with how long it is (m:ss).
+  ///
+  /// In en, this message translates to:
+  /// **'Voice note · {length}'**
+  String voiceNote(String length);
+
+  /// Button.
+  ///
+  /// In en, this message translates to:
+  /// **'Play voice note'**
+  String get playVoice;
+
+  /// Button: the voice note is playing.
+  ///
+  /// In en, this message translates to:
+  /// **'Stop voice note'**
+  String get stopVoice;
+
+  /// Button.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete voice note'**
+  String get deleteVoice;
+
+  /// Title of the dialog while a voice note is recorded.
+  ///
+  /// In en, this message translates to:
+  /// **'Recording…'**
+  String get recording;
+
+  /// Snackbar: the microphone could not be used.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not record. Check that a microphone is connected and that the app may use it.'**
+  String get recordingFailed;
 }
 
 class _AppLocalizationsDelegate

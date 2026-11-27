@@ -33,6 +33,15 @@ dependencies:
   # one Android freezes the app in the background), its notification, and the
   # lock screen's and headset's buttons (MediaSession). Pinned: native code.
   audio_service: 0.18.19
+  # Voice notes in the reader: the microphone on Android (MediaRecorder) and
+  # Linux (parecord, from PulseAudio/PipeWire; the PCM stream is used there,
+  # since its file mode needs ffmpeg on the machine). Pinned: native code.
+  record: 7.1.2
+  # Its platform parts, pinned to the releases that came with 7.1.2: the
+  # newest (2026-11-11) have had little use yet.
+  record_android: 2.2.0
+  record_linux: 2.1.3
+  record_platform_interface: 2.1.0
   # Android: audio focus. Music and video pause for a call, for another app
   # that plays, and when the headphones are unplugged; mpv does none of it.
   # audio_service depends on it. Pinned: native code.

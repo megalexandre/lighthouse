@@ -275,6 +275,17 @@ bordas, teclado), progresso no servidor.
   nas mesmas palavras depois de repaginar; só neste aparelho, como os marcadores (`highlights-*` no
   `FileKeyValueStore`), sem enviar ao servidor. PDF e quadrinhos ficam de fora: o texto do PDF é desenhado pelo
   PDFium (seleção exigiria o texto do pdfrx) e quadrinhos são imagens.
+  - **Notas de voz:** no menu do trecho (ou do destaque), "Gravar áudio" abre um diálogo com o tempo gravado,
+    Cancelar e Salvar (no máximo 10 minutos; aí salva sozinho). Num trecho ainda sem destaque, salvar o cria em
+    amarelo. O destaque com áudio mostra no menu e na aba "Anotações" um botão de ouvir/parar e a duração; no
+    menu, "Apagar nota de voz" apaga o arquivo e mantém o destaque. Remover o destaque apaga o áudio também, e
+    fechar o livro para o que estiver tocando. Os arquivos ficam em `~/.local/share/<app>/reader/voice-notes/`,
+    só neste aparelho; o destaque guarda só o nome do arquivo (um nome com caminho é descartado ao ler).
+    Gravação pelo pacote `record`: no Android, AAC (.m4a) pelo MediaRecorder, com a permissão `RECORD_AUDIO`
+    pedida na primeira gravação; no Linux, o som cru do `parecord` (PulseAudio/PipeWire), gravado como WAV
+    mono de 16 kHz pelo próprio app, porque o modo arquivo do pacote no Linux exige o ffmpeg instalado. Sem
+    microfone ou sem permissão, um aviso diz que não deu para gravar. Tocar é pelo mpv (media_kit), num player
+    só das notas, separado do vídeo e da música.
 - PDFium vem de `bblanchon/pdfium-binaries` (versão fixa `chromium/8125`), baixado no build pelo hook do
   `pdfium_dart`, sem conferência de hash.
 

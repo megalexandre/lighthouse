@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 import 'dart:math' as math;
 import 'dart:ui' as ui;
 
@@ -8,6 +9,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 
+import '../../../core/log.dart';
 import '../../../core/theme/app_tokens.dart';
 import '../../../core/touch.dart';
 import '../../../core/window.dart';
@@ -18,6 +20,7 @@ import '../application/reader_controller.dart';
 import '../application/reader_preferences.dart';
 import '../data/book_document.dart';
 import '../data/highlight.dart';
+import '../data/voice_note.dart';
 import 'contents_drawer.dart';
 import 'display_sheet.dart';
 import 'highlight_menu.dart';
@@ -37,7 +40,8 @@ import 'spreads.dart';
 ///
 /// An EPUB's text can be selected: dragged over with a mouse, or held
 /// (then dragged) on touch. A menu over it highlights it in a colour, adds
-/// a note, or copies it; a tap on a highlight brings the same menu back.
+/// a note or a voice note, or copies it; a tap on a highlight brings the
+/// same menu back (where its voice note plays, or is deleted).
 /// Highlights are listed under Notes in the contents.
 ///
 /// On touch (a phone, a tablet) the page is laid out for the whole screen
@@ -93,6 +97,10 @@ class ReaderScreen extends ConsumerStatefulWidget {
   static const copyButton = Key('reader.copy');
   static const removeHighlightButton = Key('reader.removeHighlight');
   static const noteField = Key('reader.noteField');
+  static const recordVoiceButton = Key('reader.recordVoice');
+  static const playVoiceButton = Key('reader.playVoice');
+  static const deleteVoiceButton = Key('reader.deleteVoice');
+  static const saveRecordingButton = Key('reader.saveRecording');
 
   /// Part of the width, at each side, where a tap turns the page.
   static const edge = 0.25;
@@ -183,14 +191,20 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
   final _focus = FocusNode(debugLabel: 'reader');
   bool _focusAsked = false;
 
+  /// Voice notes play here; read once, as [_window] (dispose stops it).
+  late final NotePlayer _voices = ref.read(notePlayerProvider);
+
   @override
   void initState() {
     super.initState();
     _window.staysOn = true;
+    _voices; // Read now: dispose cannot.
   }
 
   @override
   void dispose() {
+    // A voice note does not go on playing past the book.
+    unawaited(_voices.stop());
     _window.staysOn = false;
     if (_fullScreen) _window.isFullScreen = false;
     _focus.dispose();
@@ -312,7 +326,12 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
               _controller.goToFraction(fraction);
             },
             onRemoveBookmark: (f) => unawaited(_controller.removeBookmark(f)),
-            onRemoveHighlight: (h) => unawaited(_controller.removeHighlight(h)),
+            onRemoveHighlight: (h) {
+              if (_isPlaying(h)) unawaited(_voices.stop());
+              unawaited(_controller.removeHighlight(h));
+            },
+            voicePlaying: _voices.playing,
+            onPlayVoice: (h) => unawaited(_playVoice(h)),
           ),
           _ => null,
         },
@@ -606,7 +625,73 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
     final open = _openHighlight;
     setState(_clearSelection);
     _focus.requestFocus();
-    if (open != null) await _controller.removeHighlight(open);
+    if (open == null) return;
+    if (_isPlaying(open)) await _voices.stop();
+    await _controller.removeHighlight(open);
+  }
+
+  // --- Voice notes ------------------------------------------------------------
+
+  /// The longest voice note: past it, the recording ends and is kept.
+  static const maxVoiceNote = Duration(minutes: 10);
+
+  bool _isPlaying(Highlight h) =>
+      h.hasVoice && (_voices.playing.value?.endsWith('/${h.voice}') ?? false);
+
+  /// Plays [h]'s voice note, or stops it when it is the one playing.
+  Future<void> _playVoice(Highlight h) async {
+    if (_isPlaying(h)) return _voices.stop();
+    final dir = await ref.read(voiceNotesDirectoryProvider.future);
+    await _voices.play(File('${dir.path}/${h.voice}'));
+  }
+
+  /// Records a voice note for the highlight open, or for the selection
+  /// (which then becomes a yellow highlight, once the note is saved). The
+  /// menu goes; a dialog shows the time until Save or Cancel.
+  Future<void> _recordVoice() async {
+    final open = _openHighlight;
+    final selection = _selection;
+    setState(_clearSelection);
+    final recorder = ref.read(noteRecorderProvider);
+    final String file;
+    try {
+      await _voices.stop();
+      final dir = await ref.read(voiceNotesDirectoryProvider.future);
+      file = await recorder.start(dir);
+    } on Object catch (e) {
+      log.warning('reader', 'no voice note', e);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(SnackBar(content: Text(context.l10n.recordingFailed)));
+      _focus.requestFocus();
+      return;
+    }
+    if (!mounted) return unawaited(recorder.cancel());
+    final save = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const _RecordingDialog(limit: maxVoiceNote),
+    );
+    _focus.requestFocus();
+    if (save != true) return recorder.cancel();
+    final length = await recorder.stop();
+    var target = open;
+    if (target == null && selection != null) {
+      target = await _controller.highlight(selection, HighlightColor.yellow);
+    }
+    if (target != null) {
+      await _controller.attachVoice(target, file, length);
+    }
+  }
+
+  /// Deletes the voice note of the highlight open; its menu stays.
+  Future<void> _deleteVoice() async {
+    final open = _openHighlight;
+    if (open == null) return;
+    if (_isPlaying(open)) await _voices.stop();
+    setState(() => _openHighlight = open.copyWith(voice: ''));
+    await _controller.removeVoice(open);
   }
 
   /// Where [range] is on page [page], in the stack's coordinates.
@@ -633,13 +718,21 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
     final open = _openHighlight;
     return CustomSingleChildLayout(
       delegate: _MenuLayout(anchor),
-      child: HighlightMenu(
-        color: open?.color,
-        note: open?.note ?? '',
-        onColor: (c) => unawaited(_color(c)),
-        onNote: () => unawaited(_note()),
-        onCopy: () => unawaited(_copy()),
-        onRemove: open == null ? null : () => unawaited(_remove()),
+      child: ValueListenableBuilder(
+        valueListenable: _voices.playing,
+        builder: (context, _, _) => HighlightMenu(
+          color: open?.color,
+          note: open?.note ?? '',
+          onColor: (c) => unawaited(_color(c)),
+          onNote: () => unawaited(_note()),
+          onCopy: () => unawaited(_copy()),
+          onRecord: () => unawaited(_recordVoice()),
+          onRemove: open == null ? null : () => unawaited(_remove()),
+          voiceLength: open != null && open.hasVoice ? open.voiceLength : null,
+          voicePlaying: open != null && _isPlaying(open),
+          onPlayVoice: open == null ? null : () => unawaited(_playVoice(open)),
+          onDeleteVoice: () => unawaited(_deleteVoice()),
+        ),
       ),
     );
   }
@@ -1118,6 +1211,67 @@ class _NoteDialogState extends State<_NoteDialog> {
         ),
         FilledButton(
           onPressed: () => Navigator.of(context).pop(_text.text),
+          child: Text(l10n.save),
+        ),
+      ],
+    );
+  }
+}
+
+/// While a voice note records: the time so far, Cancel and Save. Pops true
+/// to keep it; at [limit] it is kept on its own.
+class _RecordingDialog extends StatefulWidget {
+  const _RecordingDialog({required this.limit});
+
+  final Duration limit;
+
+  @override
+  State<_RecordingDialog> createState() => _RecordingDialogState();
+}
+
+class _RecordingDialogState extends State<_RecordingDialog> {
+  // Counted in ticks, not read from a clock: the same in tests.
+  int _seconds = 0;
+  late final Timer _tick = Timer.periodic(const Duration(seconds: 1), (_) {
+    setState(() => _seconds++);
+    if (_seconds >= widget.limit.inSeconds) Navigator.of(context).pop(true);
+  });
+
+  @override
+  void initState() {
+    super.initState();
+    _tick; // Starts counting.
+  }
+
+  @override
+  void dispose() {
+    _tick.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    return AlertDialog(
+      title: Text(l10n.recording),
+      content: Row(
+        children: [
+          Icon(Icons.mic, color: Theme.of(context).colorScheme.error),
+          const SizedBox(width: 12),
+          Text(
+            clockText(Duration(seconds: _seconds)),
+            style: Theme.of(context).textTheme.headlineSmall,
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(false),
+          child: Text(l10n.cancel),
+        ),
+        FilledButton(
+          key: ReaderScreen.saveRecordingButton,
+          onPressed: () => Navigator.of(context).pop(true),
           child: Text(l10n.save),
         ),
       ],

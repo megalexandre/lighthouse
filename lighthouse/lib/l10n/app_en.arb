@@ -1080,5 +1080,38 @@
   "cancel": "Cancel",
   "@cancel": {
     "description": "Dialog button."
+  },
+  "recordVoice": "Record voice note",
+  "@recordVoice": {
+    "description": "Highlight menu: record a voice note on the passage."
+  },
+  "voiceNote": "Voice note · {length}",
+  "@voiceNote": {
+    "description": "A highlight's voice note, with how long it is (m:ss).",
+    "placeholders": {
+      "length": {
+        "type": "String"
+      }
+    }
+  },
+  "playVoice": "Play voice note",
+  "@playVoice": {
+    "description": "Button."
+  },
+  "stopVoice": "Stop voice note",
+  "@stopVoice": {
+    "description": "Button: the voice note is playing."
+  },
+  "deleteVoice": "Delete voice note",
+  "@deleteVoice": {
+    "description": "Button."
+  },
+  "recording": "Recording…",
+  "@recording": {
+    "description": "Title of the dialog while a voice note is recorded."
+  },
+  "recordingFailed": "Could not record. Check that a microphone is connected and that the app may use it.",
+  "@recordingFailed": {
+    "description": "Snackbar: the microphone could not be used."
   }
 }

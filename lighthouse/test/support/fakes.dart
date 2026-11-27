@@ -5,7 +5,11 @@ import 'dart:typed_data';
 import 'dart:ui' as ui;
 
 import 'package:flutter/foundation.dart'
-    show TargetPlatform, debugDefaultTargetPlatformOverride;
+    show
+        TargetPlatform,
+        ValueListenable,
+        ValueNotifier,
+        debugDefaultTargetPlatformOverride;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -40,6 +44,7 @@ import 'package:lighthouse/features/reader/data/book_format.dart';
 import 'package:lighthouse/features/reader/data/book_repository.dart';
 import 'package:lighthouse/features/reader/data/epub/epub_document.dart';
 import 'package:lighthouse/features/reader/data/highlight.dart';
+import 'package:lighthouse/features/reader/data/voice_note.dart';
 import 'package:lighthouse/features/server/application/connection_controller.dart';
 import 'package:lighthouse/features/server/data/server_info.dart';
 import 'package:lighthouse/features/server/data/server_repository.dart';
@@ -942,6 +947,68 @@ class _BlankDocument with FixedPages implements BookDocument {
   Future<void> dispose() async {}
 }
 
+/// A microphone that records nothing: it hands out file names, and
+/// remembers what it was asked.
+class FakeNoteRecorder implements NoteRecorder {
+  /// Thrown by [start] when set (no microphone, no permission).
+  RecordingFailed? failure;
+
+  /// How long each recording is said to be.
+  Duration length = const Duration(seconds: 7);
+
+  var _count = 0;
+  bool recording = false;
+  final saved = <String>[];
+  final cancelled = <String>[];
+  String? _current;
+
+  @override
+  Future<String> start(Directory dir) async {
+    if (failure case final f?) throw f;
+    recording = true;
+    final name = _current = 'voice-${++_count}.wav';
+    // A file there, as a recording leaves one, to see it deleted.
+    File('${dir.path}/$name').writeAsBytesSync(const [0]);
+    return name;
+  }
+
+  @override
+  Future<Duration> stop() async {
+    recording = false;
+    saved.add(_current!);
+    return length;
+  }
+
+  @override
+  Future<void> cancel() async {
+    recording = false;
+    cancelled.add(_current!);
+  }
+}
+
+/// Plays nothing; says what is playing until [stop] or [finish].
+class FakeNotePlayer implements NotePlayer {
+  final _playing = ValueNotifier<String?>(null);
+
+  /// Every file played, in order.
+  final played = <String>[];
+
+  @override
+  ValueListenable<String?> get playing => _playing;
+
+  @override
+  Future<void> play(File file) async {
+    played.add(file.path);
+    _playing.value = file.path;
+  }
+
+  @override
+  Future<void> stop() async => _playing.value = null;
+
+  /// The note plays to its end.
+  void finish() => _playing.value = null;
+}
+
 /// A window that only remembers what it was asked.
 class FakeAppWindow implements AppWindow {
   @override
@@ -1138,6 +1205,11 @@ class TestApp {
   final mediaControls = FakeMediaControls();
   final settings = FakeSettingsRepository();
   final books = FakeBookRepository();
+  final noteRecorder = FakeNoteRecorder();
+  final notePlayer = FakeNotePlayer();
+
+  /// Where voice notes go: the app deletes them from here.
+  final voiceNotes = Directory.systemTemp.createTempSync('voice-notes-');
 
   /// What the connection check answers while the app thinks the server
   /// is down.
@@ -1191,6 +1263,9 @@ class TestApp {
     settingsRepositoryProvider.overrideWithValue(settings),
     bookRepositoryProvider.overrideWithValue(books),
     bookOpenerProvider.overrideWithValue(openBookForTests),
+    noteRecorderProvider.overrideWithValue(noteRecorder),
+    notePlayerProvider.overrideWithValue(notePlayer),
+    voiceNotesDirectoryProvider.overrideWith((_) async => voiceNotes),
     serverLocatorProvider.overrideWithValue((server) async {
       pings.add(server.url);
       return serverUp ? serverMovedTo ?? server : null;

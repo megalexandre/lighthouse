@@ -31,6 +31,8 @@ class Highlight {
     required this.text,
     required this.created,
     this.note = '',
+    this.voice = '',
+    this.voiceLength = Duration.zero,
   });
 
   final int start;
@@ -42,18 +44,33 @@ class Highlight {
   final String note;
   final DateTime created;
 
+  /// The voice note's file, in the voice notes' folder
+  /// (voiceNotesDirectoryProvider); empty when there is none.
+  final String voice;
+  final Duration voiceLength;
+
+  bool get hasVoice => voice.isNotEmpty;
+
   TextRange get range => TextRange(start: start, end: end);
 
   /// Whether it covers the character at [offset].
   bool covers(int offset) => offset >= start && offset < end;
 
-  Highlight copyWith({HighlightColor? color, String? note}) => Highlight(
+  /// [voice] '' takes the voice note off.
+  Highlight copyWith({
+    HighlightColor? color,
+    String? note,
+    String? voice,
+    Duration? voiceLength,
+  }) => Highlight(
     start: start,
     end: end,
     color: color ?? this.color,
     text: text,
     created: created,
     note: note ?? this.note,
+    voice: voice ?? this.voice,
+    voiceLength: voice == '' ? Duration.zero : voiceLength ?? this.voiceLength,
   );
 
   Map<String, Object> toJson() => {
@@ -62,6 +79,8 @@ class Highlight {
     'color': color.name,
     'text': text,
     if (note.isNotEmpty) 'note': note,
+    if (hasVoice) 'voice': voice,
+    if (hasVoice) 'voiceMs': voiceLength.inMilliseconds,
     'created': created.toUtc().toIso8601String(),
   };
 
@@ -71,6 +90,8 @@ class Highlight {
     final start = json['start'];
     final end = json['end'];
     final color = HighlightColor.values.asNameMap()[json['color']];
+    final voice = json['voice'];
+    final voiceMs = json['voiceMs'];
     if (start is! int || end is! int || start < 0 || end <= start) {
       return null;
     }
@@ -80,6 +101,11 @@ class Highlight {
       color: color ?? HighlightColor.yellow,
       text: json['text'] is String ? json['text'] as String : '',
       note: json['note'] is String ? json['note'] as String : '',
+      // Only a bare file name: never a path out of the notes' folder.
+      voice: voice is String && RegExp(r'^\w[\w.-]*$').hasMatch(voice)
+          ? voice
+          : '',
+      voiceLength: Duration(milliseconds: voiceMs is int ? voiceMs : 0),
       created:
           DateTime.tryParse(json['created'] as String? ?? '') ??
           DateTime.fromMillisecondsSinceEpoch(0, isUtc: true),
@@ -94,8 +120,11 @@ class Highlight {
       other.color == color &&
       other.text == text &&
       other.note == note &&
-      other.created == created;
+      other.created == created &&
+      other.voice == voice &&
+      other.voiceLength == voiceLength;
 
   @override
-  int get hashCode => Object.hash(start, end, color, text, note, created);
+  int get hashCode =>
+      Object.hash(start, end, color, text, note, created, voice, voiceLength);
 }

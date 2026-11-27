@@ -17,6 +17,7 @@ import '../data/book_repository.dart';
 import '../data/epub/epub_layout.dart';
 import '../data/highlight.dart';
 import '../data/reading_position.dart';
+import '../data/voice_note.dart';
 import 'pending_reading.dart';
 import 'reader_preferences.dart';
 
@@ -336,6 +337,54 @@ class ReaderController extends AsyncNotifier<ReaderSession> {
       for (final h in session.highlights)
         if (h != highlight) h,
     ]);
+    await _deleteVoice(highlight.voice);
+  }
+
+  /// Gives [highlight] the voice note just recorded in [file] (in the voice
+  /// notes' folder), [length] long; one it had is deleted.
+  Future<Highlight?> attachVoice(
+    Highlight highlight,
+    String file,
+    Duration length,
+  ) async {
+    final old = highlight.voice;
+    final updated = await updateHighlightVoice(highlight, file, length);
+    if (old.isNotEmpty && old != file) await _deleteVoice(old);
+    return updated;
+  }
+
+  Future<Highlight?> updateHighlightVoice(
+    Highlight highlight,
+    String file,
+    Duration length,
+  ) async {
+    final session = _session;
+    if (session == null) return null;
+    final updated = highlight.copyWith(voice: file, voiceLength: length);
+    await _saveHighlights([
+      for (final h in session.highlights) h == highlight ? updated : h,
+    ]);
+    return updated;
+  }
+
+  /// Takes [highlight]'s voice note off, and deletes its file.
+  Future<void> removeVoice(Highlight highlight) async {
+    if (!highlight.hasVoice) return;
+    await updateHighlightVoice(highlight, '', Duration.zero);
+    await _deleteVoice(highlight.voice);
+  }
+
+  Future<void> _deleteVoice(String name) async {
+    if (name.isEmpty) return;
+    try {
+      final dir = await ref.read(voiceNotesDirectoryProvider.future);
+      final file = File('${dir.path}/$name');
+      // Small: done at once (and widget tests' fake clock never finishes
+      // real asynchronous file work).
+      if (file.existsSync()) file.deleteSync();
+    } on Object catch (e) {
+      log.warning('reader', 'could not delete a voice note', e);
+    }
   }
 
   /// Shows [highlights] at once; a failure to save them is only logged, as

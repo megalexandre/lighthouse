@@ -782,4 +782,28 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get cancel => 'Cancel';
+
+  @override
+  String get recordVoice => 'Record voice note';
+
+  @override
+  String voiceNote(String length) {
+    return 'Voice note · $length';
+  }
+
+  @override
+  String get playVoice => 'Play voice note';
+
+  @override
+  String get stopVoice => 'Stop voice note';
+
+  @override
+  String get deleteVoice => 'Delete voice note';
+
+  @override
+  String get recording => 'Recording…';
+
+  @override
+  String get recordingFailed =>
+      'Could not record. Check that a microphone is connected and that the app may use it.';
 }
