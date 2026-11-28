@@ -43,6 +43,10 @@ EpubBookDocument epubShown(WidgetTester tester, String itemId) =>
             .document
         as EpubBookDocument;
 
+/// Whether a page was lifted (being turned) in the middle of the last
+/// touchpad swipe (see `I swipe two fingers on the touchpad`).
+bool liftedMidSwipe = false;
+
 /// What the last copy put on the clipboard (see `I copy it`).
 String? clipboard;
 

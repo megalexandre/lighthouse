@@ -69,9 +69,21 @@ Feature: Reading
     When I scroll the mouse wheel {'up'}
     Then the reader shows {'Page 2 of 5'}
 
-  Scenario: A burst of scrolls from a touchpad turns a single page
+  Scenario: A swipe of two fingers on a touchpad turns one page, the page never dragged about
+    When I read {'book-epub'}
+    And I swipe two fingers {'up'} on the touchpad
+    Then the reader shows {'Page 2 of 3'}
+    And the page did not follow the fingers
+    When I swipe two fingers {'left'} on the touchpad
+    Then the reader shows {'Page 3 of 3'}
+    When I swipe two fingers {'right'} on the touchpad
+    Then the reader shows {'Page 2 of 3'}
+    And the page did not follow the fingers
+    And I do not see {'Copy'}
+
+  Scenario: A burst of small wheel scrolls turns a single page
     When I read {'book-comic'}
-    And I scroll the touchpad {'down'} in a burst
+    And I scroll the wheel {'down'} in a burst
     Then the reader shows {'Page 2 of 5'}
 
   Scenario: The page bar goes to a page

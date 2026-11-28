@@ -46,6 +46,30 @@ void main() {
     );
   });
 
+  test('the sheet never moves more than the finger, anywhere', () {
+    // A page of a spread; grabbed high, in the middle and low on the edge.
+    const size = Size(438, 608);
+    for (final gy in [0.1, 0.5, 0.88]) {
+      final grab = Offset(size.width, size.height * gy);
+      for (var x = -size.width - 100; x <= size.width + 50; x += 4) {
+        for (var y = -300.0; y <= size.height + 300; y += 4) {
+          final p = Offset(x, y);
+          for (final d in const [Offset(1, 0), Offset(0, 1)]) {
+            final moved =
+                (constrainToSpine(size, grab, p + d) -
+                        constrainToSpine(size, grab, p))
+                    .distance;
+            expect(
+              moved,
+              lessThanOrEqualTo(1.001),
+              reason: 'grabbed at $grab, finger at $p',
+            );
+          }
+        }
+      }
+    }
+  });
+
   test('fully turned: the grabbed point mirrored over the spine', () {
     expect(turnedFinger(const Offset(300, 200)), const Offset(-300, 200));
   });

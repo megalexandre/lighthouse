@@ -49,7 +49,8 @@ import 'spreads.dart';
 /// and shown together with the system's bars (full screen). With a mouse,
 /// full screen (F11, F or its button; Esc leaves it) is the same page over
 /// the whole screen, and the bars come and go with a click; the mouse wheel
-/// turns pages (down: the next one). On a phone it is always one page at a
+/// turns pages (down: the next one), and so does a swipe of two fingers on a
+/// touchpad, one page each (left or up: the next one). On a phone it is always one page at a
 /// time ([showsTwoPages]).
 ///
 /// Keys: ← → PgUp PgDn turn pages, Space the next one, Home / End the
@@ -234,6 +235,24 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
   /// How far the wheel goes for one page: about one notch.
   static const _wheelStep = 40.0;
   static const _wheelPause = Duration(milliseconds: 250);
+
+  /// A touchpad swipe already turned its page.
+  bool _swipeTurned = false;
+
+  /// How far two fingers go on a touchpad to turn a page.
+  static const _swipeStep = 60.0;
+
+  /// Two fingers on a touchpad turn one page per swipe, as they would move
+  /// the page: left or up the next, right or down the previous. (Its
+  /// scrolls are not wheel turns: Flutter hands them over as a pan.)
+  void _onSwipe(PointerPanZoomUpdateEvent event) {
+    if (_swipeTurned) return;
+    final pan = event.pan;
+    final along = pan.dx.abs() > pan.dy.abs() ? pan.dx : pan.dy;
+    if (along.abs() < _swipeStep) return;
+    _swipeTurned = true;
+    along < 0 ? _next() : _previous();
+  }
 
   /// The wheel turns pages: down (or right) the next, up the previous.
   void _onPointerSignal(PointerSignalEvent event) {
@@ -507,6 +526,8 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
   void _setUpSelectDrag(FilteredPan drag) {
     drag
       ..allows = _selectsOnDrag
+      // A mouse only: a touchpad's two fingers scroll (see [_onSwipe]).
+      ..supportedDevices = const {PointerDeviceKind.mouse}
       ..dragStartBehavior = DragStartBehavior.down
       ..onStart = (d) {
         _startSelection(d.globalPosition, word: false);
@@ -970,6 +991,8 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
               // (a tap, a page turn).
               Listener(
                 onPointerSignal: _onPointerSignal,
+                onPointerPanZoomStart: (_) => _swipeTurned = false,
+                onPointerPanZoomUpdate: _onSwipe,
                 onPointerDown: (_) {
                   _focus.requestFocus();
                   _dismissing = _menuRange != null;

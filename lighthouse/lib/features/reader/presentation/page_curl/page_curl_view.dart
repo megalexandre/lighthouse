@@ -297,9 +297,14 @@ class PageCurlViewState extends ConsumerState<PageCurlView>
       turn.finger = turn.forward
           // The grabbed edge follows the finger's movement.
           ? turn.grab + moved
-          // Coming back from fully turned: one page width of finger travel
+          // Coming back from fully turned. Two pages: the sheet follows the
+          // finger, which has the whole spread to cross. One page: the
+          // sheet is the whole view, so one page width of finger travel
           // brings it all the way.
-          : Offset(-_sheet.width + 2 * moved.dx, turn.grab.dy + moved.dy);
+          : Offset(
+              -_sheet.width + (_twoPages ? 1 : 2) * moved.dx,
+              turn.grab.dy + moved.dy,
+            );
     });
   }
 
@@ -441,6 +446,9 @@ class PageCurlViewState extends ConsumerState<PageCurlView>
               () => FilteredPan(debugOwner: this),
               (drag) => drag
                 ..allows = widget.turnsOnDrag
+                // Not a touchpad's two fingers: they scroll, and would drag
+                // the sheet about (the reader turns a page for a swipe).
+                ..supportedDevices = fingersAndMice
                 ..onStart = _onPanStart
                 ..onUpdate = _onPanUpdate
                 ..onEnd = _onPanEnd
@@ -539,6 +547,15 @@ class PageCurlViewState extends ConsumerState<PageCurlView>
     });
   }
 }
+
+/// What can drag a page: everything but a touchpad's scrolling fingers.
+const fingersAndMice = {
+  PointerDeviceKind.touch,
+  PointerDeviceKind.mouse,
+  PointerDeviceKind.stylus,
+  PointerDeviceKind.invertedStylus,
+  PointerDeviceKind.unknown,
+};
 
 /// A pan that only takes the pointers [allows] lets it (all, when null).
 class FilteredPan extends PanGestureRecognizer {

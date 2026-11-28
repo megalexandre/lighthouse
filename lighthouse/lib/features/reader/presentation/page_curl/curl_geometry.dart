@@ -35,6 +35,12 @@ double maxCurlRadius(Size size) => size.shortestSide * 0.12;
 /// bound at the spine (the left edge), so the grabbed point stays within
 /// its distance from the spine's top and bottom corners — inside both
 /// circles; outside, the closest point that is.
+///
+/// Both circles are filled, so the place is convex and its closest point
+/// moves no more than the finger does: only a circle the finger is out of
+/// is projected onto. (Projecting onto one it is inside sent the sheet
+/// across the page for a pixel's move near the spine's corners, where that
+/// circle's centre is.)
 Offset constrainToSpine(Size size, Offset grab, Offset finger) {
   final a = Offset.zero;
   final b = Offset(0, size.height);
@@ -46,11 +52,17 @@ Offset constrainToSpine(Size size, Offset grab, Offset finger) {
     return v.distance == 0 ? c : c + v / v.distance * r;
   }
 
-  if (inside(finger, a, ra) && inside(finger, b, rb)) return finger;
-  final pa = onto(a, ra);
-  if (inside(pa, b, rb)) return pa;
-  final pb = onto(b, rb);
-  if (inside(pb, a, ra)) return pb;
+  final inA = inside(finger, a, ra);
+  final inB = inside(finger, b, rb);
+  if (inA && inB) return finger;
+  if (!inA) {
+    final pa = onto(a, ra);
+    if (inside(pa, b, rb)) return pa;
+  }
+  if (!inB) {
+    final pb = onto(b, rb);
+    if (inside(pb, a, ra)) return pb;
+  }
   // Outside both: where the circles cross, the one nearer the finger.
   // Centres (0, 0) and (0, h): y = (ra² - rb² + h²) / 2h, x = ±√(ra² - y²).
   final h = size.height;

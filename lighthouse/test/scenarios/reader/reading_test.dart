@@ -22,7 +22,10 @@ import './step/the_server_has_not_been_told_the_place.dart';
 import './step/i_press.dart';
 import './step/i_tap_the_edge.dart';
 import './step/i_scroll_the_mouse_wheel.dart';
-import './step/i_scroll_the_touchpad_in_a_burst.dart';
+import './step/i_swipe_two_fingers_on_the_touchpad.dart';
+import './step/the_page_did_not_follow_the_fingers.dart';
+import './step/i_do_not_see.dart';
+import './step/i_scroll_the_wheel_in_a_burst.dart';
 import './step/i_drag_the_page_bar_to_the_end.dart';
 import './step/the_bars_are_shown.dart';
 import './step/i_tap_the_middle.dart';
@@ -224,22 +227,50 @@ void main() {
         );
       }
     });
-    testWidgets('''A burst of scrolls from a touchpad turns a single page''',
+    testWidgets(
+        '''A swipe of two fingers on a touchpad turns one page, the page never dragged about''',
         (tester) async {
       var success = true;
       try {
         await beforeEach(
-            '''A burst of scrolls from a touchpad turns a single page''');
+            '''A swipe of two fingers on a touchpad turns one page, the page never dragged about''');
+        await bddSetUp(tester);
+        await iRead(tester, 'book-epub');
+        await iSwipeTwoFingersOnTheTouchpad(tester, 'up');
+        await theReaderShows(tester, 'Page 2 of 3');
+        await thePageDidNotFollowTheFingers(tester);
+        await iSwipeTwoFingersOnTheTouchpad(tester, 'left');
+        await theReaderShows(tester, 'Page 3 of 3');
+        await iSwipeTwoFingersOnTheTouchpad(tester, 'right');
+        await theReaderShows(tester, 'Page 2 of 3');
+        await thePageDidNotFollowTheFingers(tester);
+        await iDoNotSee(tester, 'Copy');
+      } catch (_) {
+        success = false;
+        rethrow;
+      } finally {
+        await afterEach(
+          '''A swipe of two fingers on a touchpad turns one page, the page never dragged about''',
+          success,
+        );
+      }
+    });
+    testWidgets('''A burst of small wheel scrolls turns a single page''',
+        (tester) async {
+      var success = true;
+      try {
+        await beforeEach(
+            '''A burst of small wheel scrolls turns a single page''');
         await bddSetUp(tester);
         await iRead(tester, 'book-comic');
-        await iScrollTheTouchpadInABurst(tester, 'down');
+        await iScrollTheWheelInABurst(tester, 'down');
         await theReaderShows(tester, 'Page 2 of 5');
       } catch (_) {
         success = false;
         rethrow;
       } finally {
         await afterEach(
-          '''A burst of scrolls from a touchpad turns a single page''',
+          '''A burst of small wheel scrolls turns a single page''',
           success,
         );
       }

@@ -238,7 +238,10 @@ bordas, teclado), progresso no servidor.
   na metade direita (`uSpine`) com mais duas imagens: o verso (`uBack`) e a página da esquerda por baixo
   (`uUnderLeft`; ao lado da capa, a mesa). A geometria continua em coordenadas da folha; numa página só o desenho
   é o mesmo de antes (os goldens não mudaram). Soltar antes da lombada volta; depois dela (ou com flick) vira.
-  Goldens `spread_*`. O EPUB é
+  Goldens `spread_*`. Correção depois: perto dos cantos da lombada, 1 px de mouse chegava a mover a folha ~500 px
+  (`constrainToSpine` projetava também no círculo em que o dedo já estava dentro, perto do centro dele); agora só
+  projeta no círculo de onde o dedo saiu, e um teste varre a página e exige que a folha nunca ande mais que o
+  dedo. Arrastar na página da esquerda (trazer a anterior) segue o dedo 1:1 com duas páginas (antes, 2:1). O EPUB é
   diagramado para a metade da largura. Layout nas opções de exibição: **Automático** (o padrão: duas páginas quando
   a janela é mais larga que alta e cada página fica com pelo menos 420 px), **Uma página** ou **Duas páginas**.
   Chegar à última abertura marca o livro como lido. Cenários em `test/scenarios/reader/layout.feature`; os outros
@@ -264,7 +267,11 @@ bordas, teclado), progresso no servidor.
     guardá-los.
 - **Roda do mouse (feita):** no computador, rolar para baixo avança a página e para cima volta, em todos os
   formatos. Cada entalhe (~40 px de rolagem) vira uma página, e depois de virar a rolagem é ignorada por 250 ms:
-  o touchpad manda muitos eventos pequenos, e um giro rápido da roda vários entalhes, para uma única virada.
+  um giro rápido da roda manda vários entalhes para uma única virada.
+  Touchpad: dois dedos chegam ao Flutter como um "pan" (não como roda), que a virada por arraste aceitava como um
+  dedo: a folha seguia os dedos e ficava torta no meio da virada. Agora a virada por arraste e a seleção de texto
+  não aceitam o touchpad; um deslize de dois dedos (60 px) vira uma página por gesto, com a animação normal:
+  para a esquerda ou para cima avança, para a direita ou para baixo volta.
   No toque não há roda (limite da entrada, não da plataforma: um mouse no Android funciona igual).
 - **Destaques e anotações (feita, EPUB):** selecionar um trecho (com o mouse, arrastando sobre o texto; no toque,
   segurando uma palavra e arrastando) abre um menu sobre ele: destacar em amarelo, vermelho ou azul, adicionar uma
