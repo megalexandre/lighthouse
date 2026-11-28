@@ -79,6 +79,36 @@ excluded=()
 for pattern in 'libva.so*' 'libva-*.so*' 'libvdpau.so*' 'libdrm.so*' 'libdrm_*.so*'; do
   excluded+=(--exclude-library "$pattern")
 done
+# GTK and the GLib under it are the host's too: GTK loads the host's own
+# modules (GIO's gvfs, gdk-pixbuf's SVG loader for the icon theme), built
+# against the host's GLib and librsvg. Bundled older ones lack their newer
+# symbols and the app aborts at start ("undefined symbol:
+# g_variant_builder_init_static"). Every desktop has GTK 3, and a newer
+# one runs what was built against this one. The libraries GTK and the
+# host's GIO modules load with it (xkbcommon, png, pixman, the GnuTLS of
+# GIO's TLS module...) go the same way: only those GTK 3 itself needs, so
+# a desktop that runs GTK has them all. The rest stays in, as libmpv's own
+# X11 extensions (Xpresent, Xss, Xv), which a desktop may lack: leaving
+# those out stops the app at start ("libXpresent.so.1: cannot open").
+for pattern in \
+  'libglib-2.0.so*' 'libgio-2.0.so*' 'libgobject-2.0.so*' 'libgmodule-2.0.so*' \
+  'libgthread-2.0.so*' 'libgtk-3.so*' 'libgdk-3.so*' 'libgdk_pixbuf-2.0.so*' \
+  'librsvg-2.so*' 'libcairo.so*' 'libcairo-gobject.so*' 'libpango-1.0.so*' \
+  'libpangocairo-1.0.so*' 'libpangoft2-1.0.so*' 'libharfbuzz.so*' \
+  'libfontconfig.so*' 'libfreetype.so*' 'libatk-1.0.so*' 'libatk-bridge-2.0.so*' \
+  'libatspi.so*' 'libepoxy.so*' 'libwayland-*.so*' 'libxcb*.so*' \
+  'libX11.so*' 'libX11-xcb.so*' 'libXau.so*' 'libXdmcp.so*' 'libXext.so*' \
+  'libXrender.so*' 'libXfixes.so*' 'libXi.so*' 'libXcursor.so*' \
+  'libXrandr.so*' 'libXinerama.so*' 'libXcomposite.so*' 'libXdamage.so*' \
+  'libffi.so*' 'libpcre2-*.so*' 'libselinux.so*' 'libmount.so*' 'libblkid.so*' \
+  'libdbus-1.so*' 'libsystemd.so*' \
+  'libxkbcommon.so*' 'libpng16.so*' 'libpixman-1.so*' 'libthai.so*' \
+  'libdatrie.so*' 'libgraphite2.so*' 'libbrotli*.so*' 'libbz2.so*' \
+  'liblzma.so*' 'libzstd.so*' 'libgcrypt.so*' 'libudev.so*' 'libcap.so*' \
+  'libgnutls.so*' 'libnettle.so*' 'libhogweed.so*' 'libp11-kit.so*' \
+  'libtasn1.so*' 'libidn2.so*' 'libunistring.so*'; do
+  excluded+=(--exclude-library "$pattern")
+done
 
 step "AppImage"
 rm -f "$output"
