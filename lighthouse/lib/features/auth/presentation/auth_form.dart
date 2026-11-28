@@ -1,5 +1,7 @@
 import 'package:material_ui/material_ui.dart';
 
+import '../../../widgets/loading_ring.dart';
+
 /// Centered, width-limited card used by the connect and login screens.
 class AuthForm extends StatelessWidget {
   const AuthForm({
@@ -84,10 +86,8 @@ class SubmitButton extends StatelessWidget {
     return FilledButton(
       onPressed: busy ? null : onPressed,
       child: busy
-          ? const SizedBox.square(
-              dimension: 20,
-              child: CircularProgressIndicator(strokeWidth: 2),
-            )
+          // In the button's own (disabled) ink.
+          ? LoadingRing.small(color: IconTheme.of(context).color)
           : Text(label),
     );
   }

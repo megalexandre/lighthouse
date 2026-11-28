@@ -53,6 +53,8 @@ const buttons = <String, Key>{
   'back': PlayerScreen.backButton,
   'play/pause': PlayerScreen.playPauseButton,
   'big play': PlayerScreen.centerPlayButton,
+  'middle -10 s': PlayerScreen.centerSeekBackButton,
+  'middle +10 s': PlayerScreen.centerSeekForwardButton,
   'mute': PlayerScreen.muteButton,
   'full screen': PlayerScreen.fullscreenButton,
   'next': PlayerScreen.nextButton,

@@ -73,6 +73,55 @@ class ControlButton extends StatelessWidget {
   }
 }
 
+/// Beside the big play button, on a paused video: −10 s and +10 s, a
+/// 56 px disc in `osd-surface` (`osd-hover` under the mouse) so they read
+/// over any picture, the icon in `osd-ink`.
+class CenterSeekButton extends StatelessWidget {
+  const CenterSeekButton({
+    super.key,
+    required this.icon,
+    required this.label,
+    required this.shortcut,
+    required this.onPressed,
+  });
+
+  final IconData icon;
+  final String label;
+  final String shortcut;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    final pill = BorderRadius.circular(tokens.radiusPill);
+    return FocusRing(
+      borderRadius: pill,
+      color: tokens.osdAccent,
+      child: IconButton(
+        tooltip: context.l10n.withShortcut(label, shortcut),
+        onPressed: onPressed,
+        iconSize: 32,
+        icon: Icon(icon),
+        style: ButtonStyle(
+          fixedSize: const WidgetStatePropertyAll(Size.square(56)),
+          shape: WidgetStatePropertyAll(
+            RoundedRectangleBorder(borderRadius: pill),
+          ),
+          foregroundColor: WidgetStatePropertyAll(tokens.osdInk),
+          backgroundColor: WidgetStateProperty.resolveWith(
+            (states) =>
+                states.contains(WidgetState.hovered) ||
+                    states.contains(WidgetState.pressed)
+                ? tokens.osdHover
+                : tokens.osdSurface,
+          ),
+          overlayColor: const WidgetStatePropertyAll(Colors.transparent),
+        ),
+      ),
+    );
+  }
+}
+
 /// The big play button in the middle of a paused video: a 72 px disc in
 /// `osd-accent`.
 class CenterPlayButton extends StatelessWidget {

@@ -610,13 +610,13 @@ Achados no código, que no Android quebram sem erro visível:
   contra toques sem querer (bolso, palma da mão, criança). Cenários em `test/scenarios/player/lock.feature`; no
   app de verdade, `integration_test/features/player_controls.feature` (uma tecla não chega ao mpv, segurar o
   cadeado com o mouse desbloqueia).
-  - Um cadeado aberto na barra de cima, à esquerda, ao lado do voltar (a de baixo já está cheia no celular), no
-    vídeo e na música. Bloquear fecha o menu e o painel lateral e esconde os controles; na música ficam a capa, o
+  - Um cadeado aberto na barra de baixo, o primeiro botão à esquerda (como no app Android do Jellyfin), no vídeo e
+    na música; no celular de pé, onde a última linha está cheia, abre a linha do play (centralizado no que sobra). Bloquear fecha o menu e o painel lateral e esconde os controles; na música ficam a capa, o
     título e o tempo, só de olhar. O Próximo continua sozinho, e o item seguinte abre bloqueado; o cartão do
     Próximo fica escondido.
   - Bloqueado, um toque no vídeo (ou mover o mouse, ou qualquer tecla) mostra só um cadeado fechado por uns 3 s,
-    no meio da borda esquerda: abaixo do botão que bloqueou, não em cima dele (um toque duplo não bloqueia e
-    desbloqueia), e longe da aba do painel, à direita.
+    no canto de cima à direita, 48 px abaixo do topo, como no app Android do Jellyfin: do outro lado da tela do
+    botão que bloqueou, para um toque duplo não bloquear e desbloquear.
   - Desbloquear é segurar o cadeado: um anel em volta (`accent` sobre `osdSurface`) se completa em 1 s;
     soltar antes faz o anel voltar e nada acontece; completo, desbloqueia (com uma vibração curta no Android) e os
     controles voltam. No desktop, segurar o botão do mouse sobre o cadeado, ou Enter ou Espaço com ele focado
@@ -646,6 +646,10 @@ Achados no código, que no Android quebram sem erro visível:
   - Fica para depois: abrir a música já bloqueada (opção em Configurações).
   - Conferir no aparelho: o voltar por gesto, a palma da mão sobre o vídeo, as teclas de volume, a notificação da
     música com a tela apagada e o fone Bluetooth.
+- **Pausado, o centro pula e retoma (feito):** pedido depois de usar o app. Pausado, o meio da tela mostra
+  −10 s, o play grande e +10 s (`CenterSeekButton`: discos de 56 px em `osd-surface`, ao lado do de 72 px em
+  `osd-accent`); tocando, somem. A barra de baixo continua igual. Igual no desktop e no Android. Cenário em
+  `test/scenarios/player/on_screen_controls.feature`.
 - **Janela flutuante do player (código feito; falta conferir à mão):** o vídeo encolhe para uma janela pequena por
   cima das outras, só com a imagem ("picture in picture"), e volta. Cenários em
   `test/scenarios/player/floating.feature`.

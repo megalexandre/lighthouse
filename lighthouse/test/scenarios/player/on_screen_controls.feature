@@ -2,8 +2,8 @@ Feature: On-screen controls
 
   The seek bar names the chapter under the mouse, shows the picture of
   that moment, and seeks where it is clicked or let go; buttons skip 10 seconds; the settings panel sets the speed, and
-  Esc closes it a level at a time before it leaves the player. Paused, a
-  big play button shows. Subtitles rise above the controls.
+  Esc closes it a level at a time before it leaves the player. Paused, the
+  middle shows −10 s, a big play button and +10 s. Subtitles rise above the controls.
 
   Background:
     Given the app is signed in
@@ -86,6 +86,21 @@ Feature: On-screen controls
     And I tap the {'big play'} button
     Then it is playing
     And I do not see the big play button
+
+  Scenario: Paused, the middle skips 10 seconds back and on
+    When I play {'movie-1'}
+    And {30} seconds have played
+    Then there is no {'middle +10 s'} button
+    When I press {'Space'}
+    Then I see the {'middle -10 s'} button
+    And I see the {'middle +10 s'} button
+    When I tap the {'middle -10 s'} button
+    Then it is at {20} seconds
+    And it is paused
+    When I tap the {'middle +10 s'} button
+    Then it is at {30} seconds
+    When I tap the {'big play'} button
+    Then there is no {'middle -10 s'} button
 
   Scenario: Subtitles rise while the controls are up
     When I play {'movie-1'}

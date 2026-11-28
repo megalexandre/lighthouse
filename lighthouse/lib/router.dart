@@ -13,6 +13,7 @@ import 'features/reader/presentation/reader_screen.dart';
 import 'features/search/presentation/search_screen.dart';
 import 'features/server/presentation/connect_screen.dart';
 import 'features/settings/presentation/settings_screen.dart';
+import 'widgets/loading_ring.dart';
 
 abstract final class Routes {
   static const splash = '/splash';
@@ -138,5 +139,5 @@ class _Splash extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) =>
-      const Scaffold(body: Center(child: CircularProgressIndicator()));
+      const Scaffold(body: Center(child: LoadingRing()));
 }

@@ -9,6 +9,7 @@ import '../../../core/theme/app_tokens.dart';
 import '../../../core/theme/appearance.dart';
 import '../../../router.dart';
 import '../../../widgets/error_retry.dart';
+import '../../../widgets/loading_ring.dart';
 import '../../settings/application/settings_providers.dart';
 import '../application/play_queue.dart';
 import '../application/player_carry_over.dart';
@@ -47,6 +48,10 @@ class PlayerScreen extends ConsumerWidget {
   static const seekBackButton = Key('player.seekBack');
   static const seekForwardButton = Key('player.seekForward');
   static const centerPlayButton = Key('player.centerPlay');
+
+  /// Paused, beside the big play button.
+  static const centerSeekBackButton = Key('player.centerSeekBack');
+  static const centerSeekForwardButton = Key('player.centerSeekForward');
   static const subtitleOff = Key('player.subtitle.off');
   static const fullscreenButton = Key('player.fullscreen');
 
@@ -153,7 +158,7 @@ class PlayerScreen extends ConsumerWidget {
             ),
             _ => PlayerMessage(
               onBack: () => context.pop(),
-              child: const CircularProgressIndicator(),
+              child: const LoadingRing(size: 48, onMedia: true),
             ),
           },
         ),

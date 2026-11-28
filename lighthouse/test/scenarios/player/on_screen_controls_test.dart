@@ -34,6 +34,9 @@ import './step/is_playing.dart';
 import './step/the_player_is_closed.dart';
 import './step/i_do_not_see_the_big_play_button.dart';
 import './step/it_is_playing.dart';
+import './step/there_is_no_button.dart';
+import './step/i_see_the_button.dart';
+import './step/it_is_paused.dart';
 import './step/the_subtitles_are_lifted_above_the_controls.dart';
 import './step/i_wait.dart';
 import './step/the_subtitles_are_at_the_bottom.dart';
@@ -317,6 +320,35 @@ void main() {
       } finally {
         await afterEach(
           '''Paused, a big play button plays''',
+          success,
+        );
+      }
+    });
+    testWidgets('''Paused, the middle skips 10 seconds back and on''',
+        (tester) async {
+      var success = true;
+      try {
+        await beforeEach('''Paused, the middle skips 10 seconds back and on''');
+        await bddSetUp(tester);
+        await iPlay(tester, 'movie-1');
+        await secondsHavePlayed(tester, 30);
+        await thereIsNoButton(tester, 'middle +10 s');
+        await iPress(tester, 'Space');
+        await iSeeTheButton(tester, 'middle -10 s');
+        await iSeeTheButton(tester, 'middle +10 s');
+        await iTapTheButton(tester, 'middle -10 s');
+        await itIsAtSeconds(tester, 20);
+        await itIsPaused(tester);
+        await iTapTheButton(tester, 'middle +10 s');
+        await itIsAtSeconds(tester, 30);
+        await iTapTheButton(tester, 'big play');
+        await thereIsNoButton(tester, 'middle -10 s');
+      } catch (_) {
+        success = false;
+        rethrow;
+      } finally {
+        await afterEach(
+          '''Paused, the middle skips 10 seconds back and on''',
           success,
         );
       }

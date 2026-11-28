@@ -84,12 +84,7 @@ class PlayerOsd extends StatelessWidget {
       children: [
         Column(
           children: [
-            _TitleBar(
-              item: session.item,
-              margin: margin,
-              onBack: onBack,
-              onLock: onLock,
-            ),
+            _TitleBar(item: session.item, margin: margin, onBack: onBack),
             const Spacer(),
             _ControlBar(
               osd: this,
@@ -100,7 +95,11 @@ class PlayerOsd extends StatelessWidget {
           ],
         ),
         if (showCenterPlay)
-          _CenterPlay(engine: session.engine, onInteract: onInteract),
+          _CenterPlay(
+            engine: session.engine,
+            onSeekBy: onSeekBy,
+            onInteract: onInteract,
+          ),
         if ((panel, onPanel) case (
           final PanelContents panel,
           final VoidCallback onPanel,
@@ -170,13 +169,11 @@ class _TitleBar extends StatelessWidget {
     required this.item,
     required this.margin,
     required this.onBack,
-    this.onLock,
   });
 
   final BaseItemDto item;
   final double margin;
   final VoidCallback onBack;
-  final VoidCallback? onLock;
 
   @override
   Widget build(BuildContext context) {
@@ -210,9 +207,6 @@ class _TitleBar extends StatelessWidget {
                 shortcut: 'Esc',
                 onPressed: onBack,
               ),
-              // Beside Back, where the thumb already is.
-              if (onLock case final VoidCallback onLock)
-                LockButton(onPressed: onLock),
               SizedBox(width: tokens.space(2)),
               Expanded(
                 child: Column(
@@ -291,11 +285,28 @@ class _ControlBar extends StatelessWidget {
               ),
               SizedBox(height: tokens.space(2)),
               if (compact) ...[
-                _Transport(osd: osd),
+                // The bottom row is full: the lock leads the transport's
+                // row instead, the transport centred in what is left (no
+                // room to balance the lock on the right).
+                Row(
+                  children: [
+                    if (osd.onLock case final VoidCallback onLock)
+                      LockButton(onPressed: onLock),
+                    Expanded(
+                      child: Center(child: _Transport(osd: osd)),
+                    ),
+                  ],
+                ),
                 SizedBox(height: tokens.space(1)),
               ],
               Row(
                 children: [
+                  // First on the left, as in Jellyfin's Android app.
+                  if (osd.onLock case final VoidCallback onLock
+                      when !compact) ...[
+                    LockButton(onPressed: onLock),
+                    SizedBox(width: tokens.space(2)),
+                  ],
                   if (!compact) ...[
                     _Transport(osd: osd),
                     SizedBox(width: tokens.space(2)),
@@ -460,11 +471,17 @@ class _Extras extends StatelessWidget {
   }
 }
 
-/// Paused: the big play button in the middle.
+/// Paused: in the middle, −10 s, the big play button and +10 s, where
+/// the eye (and the thumb) already is.
 class _CenterPlay extends StatelessWidget {
-  const _CenterPlay({required this.engine, required this.onInteract});
+  const _CenterPlay({
+    required this.engine,
+    required this.onSeekBy,
+    required this.onInteract,
+  });
 
   final PlayerEngine engine;
+  final Future<void> Function(Duration) onSeekBy;
   final VoidCallback onInteract;
 
   @override
@@ -474,9 +491,36 @@ class _CenterPlay extends StatelessWidget {
     builder: (_, snap) => (snap.data ?? false)
         ? const SizedBox.shrink()
         : Center(
-            child: CenterPlayButton(
-              key: PlayerScreen.centerPlayButton,
-              onPressed: _keepingUp(engine.play, onInteract),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                CenterSeekButton(
+                  key: PlayerScreen.centerSeekBackButton,
+                  icon: Icons.replay_10,
+                  label: context.l10n.back10,
+                  shortcut: '←',
+                  onPressed: _keepingUp(
+                    () => onSeekBy(const Duration(seconds: -10)),
+                    onInteract,
+                  ),
+                ),
+                SizedBox(width: context.tokens.space(8)),
+                CenterPlayButton(
+                  key: PlayerScreen.centerPlayButton,
+                  onPressed: _keepingUp(engine.play, onInteract),
+                ),
+                SizedBox(width: context.tokens.space(8)),
+                CenterSeekButton(
+                  key: PlayerScreen.centerSeekForwardButton,
+                  icon: Icons.forward_10,
+                  label: context.l10n.forward10,
+                  shortcut: '→',
+                  onPressed: _keepingUp(
+                    () => onSeekBy(const Duration(seconds: 10)),
+                    onInteract,
+                  ),
+                ),
+              ],
             ),
           ),
   );

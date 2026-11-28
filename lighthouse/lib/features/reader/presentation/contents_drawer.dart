@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart' show ValueListenable;
 import 'package:material_ui/material_ui.dart';
 
 import '../../../l10n/l10n.dart';
+import '../../../widgets/skeleton.dart';
 import '../application/reader_controller.dart';
 import '../data/book_document.dart';
 import '../data/highlight.dart';
@@ -75,7 +76,7 @@ class _ContentsDrawerState extends State<ContentsDrawer> {
                   future: _toc,
                   builder: (context, snapshot) {
                     if (snapshot.connectionState != ConnectionState.done) {
-                      return const Center(child: CircularProgressIndicator());
+                      return const _ContentsSkeleton();
                     }
                     final toc = snapshot.data ?? const <TocEntry>[];
                     return TabBarView(
@@ -263,4 +264,32 @@ class _Empty extends StatelessWidget {
       child: Text(text, textAlign: TextAlign.center),
     ),
   );
+}
+
+/// The contents while the book reads them: rows shaped as its entries.
+class _ContentsSkeleton extends StatelessWidget {
+  const _ContentsSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    final style = Theme.of(context).textTheme.bodyLarge;
+    return Skeleton(
+      child: ListView.builder(
+        physics: const NeverScrollableScrollPhysics(),
+        itemCount: 10,
+        itemBuilder: (context, i) => Padding(
+          // As a ListTile: 16 px aside, 56 px tall.
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+          child: Row(
+            children: [
+              // Not all as long, as titles are not.
+              Bone.text(context, style, width: 120.0 + (i * 37) % 90),
+              const Spacer(),
+              Bone.text(context, style, width: 24),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }

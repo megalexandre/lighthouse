@@ -13,6 +13,7 @@ import '../../../core/ticks.dart';
 import '../../../core/touch.dart';
 import '../../../core/window_size.dart';
 import '../../../l10n/l10n.dart';
+import '../../../widgets/loading_ring.dart';
 import '../application/player_carry_over.dart';
 import '../application/player_controller.dart';
 import '../application/trickplay.dart';
@@ -715,9 +716,7 @@ class _Buffering extends StatelessWidget {
   Widget build(BuildContext context) => StreamBuilder<bool>(
     stream: engine.bufferingStream,
     builder: (_, snap) => (snap.data ?? false)
-        ? Center(
-            child: CircularProgressIndicator(color: context.tokens.osdAccent),
-          )
+        ? const Center(child: LoadingRing(size: 48, onMedia: true))
         : const SizedBox.shrink(),
   );
 }

@@ -16,6 +16,7 @@ import '../../../core/window.dart';
 import '../../../core/window_size.dart';
 import '../../../l10n/l10n.dart';
 import '../../../widgets/error_retry.dart';
+import '../../../widgets/loading_ring.dart';
 import '../application/reader_controller.dart';
 import '../application/reader_preferences.dart';
 import '../data/book_document.dart';
@@ -365,7 +366,7 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
           AsyncError(:final error) => _message(
             ErrorRetry(error: error, onRetry: () => ref.invalidate(provider)),
           ),
-          _ => _message(const CircularProgressIndicator()),
+          _ => _message(const LoadingRing(size: 48, onMedia: true)),
         },
       ),
     );

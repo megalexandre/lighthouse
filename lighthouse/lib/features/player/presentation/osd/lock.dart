@@ -6,6 +6,7 @@ import 'package:material_ui/material_ui.dart';
 import '../../../../core/theme/app_tokens.dart';
 import '../../../../core/ticks.dart';
 import '../../../../l10n/l10n.dart';
+import '../../../../widgets/loading_ring.dart';
 import '../../data/player_engine.dart';
 import '../player_screen.dart';
 import 'control_button.dart';
@@ -25,10 +26,11 @@ class LockButton extends StatelessWidget {
   );
 }
 
-/// The locked player's padlock, in the middle of the left edge: below the
-/// button that locked, not on it (a double tap does not lock and unlock),
-/// and clear of the side panel's tab on the right. Held for [hold] it unlocks, a ring filling round
-/// it meanwhile; let go sooner, the ring runs back and nothing happens.
+/// The locked player's padlock, in the top right corner, 48 px down, as
+/// Jellyfin's Android app has it: across the screen from the button that
+/// locked (bottom left), so a double tap does not lock and unlock. Held
+/// for [hold] it unlocks, a ring filling round it meanwhile; let go
+/// sooner, the ring runs back and nothing happens.
 /// The mouse's button, or Enter or Space while it has the focus, hold it
 /// too.
 class UnlockButton extends StatefulWidget {
@@ -109,11 +111,10 @@ class _UnlockButtonState extends State<UnlockButton>
     final tokens = context.tokens;
     const size = 64.0;
     return SafeArea(
-      right: false,
       child: Align(
-        alignment: Alignment.centerLeft,
+        alignment: Alignment.topRight,
         child: Padding(
-          padding: EdgeInsets.only(left: tokens.space(4)),
+          padding: EdgeInsets.only(top: 48, right: tokens.space(4)),
           child: Tooltip(
             message: context.l10n.holdToUnlock,
             child: Focus(
@@ -146,11 +147,10 @@ class _UnlockButtonState extends State<UnlockButton>
                           ),
                           Padding(
                             padding: const EdgeInsets.all(3),
-                            child: CircularProgressIndicator(
+                            child: LoadingRing(
+                              size: size - 6,
+                              onMedia: true,
                               value: _ring.value,
-                              strokeWidth: 3,
-                              color: tokens.osdAccent,
-                              backgroundColor: Colors.transparent,
                             ),
                           ),
                           Icon(Icons.lock, color: tokens.osdInk),
