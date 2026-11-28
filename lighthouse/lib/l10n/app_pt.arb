@@ -222,5 +222,7 @@
   "stopVoice": "Parar nota de voz",
   "deleteVoice": "Apagar nota de voz",
   "recording": "Gravando…",
-  "recordingFailed": "Não foi possível gravar. Verifique se há um microfone conectado e se o app tem permissão para usá-lo."
+  "recordingFailed": "Não foi possível gravar. Verifique se há um microfone conectado e se o app tem permissão para usá-lo.",
+  "pageSoundSection": "Som",
+  "pageSound": "Som de papel ao virar a página"
 }

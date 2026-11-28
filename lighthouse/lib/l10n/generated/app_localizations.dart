@@ -1436,6 +1436,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Could not record. Check that a microphone is connected and that the app may use it.'**
   String get recordingFailed;
+
+  /// Reader display: the section with the page sound.
+  ///
+  /// In en, this message translates to:
+  /// **'Sound'**
+  String get pageSoundSection;
+
+  /// Reader display: a switch.
+  ///
+  /// In en, this message translates to:
+  /// **'Paper sound as pages turn'**
+  String get pageSound;
 }
 
 class _AppLocalizationsDelegate

@@ -44,6 +44,7 @@ import 'package:lighthouse/features/reader/data/book_format.dart';
 import 'package:lighthouse/features/reader/data/book_repository.dart';
 import 'package:lighthouse/features/reader/data/epub/epub_document.dart';
 import 'package:lighthouse/features/reader/data/highlight.dart';
+import 'package:lighthouse/features/reader/data/page_sounds.dart';
 import 'package:lighthouse/features/reader/data/voice_note.dart';
 import 'package:lighthouse/features/server/application/connection_controller.dart';
 import 'package:lighthouse/features/server/data/server_info.dart';
@@ -1009,6 +1010,31 @@ class FakeNotePlayer implements NotePlayer {
   void finish() => _playing.value = null;
 }
 
+/// Page sounds that play nothing and remember what was asked.
+class FakePageSounds implements PageSounds {
+  bool warm = false;
+
+  /// Every speed the rubbing was given, in order.
+  final rubs = <double>[];
+  bool rubbing = false;
+  int turns = 0;
+
+  @override
+  void warmUp() => warm = true;
+
+  @override
+  void rub(double speed) {
+    rubs.add(speed);
+    rubbing = true;
+  }
+
+  @override
+  void stopRubbing() => rubbing = false;
+
+  @override
+  void turn() => turns++;
+}
+
 /// A window that only remembers what it was asked.
 class FakeAppWindow implements AppWindow {
   @override
@@ -1207,6 +1233,10 @@ class TestApp {
   final books = FakeBookRepository();
   final noteRecorder = FakeNoteRecorder();
   final notePlayer = FakeNotePlayer();
+  final pageSounds = FakePageSounds();
+
+  /// Whether the reader offers the page sound (off in the app for now).
+  bool pageSoundsAvailable = false;
 
   /// Where voice notes go: the app deletes them from here.
   final voiceNotes = Directory.systemTemp.createTempSync('voice-notes-');
@@ -1265,6 +1295,8 @@ class TestApp {
     bookOpenerProvider.overrideWithValue(openBookForTests),
     noteRecorderProvider.overrideWithValue(noteRecorder),
     notePlayerProvider.overrideWithValue(notePlayer),
+    pageSoundsProvider.overrideWithValue(pageSounds),
+    pageSoundsAvailableProvider.overrideWith((_) => pageSoundsAvailable),
     voiceNotesDirectoryProvider.overrideWith((_) async => voiceNotes),
     serverLocatorProvider.overrideWithValue((server) async {
       pings.add(server.url);

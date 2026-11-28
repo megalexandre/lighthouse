@@ -118,6 +118,63 @@ void main() {
     );
   });
 
+  test(
+    'a voice note button: drawn at the end of its range, there only',
+    () async {
+      final document = EpubBookDocument(book);
+      document.layout(size, const EpubTypography());
+      addTearDown(document.dispose);
+      // "alpha beta" on page 0; the second chapter is on page 1.
+      const alpha = TextRange(start: 5, end: 15);
+      final badge = document.badgeOf(0, alpha)!;
+      expect(document.badgeOf(1, alpha), isNull);
+      // Past the end of "beta", raised over its line.
+      final words = document.rectsOf(0, alpha).last;
+      expect(badge.center.dx, greaterThan(words.right));
+      expect(badge.center.dy, lessThan(words.center.dy));
+
+      Future<int> whiteIn(List<PageMark> marks) async {
+        final image = await document.pageImage(
+          0,
+          size,
+          PageColors.plain,
+          marks: marks,
+        );
+        final bytes = (await image.toByteData(
+          format: ui.ImageByteFormat.rawStraightRgba,
+        ))!;
+        final box = Rect.fromLTRB(
+          badge.left * image.width,
+          badge.top * image.height,
+          badge.right * image.width,
+          badge.bottom * image.height,
+        ).deflate(2);
+        var count = 0;
+        for (var y = box.top.ceil(); y < box.bottom; y++) {
+          for (var x = box.left.ceil(); x < box.right; x++) {
+            final i = (y * image.width + x) * 4;
+            if (bytes.getUint8(i + 3) > 200 &&
+                bytes.getUint8(i) > 230 &&
+                bytes.getUint8(i + 1) > 230 &&
+                bytes.getUint8(i + 2) > 230) {
+              count++;
+            }
+          }
+        }
+        image.dispose();
+        return count;
+      }
+
+      final fill = HighlightColor.blue.fill;
+      expect(await whiteIn([PageMark(5, 15, fill)]), 0);
+      // The white triangle on the blue disc.
+      expect(
+        await whiteIn([PageMark(5, 15, fill, badge: PageBadge.play)]),
+        greaterThan(10),
+      );
+    },
+  );
+
   test('a highlight survives JSON; a broken entry is dropped', () {
     final h = Highlight(
       start: 3,

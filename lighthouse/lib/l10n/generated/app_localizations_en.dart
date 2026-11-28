@@ -806,4 +806,10 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get recordingFailed =>
       'Could not record. Check that a microphone is connected and that the app may use it.';
+
+  @override
+  String get pageSoundSection => 'Sound';
+
+  @override
+  String get pageSound => 'Paper sound as pages turn';
 }

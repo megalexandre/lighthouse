@@ -93,6 +93,8 @@ flutter:
   # Built-in themes: design-system tokens.json files (docs/THEMES.md).
   assets:
     - assets/themes/
+    # The reader's paper sounds (tool/gen_page_sounds.py).
+    - assets/sounds/
   # The faces the built-in themes name (assets/fonts/README.md).
   fonts:
     - family: Noto Sans

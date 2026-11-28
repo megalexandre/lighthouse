@@ -1113,5 +1113,13 @@
   "recordingFailed": "Could not record. Check that a microphone is connected and that the app may use it.",
   "@recordingFailed": {
     "description": "Snackbar: the microphone could not be used."
+  },
+  "pageSoundSection": "Sound",
+  "@pageSoundSection": {
+    "description": "Reader display: the section with the page sound."
+  },
+  "pageSound": "Paper sound as pages turn",
+  "@pageSound": {
+    "description": "Reader display: a switch."
   }
 }

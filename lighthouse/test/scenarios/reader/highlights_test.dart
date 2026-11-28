@@ -39,6 +39,7 @@ import './step/no_voice_note_plays.dart';
 import './step/has_no_voice_note.dart';
 import './step/the_file_of_is_deleted.dart';
 import './step/the_microphone_cannot_be_used.dart';
+import './step/i_tap_the_voice_button_of.dart';
 
 void main() {
   setUpAll(() async {
@@ -364,6 +365,83 @@ void main() {
       } finally {
         await afterEach(
           '''The notes play their voice notes; a highlight removed takes its voice note along''',
+          success,
+        );
+      }
+    });
+    testWidgets(
+        '''A voice note has a play button on the page, which plays and stops it''',
+        (tester) async {
+      var success = true;
+      try {
+        await beforeEach(
+            '''A voice note has a play button on the page, which plays and stops it''');
+        await bddSetUp(tester);
+        await iRead(tester, 'book-epub');
+        await iHoldTheWord(tester, 'first');
+        await iTap(tester, 'Record voice note');
+        await iSaveTheRecording(tester);
+        await iTapTheVoiceButtonOf(tester, 'first');
+        await theVoiceNotePlays(tester, 'voice-1.wav');
+        await iDoNotSee(tester, 'Copy');
+        await iTapTheVoiceButtonOf(tester, 'first');
+        await noVoiceNotePlays(tester);
+        await iDoNotSee(tester, 'Copy');
+      } catch (_) {
+        success = false;
+        rethrow;
+      } finally {
+        await afterEach(
+          '''A voice note has a play button on the page, which plays and stops it''',
+          success,
+        );
+      }
+    });
+    testWidgets('''A highlight without a voice note has no play button''',
+        (tester) async {
+      var success = true;
+      try {
+        await beforeEach(
+            '''A highlight without a voice note has no play button''');
+        await bddSetUp(tester);
+        await iRead(tester, 'book-epub');
+        await iHoldTheWord(tester, 'first');
+        await iHighlightIt(tester, 'red');
+        await iTapTheVoiceButtonOf(tester, 'first');
+        await noVoiceNotePlays(tester);
+        await iDoNotSee(tester, 'Remove highlight');
+      } catch (_) {
+        success = false;
+        rethrow;
+      } finally {
+        await afterEach(
+          '''A highlight without a voice note has no play button''',
+          success,
+        );
+      }
+    });
+    testWidgets('''A voice note deleted takes its play button with it''',
+        (tester) async {
+      var success = true;
+      try {
+        await beforeEach(
+            '''A voice note deleted takes its play button with it''');
+        await bddSetUp(tester);
+        await iRead(tester, 'book-epub');
+        await iHoldTheWord(tester, 'first');
+        await iTap(tester, 'Record voice note');
+        await iSaveTheRecording(tester);
+        await iTapTheWord(tester, 'first');
+        await iTapTheButton(tester, 'Delete voice note');
+        await iPress(tester, 'Esc');
+        await iTapTheVoiceButtonOf(tester, 'first');
+        await noVoiceNotePlays(tester);
+      } catch (_) {
+        success = false;
+        rethrow;
+      } finally {
+        await afterEach(
+          '''A voice note deleted takes its play button with it''',
           success,
         );
       }

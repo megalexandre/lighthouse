@@ -169,6 +169,21 @@ class EpubBookDocument implements BookDocument {
   }
 
   @override
+  Rect? badgeOf(int index, TextRange range) {
+    final layout = _layout;
+    if (layout == null) return null;
+    final r = layout.badgeOf(index, range.start, range.end);
+    if (r == null) return null;
+    final size = layout.size;
+    return Rect.fromLTRB(
+      r.left / size.width,
+      r.top / size.height,
+      r.right / size.width,
+      r.bottom / size.height,
+    );
+  }
+
+  @override
   double fractionAt(int offset) =>
       book.length == 0 ? 0 : (offset / book.length).clamp(0.0, 1.0);
 

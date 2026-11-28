@@ -138,3 +138,34 @@ Feature: Highlights and notes
     Then {'book-epub'} has no highlights
     And no voice note plays
     And the file of {'voice-1.wav'} is deleted
+
+  Scenario: A voice note has a play button on the page, which plays and stops it
+    When I read {'book-epub'}
+    And I hold the word {'first'}
+    And I tap {'Record voice note'}
+    And I save the recording
+    And I tap the voice button of {'first'}
+    Then the voice note {'voice-1.wav'} plays
+    And I do not see {'Copy'}
+    When I tap the voice button of {'first'}
+    Then no voice note plays
+    And I do not see {'Copy'}
+
+  Scenario: A highlight without a voice note has no play button
+    When I read {'book-epub'}
+    And I hold the word {'first'}
+    And I highlight it {'red'}
+    And I tap the voice button of {'first'}
+    Then no voice note plays
+    And I do not see {'Remove highlight'}
+
+  Scenario: A voice note deleted takes its play button with it
+    When I read {'book-epub'}
+    And I hold the word {'first'}
+    And I tap {'Record voice note'}
+    And I save the recording
+    And I tap the word {'first'}
+    And I tap the button {'Delete voice note'}
+    And I press {'Esc'}
+    And I tap the voice button of {'first'}
+    Then no voice note plays

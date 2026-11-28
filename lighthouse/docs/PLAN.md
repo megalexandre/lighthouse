@@ -255,10 +255,15 @@ bordas, teclado), progresso no servidor.
   - Opções de exibição (EPUB), no painel "Exibição", cada uma numa seção como no Play Livros: fonte (Noto Sans, o
     padrão e a livre mais parecida com a Amazon Ember; Literata; Atkinson Hyperlegible; todas OFL, embutidas, ver
     `assets/fonts/README.md`), tamanho (80 a 175%), altura da linha (80 a 150%), espaçamento entre caracteres (0 a 5
-    passos de 0,025 em) e justificar ou alinhar à esquerda. Mudar repagina e mantém o trecho. Preferências antigas
+    passos de 0,025 em) e justificar ou alinhar à esquerda. Até o usuário escolher, justifica no computador e
+    alinha à esquerda no Android: sem hifenização, a coluna estreita do celular justificada abre buracos entre as
+    palavras (o leitor Android do Jellyfin também não justifica). Mudar repagina e mantém o trecho. Preferências antigas
     em px viram o degrau mais próximo; a escolha antiga serifa/sem serifa (fontes genéricas do sistema) é descartada.
   - Temas claro, sépia e escuro, para todos os formatos:
-    - EPUB: o texto é diagramado em preto e pintado na tinta do tema, então trocar de tema não repagina.
+    - EPUB: o texto é diagramado uma vez e pintado direto na tinta do tema (só a cor muda, o Flutter não refaz as
+      linhas), então trocar de tema não repagina. Antes era pintado em preto e recolorido numa camada
+      (`saveLayer` com filtro de cor), que no Impeller com Vulkan (celulares Android) deixava uma cópia cinza de
+      cada letra alguns pixels abaixo.
     - PDF: recolorido por matriz (branco vira papel, preto vira tinta); no tema claro fica intacto.
     - Quadrinhos e imagens mantêm as cores.
     - Na virada de página, o brilho da crista diminui no papel escuro.
@@ -273,6 +278,21 @@ bordas, teclado), progresso no servidor.
   não aceitam o touchpad; um deslize de dois dedos (60 px) vira uma página por gesto, com a animação normal:
   para a esquerda ou para cima avança, para a direita ou para baixo volta.
   No toque não há roda (limite da entrada, não da plataforma: um mouse no Android funciona igual).
+- **Som de página (desligada por enquanto):** os sons ainda não lembram papel (nem o ruído filtrado da primeira
+  versão, nem os "grãos" da segunda). O código e os testes ficam; `pageSoundsAvailableProvider` (falso) esconde a
+  chave em Exibição e o leitor não toca nem carrega nada, seja qual for a preferência. Os cenários ligam a flag para
+  manter a função testada; para voltar, basta sons melhores (talvez gravados, com licença livre) e a flag em true.
+  Como funciona quando ligada: a página soa como papel, em todos os formatos e plataformas. Arrastada, ela raspa,
+  mais alto quanto mais rápido a folha anda (parada, fica muda; presa na lombada também); cada página que vira faz um
+  "fwip", por arraste, tecla, toque na borda, roda ou touchpad. Liga e desliga em Exibição → Som (ligado por padrão,
+  guardado nas preferências). Os sons são gerados por `tool/gen_page_sounds.py` (Python puro; o ffmpeg só codifica em
+  OGG; sementes fixas, sem licença de terceiros). A primeira versão era ruído filtrado e soava como chiado: papel
+  estala. Agora são "grãos": milhares de estalinhos de 1–6 ms de ruído em banda (1,5–7,5 kHz), de intensidade
+  irregular e em rajadas; a virada junta estalos ao levantar, o ar (um "vuush" grave discreto, com tremulação),
+  estalos ao dobrar e uma batidinha ao assentar. Ficam em `assets/sounds/` e o mpv os toca em players próprios:
+  o raspar em laço, com o volume seguindo a velocidade (sobe na hora, desce suave em ~0,1 s); o fwip é aberto de
+  novo a cada virada, porque o mpv deixa o arquivo terminado como "completed" e voltar ao início com play fica mudo (abrir leva
+  ~30 ms; o som começa em ~85 ms, dentro dos 420 ms da animação). Os testes de integração usam `SilentPageSounds`.
 - **Destaques e anotações (feita, EPUB):** selecionar um trecho (com o mouse, arrastando sobre o texto; no toque,
   segurando uma palavra e arrastando) abre um menu sobre ele: destacar em amarelo, vermelho ou azul, adicionar uma
   observação (o trecho vira destaque amarelo) ou copiar. Tocar num destaque traz o menu de volta para trocar a cor,
@@ -293,6 +313,11 @@ bordas, teclado), progresso no servidor.
     mono de 16 kHz pelo próprio app, porque o modo arquivo do pacote no Linux exige o ffmpeg instalado. Sem
     microfone ou sem permissão, um aviso diz que não deu para gravar. Tocar é pelo mpv (media_kit), num player
     só das notas, separado do vídeo e da música.
+    Na página, um destaque com nota de voz tem um botãozinho de play (um disco na cor do destaque, triângulo
+    branco, aro branco) no fim do trecho, um pouco acima da linha, como uma chamada de nota, sem cobrir letras.
+    É desenhado com a página (`PageMark.badge`, `EpubLayout.badgeOf`), então vira junto com a folha. Tocar nele
+    toca a nota, ou para (o botão mostra um quadrado enquanto toca), sem abrir o menu; a área de toque é um
+    pouco maior que o desenho.
 - PDFium vem de `bblanchon/pdfium-binaries` (versão fixa `chromium/8125`), baixado no build pelo hook do
   `pdfium_dart`, sem conferência de hash.
 

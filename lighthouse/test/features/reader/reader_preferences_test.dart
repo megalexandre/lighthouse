@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lighthouse/api/client_info.dart';
 import 'package:lighthouse/core/storage.dart';
@@ -16,8 +17,12 @@ void main() {
       letterSpacing: 2,
       justify: false,
       layout: PageLayout.double,
+      pageSound: false,
     );
     expect(ReaderPreferences.fromJson(prefs.toJson()), prefs);
+    // On until turned off, also for preferences stored before it existed.
+    expect(const ReaderPreferences().pageSound, isTrue);
+    expect(ReaderPreferences.fromJson(const {}).pageSound, isTrue);
     expect(
       ReaderPreferences.fromJson({
         'theme': 'neon',
@@ -26,6 +31,7 @@ void main() {
         'lineSpacing': 'x',
         'letterSpacing': -1,
         'layout': 'triple',
+        'pageSound': 'loud',
       }),
       const ReaderPreferences(),
     );
@@ -50,7 +56,29 @@ void main() {
     expect(base.fontSize, 18);
     expect(base.lineHeight, 1.45);
     expect(base.letterSpacing, 0);
-    expect(base.justify, isTrue);
+    // flutter test runs as Android, where the default is flush left.
+    expect(base.justify, isFalse);
+  });
+
+  test('justified by default, but flush left on Android, until chosen', () {
+    debugDefaultTargetPlatformOverride = TargetPlatform.linux;
+    try {
+      expect(const ReaderPreferences().justified, isTrue);
+      expect(const ReaderPreferences(justify: false).justified, isFalse);
+    } finally {
+      debugDefaultTargetPlatformOverride = null;
+    }
+    debugDefaultTargetPlatformOverride = TargetPlatform.android;
+    try {
+      expect(const ReaderPreferences().justified, isFalse);
+      expect(const ReaderPreferences(justify: true).justified, isTrue);
+    } finally {
+      debugDefaultTargetPlatformOverride = null;
+    }
+    // Not stored until chosen, so a new default reaches it.
+    expect(const ReaderPreferences().toJson().containsKey('justify'), isFalse);
+    expect(ReaderPreferences.fromJson({}).justify, isNull);
+    expect(ReaderPreferences.fromJson({'justify': false}).justify, isFalse);
   });
 
   test('a size stored in pixels becomes the nearest step', () {

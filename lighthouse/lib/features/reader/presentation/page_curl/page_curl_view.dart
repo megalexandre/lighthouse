@@ -52,6 +52,9 @@ class PageCurlView extends ConsumerStatefulWidget {
     this.leftBuilder,
     this.leftImage,
     this.turnsOnDrag,
+    this.onDragMove,
+    this.onDragEnd,
+    this.onTurn,
   }) : assert(
          (leftBuilder == null) == (leftImage == null),
          'two pages need both the left page and its image',
@@ -82,6 +85,15 @@ class PageCurlView extends ConsumerStatefulWidget {
   /// one does. One that does not is left to the widgets around (a mouse
   /// selecting text).
   final bool Function(PointerDownEvent event)? turnsOnDrag;
+
+  /// A dragged sheet moved, at a speed from 0 (barely) to 1 (fast), for
+  /// the paper's sound; [onDragEnd] when the finger lets go.
+  final ValueChanged<double>? onDragMove;
+  final VoidCallback? onDragEnd;
+
+  /// A turn begins that will finish on the next or previous page: a
+  /// release past the middle (or a flick), a key, a tap, the wheel.
+  final VoidCallback? onTurn;
 
   @override
   PageCurlViewState createState() => PageCurlViewState();
@@ -288,11 +300,18 @@ class PageCurlViewState extends ConsumerState<PageCurlView>
     _prefetch();
   }
 
+  /// When the sheet last moved under the finger, to tell its speed.
+  Duration? _lastMove;
+
+  /// A sheet that crosses its own width in this time is "fast" (1).
+  static const _fastCrossing = Duration(milliseconds: 300);
+
   void _onPanUpdate(DragUpdateDetails details) {
     final turn = _turn;
     final start = _dragStart;
     if (turn == null || start == null || _settle.isAnimating) return;
     final moved = details.localPosition - start;
+    final before = constrainToSpine(_sheet, turn.grab, turn.finger);
     setState(() {
       turn.finger = turn.forward
           // The grabbed edge follows the finger's movement.
@@ -306,11 +325,33 @@ class PageCurlViewState extends ConsumerState<PageCurlView>
               turn.grab.dy + moved.dy,
             );
     });
+    _reportSpeed(
+      (constrainToSpine(_sheet, turn.grab, turn.finger) - before).distance,
+      details.sourceTimeStamp,
+    );
+  }
+
+  /// How fast the sheet itself moved [distance] px (held at the spine, it
+  /// does not, however the finger goes), as 0 to 1.
+  void _reportSpeed(double distance, Duration? at) {
+    final report = widget.onDragMove;
+    if (report == null || _sheet.width == 0) return;
+    final last = _lastMove;
+    _lastMove = at;
+    // A frame's worth when the events carry no time.
+    final seconds = at == null || last == null || at <= last
+        ? 1 / 60
+        : (at - last).inMicroseconds / 1e6;
+    final perSecond = distance / seconds;
+    final fast = _sheet.width / (_fastCrossing.inMicroseconds / 1e6);
+    if (distance > 0.5) report((perSecond / fast).clamp(0.0, 1.0));
   }
 
   void _onPanEnd(DragEndDetails details) {
     final turn = _turn;
     _dragStart = null;
+    _lastMove = null;
+    widget.onDragEnd?.call();
     if (turn == null) return;
     final v = details.velocity.pixelsPerSecond;
     final finger = constrainToSpine(_sheet, turn.grab, turn.finger);
@@ -318,6 +359,7 @@ class PageCurlViewState extends ConsumerState<PageCurlView>
     // flick right, or let go short of the middle, brings a page back).
     final over = shouldTurn(_sheet, finger, v, at: _turnsAt);
     final turns = turn.forward ? over : !over;
+    if (turns) widget.onTurn?.call();
     final target = turns
         ? turn.completion
         : (turn.forward ? turn.flat : turn.turned);
@@ -341,6 +383,7 @@ class PageCurlViewState extends ConsumerState<PageCurlView>
     _finishNow();
     final from = _page;
     if (forward ? from >= widget.pageCount - 1 : from <= 0) return;
+    widget.onTurn?.call();
     if (_reduceMotion || _size.isEmpty) {
       _turned(forward ? from + 1 : from - 1);
       return;

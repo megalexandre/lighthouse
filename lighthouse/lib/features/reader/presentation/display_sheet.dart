@@ -5,11 +5,12 @@ import 'package:material_ui/material_ui.dart';
 
 import '../../../l10n/l10n.dart';
 import '../application/reader_preferences.dart';
+import '../data/page_sounds.dart';
 import 'reader_screen.dart';
 
-/// The display options: the theme and the page layout, for any book; how
-/// the type is set (face, size, line height, letter spacing, alignment),
-/// for an EPUB. One titled section each.
+/// The display options: the theme, the page layout and the page sound, for
+/// any book; how the type is set (face, size, line height, letter spacing,
+/// alignment), for an EPUB. One titled section each.
 class DisplaySheet extends ConsumerWidget {
   const DisplaySheet({super.key, required this.reflowable});
 
@@ -166,7 +167,7 @@ class DisplaySheet extends ConsumerWidget {
                       ),
                     ),
                   ],
-                  selected: {prefs.justify},
+                  selected: {prefs.justified},
                   onSelectionChanged: (s) =>
                       update((p) => p.copyWith(justify: s.single)),
                 ),
@@ -194,6 +195,17 @@ class DisplaySheet extends ConsumerWidget {
                   update((p) => p.copyWith(layout: s.single)),
             ),
           ),
+          if (ref.watch(pageSoundsAvailableProvider))
+            _Section(
+              title: l10n.pageSoundSection,
+              child: SwitchListTile(
+                key: ReaderScreen.pageSoundSwitch,
+                contentPadding: EdgeInsets.zero,
+                title: Text(l10n.pageSound),
+                value: prefs.pageSound,
+                onChanged: (on) => update((p) => p.copyWith(pageSound: on)),
+              ),
+            ),
         ],
       ),
     );

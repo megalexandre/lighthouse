@@ -1,5 +1,7 @@
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart'
+    show TargetPlatform, defaultTargetPlatform;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -76,8 +78,9 @@ class ReaderPreferences {
     this.fontScale = 100,
     this.lineSpacing = 100,
     this.letterSpacing = 0,
-    this.justify = true,
+    this.justify,
     this.layout = PageLayout.auto,
+    this.pageSound = true,
   });
 
   /// The steps offered, smallest to largest.
@@ -99,9 +102,20 @@ class ReaderPreferences {
   final int lineSpacing;
   final int letterSpacing;
 
-  /// Justified, or set flush left (ragged right).
-  final bool justify;
+  /// Justified, or set flush left (ragged right), as the user chose it;
+  /// null until they do, and then [justified] follows the platform.
+  final bool? justify;
+
+  /// Justified unless chosen otherwise, but flush left by default on
+  /// Android: without hyphenation a phone's narrow column justified opens
+  /// wide gaps between words (Jellyfin's Android reader is ragged too).
+  bool get justified =>
+      justify ?? defaultTargetPlatform != TargetPlatform.android;
   final PageLayout layout;
+
+  /// Paper sounds as pages move: rubbing while one is dragged, a swish as
+  /// one turns.
+  final bool pageSound;
 
   double get fontSize => baseFontSize * fontScale / 100;
 
@@ -110,7 +124,7 @@ class ReaderPreferences {
     lineHeight: baseLineHeight * lineSpacing / 100,
     fontFamily: font.family,
     letterSpacing: fontSize * letterSpacing * letterSpacingStep,
-    justify: justify,
+    justify: justified,
   );
 
   /// [value] moved [steps] along [steps] list [values] (clamped at its
@@ -133,6 +147,7 @@ class ReaderPreferences {
     int? letterSpacing,
     bool? justify,
     PageLayout? layout,
+    bool? pageSound,
   }) => ReaderPreferences(
     theme: theme ?? this.theme,
     font: font ?? this.font,
@@ -141,6 +156,7 @@ class ReaderPreferences {
     letterSpacing: letterSpacing ?? this.letterSpacing,
     justify: justify ?? this.justify,
     layout: layout ?? this.layout,
+    pageSound: pageSound ?? this.pageSound,
   );
 
   Map<String, Object> toJson() => {
@@ -149,8 +165,10 @@ class ReaderPreferences {
     'fontScale': fontScale,
     'lineSpacing': lineSpacing,
     'letterSpacing': letterSpacing,
-    'justify': justify,
+    // Only once chosen: until then the platform's default applies.
+    'justify': ?justify,
     'layout': layout.name,
+    'pageSound': pageSound,
   };
 
   /// Unknown or broken values fall back to the defaults, one by one. A
@@ -177,8 +195,12 @@ class ReaderPreferences {
       fontScale: fontScale,
       lineSpacing: pick('lineSpacing', lineSpacings, 100),
       letterSpacing: pick('letterSpacing', letterSpacings, 0),
-      justify: json['justify'] != false,
+      justify: switch (json['justify']) {
+        final bool chosen => chosen,
+        _ => null,
+      },
       layout: PageLayout.values.asNameMap()[json['layout']] ?? PageLayout.auto,
+      pageSound: json['pageSound'] is bool ? json['pageSound'] as bool : true,
     );
   }
 
@@ -191,7 +213,8 @@ class ReaderPreferences {
       other.lineSpacing == lineSpacing &&
       other.letterSpacing == letterSpacing &&
       other.justify == justify &&
-      other.layout == layout;
+      other.layout == layout &&
+      other.pageSound == pageSound;
 
   @override
   int get hashCode => Object.hash(
@@ -202,6 +225,7 @@ class ReaderPreferences {
     letterSpacing,
     justify,
     layout,
+    pageSound,
   );
 }
 

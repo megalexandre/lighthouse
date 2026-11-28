@@ -807,6 +807,12 @@ class AppLocalizationsPt extends AppLocalizations {
   @override
   String get recordingFailed =>
       'Não foi possível gravar. Verifique se há um microfone conectado e se o app tem permissão para usá-lo.';
+
+  @override
+  String get pageSoundSection => 'Som';
+
+  @override
+  String get pageSound => 'Som de papel ao virar a página';
 }
 
 /// The translations for Portuguese, as used in Brazil (`pt_BR`).

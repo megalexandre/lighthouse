@@ -9,6 +9,7 @@ import 'package:lighthouse/core/theme/theme_catalog.dart';
 import 'package:lighthouse/core/window.dart';
 import 'package:lighthouse/features/player/data/player_engine.dart';
 import 'package:lighthouse/features/reader/data/book_repository.dart';
+import 'package:lighthouse/features/reader/data/page_sounds.dart';
 import 'package:lighthouse/l10n/l10n.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -92,6 +93,8 @@ Future<void> launch(
         playerOptionsProvider.overrideWithValue(
           const PlayerOptions(hardwareDecoding: false, audio: false),
         ),
+        // No paper sounds out of the test machine (as the player's audio).
+        pageSoundsProvider.overrideWithValue(const SilentPageSounds()),
         appWindowProvider.overrideWithValue(window),
         floatingWindowProvider.overrideWithValue(TestFloatingWindow()),
       ],

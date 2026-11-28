@@ -21,6 +21,7 @@ import '../application/reader_controller.dart';
 import '../application/reader_preferences.dart';
 import '../data/book_document.dart';
 import '../data/highlight.dart';
+import '../data/page_sounds.dart';
 import '../data/voice_note.dart';
 import 'contents_drawer.dart';
 import 'display_sheet.dart';
@@ -103,6 +104,7 @@ class ReaderScreen extends ConsumerStatefulWidget {
   static const playVoiceButton = Key('reader.playVoice');
   static const deleteVoiceButton = Key('reader.deleteVoice');
   static const saveRecordingButton = Key('reader.saveRecording');
+  static const pageSoundSwitch = Key('reader.pageSound');
 
   /// Part of the width, at each side, where a tap turns the page.
   static const edge = 0.25;
@@ -196,17 +198,25 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
   /// Voice notes play here; read once, as [_window] (dispose stops it).
   late final NotePlayer _voices = ref.read(notePlayerProvider);
 
+  /// The page sounds, read at the start for dispose to silence them.
+  PageSounds? _rubbing;
+
   @override
   void initState() {
     super.initState();
     _window.staysOn = true;
     _voices; // Read now: dispose cannot.
+    // The buttons on the page show play or stop.
+    _voices.playing.addListener(_voiceChanged);
+    _rubbing = ref.read(pageSoundsProvider);
   }
 
   @override
   void dispose() {
     // A voice note does not go on playing past the book.
+    _voices.playing.removeListener(_voiceChanged);
     unawaited(_voices.stop());
+    _rubbing?.stopRubbing();
     _window.staysOn = false;
     if (_fullScreen) _window.isFullScreen = false;
     _focus.dispose();
@@ -317,6 +327,22 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
       ref.watch(readerPreferencesProvider).value ?? const ReaderPreferences();
 
   ReaderTheme get _theme => _prefs.theme;
+
+  /// The paper's sounds, when the user wants them (made ready on first
+  /// use, so the first turn is not late).
+  PageSounds? get _sounds {
+    if (!ref.read(pageSoundsAvailableProvider) || !_prefs.pageSound) {
+      return null;
+    }
+    final sounds = ref.read(pageSoundsProvider);
+    if (!_soundsReady) {
+      _soundsReady = true;
+      sounds.warmUp();
+    }
+    return sounds;
+  }
+
+  bool _soundsReady = false;
 
   @override
   Widget build(BuildContext context) {
@@ -583,7 +609,7 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
   List<PageMark> _marks(ReaderSession session, int page) {
     final selected = _openHighlight?.range ?? _selection;
     return [
-      ..._highlightMarks(session),
+      ..._highlightMarks(session, playing: _isPlaying),
       if (selected != null && !selected.isCollapsed && _selectionPage == page)
         PageMark(
           selected.start,
@@ -593,9 +619,39 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
     ];
   }
 
-  static List<PageMark> _highlightMarks(ReaderSession session) => [
-    for (final h in session.highlights) PageMark(h.start, h.end, h.color.fill),
+  /// The highlights as marks; one with a voice note has its button,
+  /// stop while [playing] says it plays (the pictures for a page turn show
+  /// them all at rest: play).
+  static List<PageMark> _highlightMarks(
+    ReaderSession session, {
+    bool Function(Highlight)? playing,
+  }) => [
+    for (final h in session.highlights)
+      PageMark(
+        h.start,
+        h.end,
+        h.color.fill,
+        badge: !h.hasVoice
+            ? null
+            : (playing?.call(h) ?? false)
+            ? PageBadge.stop
+            : PageBadge.play,
+      ),
   ];
+
+  /// The voice note whose button is under [global], if any.
+  Highlight? _voiceBadgeAt(Offset global) {
+    final session = _shown;
+    final (page, at) = _pagePoint(global) ?? (null, Offset.zero);
+    if (session == null || page == null) return null;
+    for (final h in session.highlights.reversed) {
+      if (!h.hasVoice) continue;
+      // A little larger than drawn: it is small, and a finger is not.
+      final badge = session.document.badgeOf(page, h.range);
+      if (badge != null && badge.inflate(0.012).contains(at)) return h;
+    }
+    return null;
+  }
 
   Future<void> _color(HighlightColor color) async {
     final open = _openHighlight;
@@ -656,6 +712,10 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
 
   /// The longest voice note: past it, the recording ends and is kept.
   static const maxVoiceNote = Duration(minutes: 10);
+
+  void _voiceChanged() {
+    if (mounted) setState(() {});
+  }
 
   bool _isPlaying(Highlight h) =>
       h.hasVoice && (_voices.playing.value?.endsWith('/${h.voice}') ?? false);
@@ -909,6 +969,10 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
                   ),
                   // A mouse dragged over text selects it.
                   turnsOnDrag: (event) => !_selectsOnDrag(event),
+                  // The paper's sound, unless turned off.
+                  onDragMove: _sounds?.rub,
+                  onDragEnd: _sounds?.stopRubbing,
+                  onTurn: _sounds?.turn,
                   sheetBuilder: (index) => KeyedSubtree(
                     key: index == spread ? ReaderScreen.pages : null,
                     child: KeyedSubtree(
@@ -1003,6 +1067,13 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
                   behavior: HitTestBehavior.opaque,
                   onTapUp: (details) {
                     if (_dismissing) return;
+                    // A voice note's button plays it (or stops it), with
+                    // no menu.
+                    if (_voiceBadgeAt(details.globalPosition)
+                        case final highlight?) {
+                      unawaited(_playVoice(highlight));
+                      return;
+                    }
                     if (document.reflowable &&
                         _followLink(details.globalPosition)) {
                       return;

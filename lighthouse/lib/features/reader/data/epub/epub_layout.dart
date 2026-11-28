@@ -3,14 +3,14 @@ import 'dart:ui' as ui;
 
 import 'package:material_ui/material_ui.dart';
 
-import '../book_document.dart' show PageMark;
+import '../book_document.dart' show PageBadge, PageMark;
 import '../image_size.dart';
 import 'epub_book.dart';
 
 /// How the reader sets an EPUB's type: one size for the whole book, as
 /// Play Books does (the publisher's CSS is not followed). The colour is not
 /// part of it: pages are laid out once and drawn in any ink
-/// ([EpubLayout.paint]).
+/// ([EpubLayout.paint]) without laying them out again.
 @immutable
 class EpubTypography {
   const EpubTypography({
@@ -366,15 +366,13 @@ class EpubLayout {
         Paint()..filterQuality = FilterQuality.medium,
       );
     }
-    // The text is laid out black: drawn in a layer that keeps its shape
-    // (antialiasing too) and takes the ink's colour.
-    canvas.saveLayer(
-      Offset.zero & content,
-      Paint()..colorFilter = ColorFilter.mode(ink, BlendMode.srcIn),
-    );
+    // The text straight in the ink, not laid out black and recoloured in a
+    // layer: on Android's Vulkan renderer such a layer left a grey copy of
+    // every letter a few pixels below it.
     for (final piece in pieces) {
       switch (piece) {
         case TextPiece(:final painter, :final at, :final top, :final bottom):
+          _inked(painter, ink);
           canvas
             ..save()
             ..clipRect(at & Size(painter.width, bottom - top))
@@ -387,16 +385,91 @@ class EpubLayout {
             Offset((content.width - w) / 2, y),
             Offset((content.width + w) / 2, y),
             Paint()
-              ..color = const Color(0x66000000)
+              ..color = ink.withValues(alpha: 0.4)
               ..strokeWidth = 1,
           );
         case ImagePiece():
           break;
       }
     }
+    // Over the text: a voice note's button.
+    for (final mark in marks) {
+      final badge = mark.badge;
+      final circle = badge == null ? null : _badge(index, mark.start, mark.end);
+      if (badge == null || circle == null) continue;
+      _paintBadge(canvas, circle, mark.color.withValues(alpha: 1), badge);
+    }
+    canvas.restore();
+  }
+
+  /// A round button in [color]: a white triangle (play) or square (stop).
+  void _paintBadge(Canvas canvas, Rect circle, Color color, PageBadge badge) {
+    final r = circle.width / 2;
+    final c = circle.center;
     canvas
-      ..restore()
-      ..restore();
+      // A white rim keeps it apart from the text and any paper.
+      ..drawCircle(c, r + 1.5, Paint()..color = const Color(0xFFFFFFFF))
+      ..drawCircle(c, r, Paint()..color = color);
+    final white = Paint()..color = const Color(0xFFFFFFFF);
+    switch (badge) {
+      case PageBadge.play:
+        // Nudged right: a triangle looks centred by its weight, not its box.
+        final s = r * 0.5;
+        canvas.drawPath(
+          Path()
+            ..moveTo(c.dx - s * 0.7, c.dy - s)
+            ..lineTo(c.dx + s * 1.1, c.dy)
+            ..lineTo(c.dx - s * 0.7, c.dy + s)
+            ..close(),
+          white,
+        );
+      case PageBadge.stop:
+        canvas.drawRect(
+          Rect.fromCenter(center: c, width: r * 0.8, height: r * 0.8),
+          white,
+        );
+    }
+  }
+
+  /// Where a mark over book characters [start] to [end] has its badge on
+  /// page [index], on the whole page (see [BookDocument.badgeOf]).
+  Rect? badgeOf(int index, int start, int end) =>
+      _badge(index, start, end)?.shift(Offset(margins.left, margins.top));
+
+  /// As [badgeOf], on the content area: past the end of the range's last
+  /// line, raised to its top, kept on the page.
+  Rect? _badge(int index, int start, int end) {
+    if (index < 0 || index >= pages.length) return null;
+    // Only on the page where the range ends.
+    final next = index + 1 < pages.length ? pages[index + 1].start : _length;
+    if (end > next) return null;
+    final rects = _rects(index, start, end);
+    if (rects.isEmpty) return null;
+    final last = rects.reduce(
+      (a, b) => (b.top > a.top + 1 || (b.top >= a.top - 1 && b.right > a.right))
+          ? b
+          : a,
+    );
+    final r = typography.fontSize * 0.5;
+    final x = (last.right + r * 0.5).clamp(
+      r - margins.left + 2,
+      content.width + margins.right - r - 2,
+    );
+    // Its centre near the line's top, in the leading above the letters.
+    final y = math.max(last.top - r * 0.3, r - margins.top + 2);
+    return Rect.fromCircle(center: Offset(x.toDouble(), y), radius: r);
+  }
+
+  /// [painter] in [ink]. Only the colour changes, which needs no new
+  /// layout: the paragraph is only built again for painting, and its
+  /// lines stay where they were.
+  void _inked(TextPainter painter, Color ink) {
+    final text = painter.text! as TextSpan;
+    if (text.style?.color == ink) return;
+    painter.text = TextSpan(
+      style: text.style?.copyWith(color: ink),
+      children: text.children,
+    );
   }
 
   // --- Selecting text -------------------------------------------------------

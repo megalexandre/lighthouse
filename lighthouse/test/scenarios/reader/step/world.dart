@@ -81,6 +81,35 @@ Rect wordOnPage(WidgetTester tester, String word) {
   );
 }
 
+/// Where the voice note button of a mark over [word] (its first occurrence
+/// in the book) is drawn on the page shown, in the window; whether or not
+/// there is a voice note there.
+Rect voiceButtonOnPage(WidgetTester tester, String word) {
+  final screen = tester.widget<ReaderScreen>(find.byType(ReaderScreen));
+  final session = app
+      .containerOf(tester)
+      .read(readerControllerProvider(screen.itemId))
+      .value!;
+  final document = session.document as EpubBookDocument;
+  final text = [
+    for (final chapter in document.book.chapters)
+      for (final block in chapter.blocks)
+        block is TextBlock ? block.text : ' ' * block.length,
+  ].join();
+  final start = text.indexOf(word);
+  final unit = document.badgeOf(
+    session.page,
+    TextRange(start: start, end: start + word.length),
+  )!;
+  final page = tester.getRect(find.byKey(ReaderScreen.pages));
+  return Rect.fromLTRB(
+    page.left + unit.left * page.width,
+    page.top + unit.top * page.height,
+    page.left + unit.right * page.width,
+    page.top + unit.bottom * page.height,
+  );
+}
+
 /// Adds [values] to the reader preferences stored on this device, as an
 /// earlier run would have left them.
 void storeReaderPreferences(Map<String, Object> values) {

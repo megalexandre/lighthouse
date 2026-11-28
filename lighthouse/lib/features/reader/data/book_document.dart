@@ -59,22 +59,30 @@ class PageColors {
 /// selection); see [BookDocument.selectable].
 @immutable
 class PageMark {
-  const PageMark(this.start, this.end, this.color);
+  const PageMark(this.start, this.end, this.color, {this.badge});
 
   final int start;
   final int end;
   final Color color;
+
+  /// A round button at its end (a voice note), in [color] at full
+  /// strength; see [BookDocument.badgeOf].
+  final PageBadge? badge;
 
   @override
   bool operator ==(Object other) =>
       other is PageMark &&
       other.start == start &&
       other.end == end &&
-      other.color == color;
+      other.color == color &&
+      other.badge == badge;
 
   @override
-  int get hashCode => Object.hash(start, end, color);
+  int get hashCode => Object.hash(start, end, color, badge);
 }
+
+/// What a mark's badge shows: play, or stop while it plays.
+enum PageBadge { play, stop }
 
 /// A line of a book's table of contents: [title], going to [fraction] of
 /// the book (see [BookDocument.pageAt]); [depth] 0 for the top level.
@@ -135,6 +143,11 @@ abstract interface class BookDocument {
 
   /// Where character [offset] is in the book, from 0 to 1 (see [pageAt]).
   double fractionAt(int offset);
+
+  /// Where the badge of a mark over [range] is drawn on page [index]: at
+  /// the end of its last line, raised a little, as a note's call; null
+  /// when the range does not end on that page.
+  Rect? badgeOf(int index, TextRange range);
 
   /// Width ÷ height of page [index]: the sheet that turns has its shape.
   double pageAspectRatio(int index);
@@ -216,6 +229,9 @@ mixin FixedPages implements BookDocument {
 
   @override
   double fractionAt(int offset) => 0;
+
+  @override
+  Rect? badgeOf(int index, TextRange range) => null;
 }
 
 /// The book [file] opened for reading. Throws [NotReadable] for a format
