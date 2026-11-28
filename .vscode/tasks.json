@@ -115,6 +115,28 @@
       "problemMatcher": [],
       "presentation": { "reveal": "silent", "panel": "dedicated", "clear": true }
     }
+,
+    {
+      // The Android emulator in the container; returns once it has booted,
+      // at once when it is already up. See lighthouse/tool/emulator.sh.
+      "label": "lighthouse: start emulator",
+      "type": "shell",
+      "command": "tool/emulator.sh",
+      "problemMatcher": [],
+      "presentation": { "reveal": "silent", "panel": "dedicated", "clear": true }
+    },
+    {
+      "label": "lighthouse: stop emulator",
+      "type": "shell",
+      "command": "tool/emulator.sh stop",
+      "problemMatcher": [],
+      "presentation": { "reveal": "silent", "panel": "dedicated", "clear": true }
+    },
+    {
+      "label": "lighthouse: start emulator and dev server",
+      "dependsOn": ["lighthouse: start emulator", "lighthouse: prepare dev server"],
+      "problemMatcher": []
+    }
   ],
   "inputs": [
     {

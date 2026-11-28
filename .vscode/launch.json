@@ -45,6 +45,44 @@
       "flutterMode": "release"
     },
     {
+      // Android, on the dev container's emulator (emulator-5554): starts it
+      // first when it is not up (tool/emulator.sh waits for the boot).
+      // Needs KVM and X11 access; see .devcontainer/README.md, "Android".
+      "name": "Lighthouse Android (emulator)",
+      "type": "dart",
+      "request": "launch",
+      "cwd": "lighthouse",
+      "program": "lib/main.dart",
+      "deviceId": "emulator-5554",
+      "flutterMode": "debug",
+      "preLaunchTask": "lighthouse: start emulator"
+    },
+    {
+      // The same, with the dev server prepared and its address filled in.
+      // If the emulator does not resolve the server's name, use the IP that
+      // tool/emulator.sh prints (in the "start emulator" terminal).
+      "name": "Lighthouse Android (emulator, dev server)",
+      "type": "dart",
+      "request": "launch",
+      "cwd": "lighthouse",
+      "program": "lib/main.dart",
+      "deviceId": "emulator-5554",
+      "flutterMode": "debug",
+      "preLaunchTask": "lighthouse: start emulator and dev server",
+      "toolArgs": ["--dart-define=JELLYFIN_SERVER=${env:JELLYFIN_URL}"]
+    },
+    {
+      // Android on whatever device is chosen in the status bar: a phone over
+      // USB or Wi-Fi (adb through the host's server, see
+      // .devcontainer/README.md), or an emulator on the host.
+      "name": "Lighthouse Android (chosen device)",
+      "type": "dart",
+      "request": "launch",
+      "cwd": "lighthouse",
+      "program": "lib/main.dart",
+      "flutterMode": "debug"
+    },
+    {
       // Runs the integration tests in a visible window, so you can watch them.
       // Needs the test server (JELLYFIN_TEST_URL) for anything beyond the smoke test.
       "name": "Lighthouse: integration tests",
